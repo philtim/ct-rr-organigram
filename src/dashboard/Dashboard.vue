@@ -23,6 +23,9 @@ const stand = computed(() =>
 const showErrorToast = computed(
     () => state.value.phase === 'ready' && state.value.hasErrors,
 );
+
+const appVersion = __APP_VERSION__;
+const appCommit = __APP_COMMIT__;
 </script>
 
 <template>
@@ -64,6 +67,10 @@ const showErrorToast = computed(
         </p>
 
         <Toast :visible="showErrorToast" :message="COPY.partialErrorToast" />
+
+        <footer class="rr-dash__footer">
+            v{{ appVersion }} · {{ appCommit }}
+        </footer>
     </main>
 </template>
 
@@ -152,6 +159,16 @@ const showErrorToast = computed(
     border: 0.5px solid var(--rr-error-border);
     border-radius: var(--rr-radius-md);
     padding: 0.75rem 1rem;
+}
+
+.rr-dash__footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--rr-text-secondary);
+    opacity: 0.7;
+    font-family:
+        ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 /* Intermediate viewports — accept 2 cards per row with full team detail. */
