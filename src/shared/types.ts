@@ -39,10 +39,23 @@ export type Leader = {
 export type OrgNode = {
     groupId: number;
     name: string;
-    /** Members with isLeader=true on this group, with their role class for splitting in the UI. */
+    /** Members of THIS group with isLeader=true. Carries the role class so the Hauptstamm hero can split into Leiter / Co-Leiter pills. */
     leaders: Leader[];
-    /** Count used for the stat tile. Semantics differ by level: Hauptstamm = total leaders across all levels (own + Teilstamm own + Team); Teilstamm = sum of Team leaders (label says "Teamleiter"); Team = team's own leaders. */
+    /** PersonIds of THIS group's non-leader members (role.isLeader=false). Used by parents to dedupe "Mitglieder" totals. */
+    participantIds: number[];
+    /**
+     * Display count for the leader stat tile.
+     *  - Team: this team's own leader headcount.
+     *  - Teilstamm: unique team leaders across this Teilstamm's teams.
+     *  - Hauptstamm: unique leaders across (Hauptstamm own ∪ all team leaders).
+     */
     leaderCount: number;
+    /**
+     * Display count for the member ("Mitglieder") stat tile.
+     *  - Team: this team's own non-leader headcount.
+     *  - Teilstamm: unique team participants across this Teilstamm's teams.
+     *  - Hauptstamm: unique team participants across the whole tree.
+     */
     memberCount: number;
     children: OrgNode[];
     /** Set when this node failed to load — drives the "?" rendering of US-5. */

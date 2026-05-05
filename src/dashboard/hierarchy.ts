@@ -1,6 +1,6 @@
 import type { GroupChild } from './dashboard.api';
 import { getGroup, getGroupChildren, getGroupMembers } from './dashboard.api';
-import { leadersFromMembers, sumBy } from './counts';
+import { leadersFromMembers, participantIdsFromMembers } from './counts';
 import { API_TIMEOUT_MS } from '@/shared/constants';
 import type { OrgNode } from '@/shared/types';
 
@@ -31,6 +31,7 @@ function errorNode(groupId: number, fallbackName: string): OrgNode {
         groupId,
         name: fallbackName,
         leaders: [],
+        participantIds: [],
         leaderCount: 0,
         memberCount: 0,
         children: [],
@@ -50,12 +51,16 @@ async function safeLoadGroupNode(groupId: number, fallbackName = '?'): Promise<O
             withTimeout(getGroupMembers(groupId)),
         ]);
         const leaders = leadersFromMembers(group, members);
+        const participantIds = participantIdsFromMembers(group, members);
         return {
             groupId: group.id,
             name: group.name,
             leaders,
+            participantIds,
+            // Team-level display values: this group's own counts. Higher
+            // levels overwrite these with deduped unions in loadOrganigram.
             leaderCount: leaders.length,
-            memberCount: members.length,
+            memberCount: participantIds.length,
             children: [],
         };
     } catch (e) {
@@ -130,37 +135,46 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
                 ),
             );
 
+            // Teilstamm aggregation: unique persons across teams.
+            // A person who leads two teams (or is a member of two) under
+            // the same Teilstamm is counted once.
             const okTeams = teams.filter((t) => !t.error);
+            const tsLeaderIds = new Set<number>();
+            const tsParticipantIds = new Set<number>();
+            for (const team of okTeams) {
+                for (const l of team.leaders) tsLeaderIds.add(l.personId);
+                for (const pid of team.participantIds) tsParticipantIds.add(pid);
+            }
             return {
                 ...ts,
-                leaderCount: sumBy(okTeams, (t) => t.leaderCount),
-                memberCount: sumBy(okTeams, (t) => t.memberCount),
+                leaderCount: tsLeaderIds.size,
+                memberCount: tsParticipantIds.size,
                 children: teams,
             };
         }),
     );
 
-    // Hauptstamm leader count: unique persons across the union of
-    //   (a) leaders in the Hauptstamm group itself ("the people in the
-    //       top-group" — Hauptstammleiter + Co-Leiter), and
-    //   (b) every team-level leader (Teamleiter on the Team groups).
-    // A Co-Leiter who is also a Teamleiter is counted once. Teilstamm-
-    // level Stammleiter/Stammwart are deliberately NOT added — they
-    // typically already appear in (a) as Co-Leiter, and the user wants
-    // a clean "real-leader headcount", not a sum of memberships.
+    // Hauptstamm aggregation: unique persons across the whole tree.
+    //   Leiter = (Hauptstamm own leaders) ∪ (every team's leaders)
+    //   Mitglieder = unique team participants (non-leaders)
+    // A Co-Leiter on the Hauptstamm who is also a Teamleiter is counted
+    // once in Leiter. A person who is a member of two teams is counted
+    // once in Mitglieder.
     const okTs = teilstaemme.filter((ts) => !ts.error);
-    const uniqueLeaderIds = new Set<number>();
-    for (const l of root.leaders) uniqueLeaderIds.add(l.personId);
+    const allLeaderIds = new Set<number>();
+    const allParticipantIds = new Set<number>();
+    for (const l of root.leaders) allLeaderIds.add(l.personId);
     for (const ts of okTs) {
         for (const team of ts.children) {
             if (team.error) continue;
-            for (const l of team.leaders) uniqueLeaderIds.add(l.personId);
+            for (const l of team.leaders) allLeaderIds.add(l.personId);
+            for (const pid of team.participantIds) allParticipantIds.add(pid);
         }
     }
     return {
         ...root,
-        leaderCount: uniqueLeaderIds.size,
-        memberCount: sumBy(okTs, (ts) => ts.memberCount),
+        leaderCount: allLeaderIds.size,
+        memberCount: allParticipantIds.size,
         children: teilstaemme,
     };
 }
