@@ -1,0 +1,34 @@
+{
+    "name": "ct-rr-organigram",
+    "private": true,
+    "version": "0.0.1",
+    "description": "ChurchTools extension that visualizes the Royal Rangers staff and leadership structure as an organigram dashboard.",
+    "license": "MIT",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vue-tsc -b && vite build",
+        "preview": "vite preview",
+        "lint": "eslint .",
+        "format": "prettier --write .",
+        "typecheck": "vue-tsc --noEmit",
+        "check": "npm run lint && npm run typecheck && npm run build",
+        "deploy": "npm run build && node scripts/package.js"
+    },
+    "dependencies": {
+        "@churchtools/churchtools-client": "^1.4.0",
+        "vue": "^3.5.13"
+    },
+    "devDependencies": {
+        "@types/node": "^24.3.0",
+        "@vitejs/plugin-vue": "^6.0.6",
+        "@vue/eslint-config-prettier": "^10.2.0",
+        "@vue/eslint-config-typescript": "^14.2.0",
+        "eslint": "^9.17.0",
+        "eslint-plugin-vue": "^9.32.0",
+        "prettier": "^3.4.2",
+        "typescript": "^5.9.2",
+        "vite": "^7.1.2",
+        "vue-tsc": "^2.1.10"
+    }
+}
