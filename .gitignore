@@ -148,3 +148,4 @@ vite.config.ts.timestamp-*
 # Claude Code — personal overrides (do not commit)
 .claude/settings.local.json
 CLAUDE.local.md
+releases/
