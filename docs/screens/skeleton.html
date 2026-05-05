@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b7280;
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f6f8;
+    --color-background-tertiary: #ebedef;
+    --color-border-tertiary: #e5e7eb;
+    --color-border-secondary: #d1d5db;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px;
+    font-family: var(--font-family);
+    background: var(--color-background-tertiary);
+    color: var(--color-text-primary);
+    font-size: 14px;
+  }
+  .canvas { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  p { margin: 0; }
+  button { background: var(--color-background-primary); border: 1px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 6px 12px; font-size: 13px; opacity: 0.5; }
+  .sk { background: var(--color-border-tertiary); border-radius: 4px; opacity: 0.7; }
+  .hauptstamm-card { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 20px 24px; margin-bottom: 24px; }
+  .hauptstamm-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+  .stat-row { display: flex; gap: 12px; }
+  .stat-tile { background: var(--color-background-primary); border-radius: var(--border-radius-md); padding: 12px 16px; min-width: 88px; }
+  .divider { text-align: center; color: var(--color-border-secondary); margin-bottom: 16px; font-size: 18px; line-height: 1; }
+  .teilstamm-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .teilstamm-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .stat-mini-row { display: flex; gap: 8px; padding-top: 8px; border-top: 0.5px solid var(--color-border-tertiary); }
+  .stat-mini { flex: 1; }
+  .teams-section { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 0.5px solid var(--color-border-tertiary); }
+  .team-chip { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 10px; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="header">
+    <div>
+      <h1>RR Mitarbeiter-Dashboard</h1>
+      <p style="font-size: 13px; color: var(--color-text-secondary);">Lädt …</p>
+    </div>
+    <button disabled>↻ Aktualisieren</button>
+  </div>
+
+  <div class="hauptstamm-card">
+    <div class="hauptstamm-row">
+      <div style="flex: 1; min-width: 0;">
+        <div class="sk" style="width: 80px; height: 10px; margin-bottom: 8px;"></div>
+        <div class="sk" style="width: 220px; height: 18px; margin-bottom: 16px;"></div>
+        <div class="sk" style="width: 40px; height: 10px; margin-bottom: 8px;"></div>
+        <div style="display: flex; gap: 6px;">
+          <div class="sk" style="width: 110px; height: 26px; border-radius: 8px;"></div>
+          <div class="sk" style="width: 110px; height: 26px; border-radius: 8px;"></div>
+          <div class="sk" style="width: 130px; height: 26px; border-radius: 8px;"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-tile">
+          <div class="sk" style="width: 40px; height: 10px; margin-bottom: 8px;"></div>
+          <div class="sk" style="width: 32px; height: 22px;"></div>
+        </div>
+        <div class="stat-tile">
+          <div class="sk" style="width: 56px; height: 10px; margin-bottom: 8px;"></div>
+          <div class="sk" style="width: 40px; height: 22px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider">│</div>
+
+  <div class="teilstamm-grid">
+
+    <!-- 5 cards, identical skeleton -->
+    <script>document.write(Array(5).fill().map(() => `
+      <div class="teilstamm-card">
+        <div>
+          <div class="sk" style="width: 70px; height: 9px; margin-bottom: 6px;"></div>
+          <div class="sk" style="width: 90px; height: 15px;"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div class="sk" style="width: 40px; height: 10px;"></div>
+          <div class="sk" style="width: 100px; height: 11px;"></div>
+          <div class="sk" style="width: 90px; height: 11px;"></div>
+        </div>
+        <div class="stat-mini-row">
+          <div class="stat-mini"><div class="sk" style="width: 32px; height: 9px; margin-bottom: 6px;"></div><div class="sk" style="width: 28px; height: 17px;"></div></div>
+          <div class="stat-mini"><div class="sk" style="width: 56px; height: 9px; margin-bottom: 6px;"></div><div class="sk" style="width: 36px; height: 17px;"></div></div>
+        </div>
+        <div class="teams-section">
+          <div class="sk" style="width: 40px; height: 9px;"></div>
+          <div class="team-chip">
+            <div class="sk" style="width: 70%; height: 11px; margin-bottom: 6px;"></div>
+            <div class="sk" style="width: 65%; height: 10px;"></div>
+          </div>
+          <div class="team-chip">
+            <div class="sk" style="width: 80%; height: 11px; margin-bottom: 6px;"></div>
+            <div class="sk" style="width: 60%; height: 10px;"></div>
+          </div>
+          <div class="team-chip">
+            <div class="sk" style="width: 75%; height: 11px; margin-bottom: 6px;"></div>
+            <div class="sk" style="width: 55%; height: 10px;"></div>
+          </div>
+        </div>
+      </div>
+    `).join(''));</script>
+
+  </div>
+
+</div>
+</body>
+</html>
