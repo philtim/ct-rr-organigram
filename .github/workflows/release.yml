@@ -92,6 +92,8 @@ jobs:
 
             # Auto-deploy to the rr-demo test instance. The live customer
             # instance is updated manually from the GitHub release ZIP.
+            # Self-bootstraps: creates the custom module on first run if
+            # nothing matches the configured shorty.
             - name: Upload ZIP to rr-demo test instance
               if: steps.ver.outputs.changed == 'true'
               env:
@@ -99,6 +101,7 @@ jobs:
                   CT_LOGIN_TOKEN: ${{ secrets.CT_DEMO_LOGIN_TOKEN }}
                   ZIP_PATH: ${{ steps.pkg.outputs.path }}
                   SHORTY: rr-dashboard
+                  MODULE_NAME: RR Organigram
               run: |
                   set -euo pipefail
 
@@ -118,10 +121,24 @@ jobs:
                       | jq -r --arg shorty "$SHORTY" '.data[] | select(.shorty == $shorty) | .id')
 
                   if [ -z "$MODULE_ID" ] || [ "$MODULE_ID" = "null" ]; then
-                      echo "::error::No custom module with shorty=$SHORTY found on $CT_BASE_URL"
-                      exit 1
+                      echo "No module found with shorty=$SHORTY — creating one."
+                      CREATE_PAYLOAD=$(jq -n --arg name "$MODULE_NAME" --arg shorty "$SHORTY" \
+                          '{name: $name, shorty: $shorty, sortKey: 0, inMenu: true, description: ""}')
+                      MODULE_ID=$(curl -fsS -b "$COOKIE_JAR" \
+                          -H "Csrf-Token: $CSRF" \
+                          -H 'Content-Type: application/json' \
+                          -X POST \
+                          -d "$CREATE_PAYLOAD" \
+                          "$CT_BASE_URL/api/custommodules" \
+                          | jq -r '.data.id')
+                      if [ -z "$MODULE_ID" ] || [ "$MODULE_ID" = "null" ]; then
+                          echo "::error::Failed to create custom module"
+                          exit 1
+                      fi
+                      echo "Created module ID: $MODULE_ID"
+                  else
+                      echo "Found existing module ID: $MODULE_ID"
                   fi
-                  echo "Module ID: $MODULE_ID"
 
                   echo "Uploading $ZIP_PATH..."
                   curl -fsS -b "$COOKIE_JAR" \
