@@ -140,16 +140,26 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
         }),
     );
 
-    // Hauptstamm leader count covers EVERY leader role across the org
-    // tree: the Hauptstamm group's own Leiter+Co-Leiter, each Teilstamm's
-    // own Stammleiter/Stammwart (ts.leaders.length), and the team-level
-    // total that's already rolled into ts.leaderCount.
+    // Hauptstamm leader count: unique persons across the union of
+    //   (a) leaders in the Hauptstamm group itself ("the people in the
+    //       top-group" — Hauptstammleiter + Co-Leiter), and
+    //   (b) every team-level leader (Teamleiter on the Team groups).
+    // A Co-Leiter who is also a Teamleiter is counted once. Teilstamm-
+    // level Stammleiter/Stammwart are deliberately NOT added — they
+    // typically already appear in (a) as Co-Leiter, and the user wants
+    // a clean "real-leader headcount", not a sum of memberships.
     const okTs = teilstaemme.filter((ts) => !ts.error);
-    const hauptstammOwn = root.leaders.length;
-    const teilstaemmeAndTeams = sumBy(okTs, (ts) => ts.leaders.length + ts.leaderCount);
+    const uniqueLeaderIds = new Set<number>();
+    for (const l of root.leaders) uniqueLeaderIds.add(l.personId);
+    for (const ts of okTs) {
+        for (const team of ts.children) {
+            if (team.error) continue;
+            for (const l of team.leaders) uniqueLeaderIds.add(l.personId);
+        }
+    }
     return {
         ...root,
-        leaderCount: hauptstammOwn + teilstaemmeAndTeams,
+        leaderCount: uniqueLeaderIds.size,
         memberCount: sumBy(okTs, (ts) => ts.memberCount),
         children: teilstaemme,
     };
