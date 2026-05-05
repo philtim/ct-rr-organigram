@@ -40,7 +40,7 @@ defineProps<{ status: GateStatus }>();
     padding: 1.5rem;
     font-family:
         -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    color: #1f2937;
+    color: var(--rr-text-primary);
 }
 
 .rr-gate__title {
@@ -50,20 +50,21 @@ defineProps<{ status: GateStatus }>();
 }
 
 .rr-gate__panel {
-    border: 0.5px solid #e5e7eb;
-    border-radius: 12px;
+    border: 0.5px solid var(--rr-border-tertiary);
+    border-radius: var(--rr-radius-lg);
     padding: 1.25rem 1.5rem;
-    background: #fff;
+    background: var(--rr-bg-primary);
 }
 
 .rr-gate__panel--warn {
-    border-color: #fde68a;
-    background: #fffbeb;
+    border-color: var(--rr-error-border);
+    background: var(--rr-error-bg);
 }
 
 .rr-gate__panel--error {
-    border-color: #fecaca;
-    background: #fef2f2;
+    border-color: var(--rr-error-border);
+    background: var(--rr-error-bg);
+    color: var(--rr-error-fg);
 }
 
 .rr-gate__message {
@@ -73,14 +74,21 @@ defineProps<{ status: GateStatus }>();
 
 .rr-gate__hint {
     margin: 0.5rem 0 0;
-    color: #6b7280;
+    color: var(--rr-text-secondary);
     font-size: 0.875rem;
 }
 
 code {
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--rr-bg-secondary);
     padding: 0.05em 0.35em;
     border-radius: 4px;
     font-size: 0.85em;
+}
+
+@media (max-width: 767px) {
+    .rr-gate {
+        margin: 1rem auto;
+        padding: 1rem;
+    }
 }
 </style>

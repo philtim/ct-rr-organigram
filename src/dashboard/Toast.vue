@@ -42,12 +42,22 @@ watch(
     align-items: center;
     gap: 12px;
     background: var(--rr-bg-primary, #ffffff);
+    color: var(--rr-text-primary, #1a1a1a);
     border: 0.5px solid var(--rr-border-secondary, #d1d5db);
     border-radius: var(--rr-radius-md, 8px);
     padding: 10px 12px 10px 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--rr-shadow-sm, 0 4px 12px rgba(0, 0, 0, 0.08));
     font-size: 13px;
     max-width: 360px;
+}
+
+@media (max-width: 767px) {
+    .rr-toast {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        max-width: none;
+    }
 }
 
 .rr-toast__message {
