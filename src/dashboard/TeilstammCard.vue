@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
+import { COPY } from '@/shared/constants';
 
 const props = defineProps<{ node: OrgNode }>();
 
@@ -34,7 +35,7 @@ const summary = computed(() => {
         </header>
 
         <div class="ts-card__leiter-list">
-            <span class="ts-card__label">Leiter</span>
+            <span class="ts-card__label">{{ COPY.teilstammLeader }}</span>
             <template v-if="isError">
                 <span class="ts-card__leiter-name">?</span>
             </template>
@@ -54,13 +55,13 @@ const summary = computed(() => {
 
         <div class="ts-card__stat-row">
             <div class="ts-card__stat">
-                <p class="ts-card__stat-label">Leiter</p>
+                <p class="ts-card__stat-label">{{ COPY.teamleiterStat }}</p>
                 <p class="ts-card__stat-value">
                     {{ isError ? '?' : node.leaderCount }}
                 </p>
             </div>
             <div class="ts-card__stat">
-                <p class="ts-card__stat-label">Mitglieder</p>
+                <p class="ts-card__stat-label">{{ COPY.mitgliederStat }}</p>
                 <p class="ts-card__stat-value">
                     {{ isError ? '?' : node.memberCount }}
                 </p>

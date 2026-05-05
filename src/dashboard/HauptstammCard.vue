@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
+import { COPY } from '@/shared/constants';
 
 const props = defineProps<{ node: OrgNode }>();
 
 const isError = computed(() => Boolean(props.node.error));
-const leaderText = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
+const primary = computed(() => props.node.leaders.filter((l) => l.leaderClass === 'primary'));
+const coLeaders = computed(() =>
+    props.node.leaders.filter((l) => l.leaderClass === 'coLeader'),
+);
+const allLeaderText = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 </script>
 
 <template>
@@ -15,33 +20,56 @@ const leaderText = computed(() => props.node.leaders.map((l) => l.fullName).join
 
         <div class="hs-card__body">
             <div class="hs-card__main">
-                <p class="hs-card__label">Leiter</p>
-
-                <!-- Pills for desktop / tablet -->
+                <p v-if="isError" class="hs-card__label">{{ COPY.hauptstammLeader }}</p>
                 <p v-if="isError" class="hs-card__placeholder" aria-label="unbekannt">?</p>
-                <div v-else-if="node.leaders.length" class="hs-card__pills">
-                    <span v-for="l in node.leaders" :key="l.personId" class="hs-card__pill">
-                        <span class="hs-card__avatar">{{ l.initials }}</span>
-                        {{ l.fullName }}
-                    </span>
-                </div>
-                <p v-else class="hs-card__empty">Keine Leiter eingetragen.</p>
+
+                <template v-else>
+                    <div v-if="primary.length" class="hs-card__group">
+                        <p class="hs-card__label">{{ COPY.hauptstammLeader }}</p>
+                        <div class="hs-card__pills">
+                            <span
+                                v-for="l in primary"
+                                :key="l.personId"
+                                class="hs-card__pill"
+                            >
+                                <span class="hs-card__avatar">{{ l.initials }}</span>
+                                {{ l.fullName }}
+                            </span>
+                        </div>
+                    </div>
+                    <div v-if="coLeaders.length" class="hs-card__group">
+                        <p class="hs-card__label">{{ COPY.hauptstammCoLeader }}</p>
+                        <div class="hs-card__pills">
+                            <span
+                                v-for="l in coLeaders"
+                                :key="l.personId"
+                                class="hs-card__pill"
+                            >
+                                <span class="hs-card__avatar">{{ l.initials }}</span>
+                                {{ l.fullName }}
+                            </span>
+                        </div>
+                    </div>
+                    <p v-if="!primary.length && !coLeaders.length" class="hs-card__empty">
+                        Keine Leiter eingetragen.
+                    </p>
+                </template>
 
                 <!-- Mobile-only comma-separated text (hidden on desktop) -->
-                <p v-if="!isError && leaderText" class="hs-card__leaders-text">
-                    {{ leaderText }}
+                <p v-if="!isError && allLeaderText" class="hs-card__leaders-text">
+                    {{ allLeaderText }}
                 </p>
             </div>
 
             <div class="hs-card__stats">
                 <div class="hs-card__stat-tile">
-                    <p class="hs-card__stat-label">Leiter</p>
+                    <p class="hs-card__stat-label">{{ COPY.leiterStat }}</p>
                     <p class="hs-card__stat-value">
                         {{ isError ? '?' : node.leaderCount }}
                     </p>
                 </div>
                 <div class="hs-card__stat-tile">
-                    <p class="hs-card__stat-label">Mitglieder</p>
+                    <p class="hs-card__stat-label">{{ COPY.mitgliederStat }}</p>
                     <p class="hs-card__stat-value">
                         {{ isError ? '?' : node.memberCount }}
                     </p>
@@ -78,6 +106,12 @@ const leaderText = computed(() => props.node.leaders.map((l) => l.fullName).join
 .hs-card__main {
     flex: 1;
     min-width: 0;
+}
+.hs-card__group {
+    margin-bottom: 12px;
+}
+.hs-card__group:last-of-type {
+    margin-bottom: 0;
 }
 .hs-card__label {
     margin: 0 0 6px;
