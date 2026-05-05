@@ -30,50 +30,58 @@ const appCommit = __APP_COMMIT__;
 
 <template>
     <main class="rr-dash">
-        <header class="rr-dash__header">
-            <div class="rr-dash__title-block">
-                <h1 class="rr-dash__title">{{ COPY.appTitle }}</h1>
-                <p class="rr-dash__subtitle">
-                    <template v-if="stand">{{ COPY.timestampPrefix }}{{ stand }}</template>
-                    <template v-else>{{ COPY.loading }}</template>
-                </p>
-            </div>
-            <button
-                type="button"
-                class="rr-dash__refresh"
-                :disabled="state.phase === 'loading'"
-                @click="load(gateGroupId)"
+        <div class="rr-dash__inner">
+            <header class="rr-dash__header">
+                <div class="rr-dash__title-block">
+                    <h1 class="rr-dash__title">{{ COPY.appTitle }}</h1>
+                    <p class="rr-dash__subtitle">
+                        <template v-if="stand">
+                            {{ COPY.timestampPrefix }}{{ stand }}
+                        </template>
+                        <template v-else>{{ COPY.loading }}</template>
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="rr-dash__refresh"
+                    :disabled="state.phase === 'loading'"
+                    @click="load(gateGroupId)"
+                >
+                    ↻ <span class="rr-dash__refresh-label">{{ COPY.refresh }}</span>
+                </button>
+            </header>
+
+            <SkeletonLayout v-if="state.phase === 'loading' || state.phase === 'idle'" />
+
+            <template v-else-if="state.phase === 'ready'">
+                <HauptstammCard :node="state.root" />
+                <div class="rr-dash__divider" aria-hidden="true">│</div>
+                <div class="rr-dash__grid">
+                    <TeilstammCard
+                        v-for="ts in state.root.children"
+                        :key="ts.groupId"
+                        :node="ts"
+                    />
+                    <p v-if="!state.root.children.length" class="rr-dash__empty">
+                        Keine Teilstämme angelegt.
+                    </p>
+                </div>
+                <DuplicatesPanel :root="state.root" />
+            </template>
+
+            <p v-else-if="state.phase === 'error'" class="rr-dash__error" role="alert">
+                {{ state.message }}
+            </p>
+
+            <Toast :visible="showErrorToast" :message="COPY.partialErrorToast" />
+
+            <footer
+                class="rr-dash__footer"
+                :title="`RR Organigram v${appVersion} (build ${appCommit})`"
             >
-                ↻ <span class="rr-dash__refresh-label">{{ COPY.refresh }}</span>
-            </button>
-        </header>
-
-        <SkeletonLayout v-if="state.phase === 'loading' || state.phase === 'idle'" />
-
-        <template v-else-if="state.phase === 'ready'">
-            <HauptstammCard :node="state.root" />
-            <div class="rr-dash__divider" aria-hidden="true">│</div>
-            <div class="rr-dash__grid">
-                <TeilstammCard v-for="ts in state.root.children" :key="ts.groupId" :node="ts" />
-                <p v-if="!state.root.children.length" class="rr-dash__empty">
-                    Keine Teilstämme angelegt.
-                </p>
-            </div>
-            <DuplicatesPanel :root="state.root" />
-        </template>
-
-        <p v-else-if="state.phase === 'error'" class="rr-dash__error" role="alert">
-            {{ state.message }}
-        </p>
-
-        <Toast :visible="showErrorToast" :message="COPY.partialErrorToast" />
-
-        <footer
-            class="rr-dash__footer"
-            :title="`RR Organigram v${appVersion} (build ${appCommit})`"
-        >
-            v{{ appVersion }} · {{ appCommit }}
-        </footer>
+                v{{ appVersion }} · {{ appCommit }}
+            </footer>
+        </div>
     </main>
 </template>
 
@@ -82,10 +90,13 @@ const appCommit = __APP_COMMIT__;
  * Layout-only here. Color tokens come from the global .rr-dashboard-root
  * variables defined in App.vue (light + dark via prefers-color-scheme).
  */
+/*
+ * Two-layer layout so the dark-mode background extends edge-to-edge of
+ * the host viewport while the content stays centered + capped at 1280px.
+ *   .rr-dash       — full-width band; carries background + min-height
+ *   .rr-dash__inner — content column; max-width + padding
+ */
 .rr-dash {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
     background: var(--rr-bg-tertiary);
     color: var(--rr-text-primary);
     font-family:
@@ -93,6 +104,11 @@ const appCommit = __APP_COMMIT__;
         sans-serif;
     font-size: 14px;
     min-height: 100vh;
+}
+.rr-dash__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
 }
 
 .rr-dash__header {
@@ -184,7 +200,7 @@ const appCommit = __APP_COMMIT__;
 /* Mobile: single-column stack, hide the inter-level divider, condense
    the header (the refresh label collapses to just the icon). */
 @media (max-width: 767px) {
-    .rr-dash {
+    .rr-dash__inner {
         padding: 16px;
     }
     .rr-dash__grid {
