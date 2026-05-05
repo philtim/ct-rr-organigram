@@ -4,11 +4,30 @@ import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
 
 const props = defineProps<{ node: OrgNode }>();
+
 const isError = computed(() => Boolean(props.node.error));
+const leaderText = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
+const summary = computed(() => {
+    if (isError.value) return 'Teams konnten nicht geladen werden';
+    const teamWord = props.node.children.length === 1 ? 'Team' : 'Teams';
+    const lead = leaderText.value || 'Keine Leiter eingetragen';
+    return `${lead} · ${props.node.children.length} ${teamWord}`;
+});
 </script>
 
 <template>
     <article class="ts-card">
+        <!-- Compact mobile row (hidden on tablet+) -->
+        <div class="ts-card__compact-row">
+            <span class="ts-card__compact-name">{{ node.name }}</span>
+            <span class="ts-card__compact-counts">
+                <template v-if="isError">?L · ?M</template>
+                <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }}M</template>
+            </span>
+        </div>
+        <p class="ts-card__compact-summary">{{ summary }}</p>
+
+        <!-- Full layout (hidden on mobile) -->
         <header class="ts-card__head">
             <p class="ts-card__subtitle">TEILSTAMM</p>
             <h3 class="ts-card__name">{{ node.name }}</h3>
@@ -128,5 +147,50 @@ const isError = computed(() => Boolean(props.node.error));
     gap: 6px;
     padding-top: 8px;
     border-top: 0.5px solid var(--rr-border-tertiary);
+}
+
+/* Compact row visible only on mobile */
+.ts-card__compact-row,
+.ts-card__compact-summary {
+    display: none;
+}
+
+/*
+ * Mobile: collapse the entire card to one name+counts row plus a
+ * single-line summary. Hide the full leader list, stat row, and team
+ * chips entirely.
+ */
+@media (max-width: 767px) {
+    .ts-card {
+        padding: 12px 14px;
+        gap: 4px;
+    }
+    .ts-card__compact-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .ts-card__compact-name {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .ts-card__compact-counts {
+        font-size: 11px;
+        color: var(--rr-text-secondary);
+        flex-shrink: 0;
+    }
+    .ts-card__compact-summary {
+        display: block;
+        margin: 0;
+        font-size: 11px;
+        color: var(--rr-text-secondary);
+    }
+    .ts-card__head,
+    .ts-card__leiter-list,
+    .ts-card__stat-row,
+    .ts-card__teams {
+        display: none;
+    }
 }
 </style>

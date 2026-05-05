@@ -40,7 +40,7 @@ const showErrorToast = computed(
                 :disabled="state.phase === 'loading'"
                 @click="load(gateGroupId)"
             >
-                ↻ {{ COPY.refresh }}
+                ↻ <span class="rr-dash__refresh-label">{{ COPY.refresh }}</span>
             </button>
         </header>
 
@@ -66,29 +66,21 @@ const showErrorToast = computed(
 </template>
 
 <style scoped>
-/* Project-scoped CSS variables. Defined inside scoped styles so they
-   apply within this component subtree but not to the host UI. */
+/*
+ * Layout-only here. Color tokens come from the global .rr-dashboard-root
+ * variables defined in App.vue (light + dark via prefers-color-scheme).
+ */
 .rr-dash {
-    --rr-text-primary: #1a1a1a;
-    --rr-text-secondary: #6b7280;
-    --rr-bg-primary: #ffffff;
-    --rr-bg-secondary: #f5f6f8;
-    --rr-bg-tertiary: #ebedef;
-    --rr-border-tertiary: #e5e7eb;
-    --rr-border-secondary: #d1d5db;
-    --rr-accent-bg: #b5d4f4;
-    --rr-accent-fg: #0c447c;
-    --rr-radius-md: 8px;
-    --rr-radius-lg: 12px;
-
     max-width: 1280px;
     margin: 0 auto;
     padding: 24px;
     background: var(--rr-bg-tertiary);
     color: var(--rr-text-primary);
     font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+        sans-serif;
     font-size: 14px;
+    min-height: 100vh;
 }
 
 .rr-dash__header {
@@ -96,6 +88,7 @@ const showErrorToast = computed(
     align-items: center;
     justify-content: space-between;
     margin-bottom: 24px;
+    gap: 12px;
 }
 .rr-dash__title-block {
     min-width: 0;
@@ -118,10 +111,14 @@ const showErrorToast = computed(
     cursor: pointer;
     font-size: 13px;
     color: var(--rr-text-primary);
+    flex-shrink: 0;
 }
 .rr-dash__refresh:disabled {
     opacity: 0.5;
     cursor: progress;
+}
+.rr-dash__refresh-label {
+    margin-left: 4px;
 }
 
 .rr-dash__divider {
@@ -148,10 +145,38 @@ const showErrorToast = computed(
 
 .rr-dash__error {
     margin-top: 1rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 0.5px solid #fecaca;
+    color: var(--rr-error-fg);
+    background: var(--rr-error-bg);
+    border: 0.5px solid var(--rr-error-border);
     border-radius: var(--rr-radius-md);
     padding: 0.75rem 1rem;
+}
+
+/* Intermediate viewports — accept 2 cards per row with full team detail. */
+@media (max-width: 1023px) {
+    .rr-dash__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Mobile: single-column stack, hide the inter-level divider, condense
+   the header (the refresh label collapses to just the icon). */
+@media (max-width: 767px) {
+    .rr-dash {
+        padding: 16px;
+    }
+    .rr-dash__grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+    .rr-dash__divider {
+        display: none;
+    }
+    .rr-dash__title {
+        font-size: 18px;
+    }
+    .rr-dash__refresh-label {
+        display: none;
+    }
 }
 </style>

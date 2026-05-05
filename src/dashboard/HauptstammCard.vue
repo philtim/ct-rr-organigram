@@ -3,16 +3,21 @@ import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
 
 const props = defineProps<{ node: OrgNode }>();
+
 const isError = computed(() => Boolean(props.node.error));
+const leaderText = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 </script>
 
 <template>
     <article class="hs-card">
-        <div class="hs-card__row">
+        <p class="hs-card__subtitle">HAUPTSTAMM</p>
+        <h2 class="hs-card__name">{{ node.name }}</h2>
+
+        <div class="hs-card__body">
             <div class="hs-card__main">
-                <p class="hs-card__subtitle">HAUPTSTAMM</p>
-                <h2 class="hs-card__name">{{ node.name }}</h2>
                 <p class="hs-card__label">Leiter</p>
+
+                <!-- Pills for desktop / tablet -->
                 <p v-if="isError" class="hs-card__placeholder" aria-label="unbekannt">?</p>
                 <div v-else-if="node.leaders.length" class="hs-card__pills">
                     <span v-for="l in node.leaders" :key="l.personId" class="hs-card__pill">
@@ -21,7 +26,13 @@ const isError = computed(() => Boolean(props.node.error));
                     </span>
                 </div>
                 <p v-else class="hs-card__empty">Keine Leiter eingetragen.</p>
+
+                <!-- Mobile-only comma-separated text (hidden on desktop) -->
+                <p v-if="!isError && leaderText" class="hs-card__leaders-text">
+                    {{ leaderText }}
+                </p>
             </div>
+
             <div class="hs-card__stats">
                 <div class="hs-card__stat-tile">
                     <p class="hs-card__stat-label">Leiter</p>
@@ -47,16 +58,6 @@ const isError = computed(() => Boolean(props.node.error));
     border-radius: var(--rr-radius-lg);
     padding: 20px 24px;
 }
-.hs-card__row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
-}
-.hs-card__main {
-    flex: 1;
-    min-width: 0;
-}
 .hs-card__subtitle {
     margin: 0;
     font-size: 12px;
@@ -67,6 +68,16 @@ const isError = computed(() => Boolean(props.node.error));
     margin: 4px 0 12px;
     font-size: 18px;
     font-weight: 500;
+}
+.hs-card__body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+.hs-card__main {
+    flex: 1;
+    min-width: 0;
 }
 .hs-card__label {
     margin: 0 0 6px;
@@ -111,6 +122,9 @@ const isError = computed(() => Boolean(props.node.error));
     font-weight: 500;
     color: var(--rr-text-secondary);
 }
+.hs-card__leaders-text {
+    display: none;
+}
 .hs-card__stats {
     display: flex;
     gap: 12px;
@@ -131,5 +145,42 @@ const isError = computed(() => Boolean(props.node.error));
     margin: 0;
     font-size: 24px;
     font-weight: 500;
+}
+
+/*
+ * Mobile: stat tiles stack above the leader text in a row, pills are
+ * replaced by a comma-separated text line (smaller footprint).
+ */
+@media (max-width: 767px) {
+    .hs-card {
+        padding: 14px;
+    }
+    .hs-card__body {
+        flex-direction: column-reverse;
+        gap: 12px;
+    }
+    .hs-card__stats {
+        width: 100%;
+    }
+    .hs-card__stat-tile {
+        flex: 1;
+        padding: 8px 12px;
+        min-width: 0;
+    }
+    .hs-card__stat-label {
+        font-size: 10px;
+    }
+    .hs-card__stat-value {
+        font-size: 18px;
+    }
+    .hs-card__pills,
+    .hs-card__placeholder {
+        display: none;
+    }
+    .hs-card__leaders-text {
+        display: block;
+        margin: 0;
+        font-size: 12px;
+    }
 }
 </style>

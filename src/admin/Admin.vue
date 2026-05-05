@@ -112,7 +112,7 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
     padding: 1.5rem;
     font-family:
         -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    color: #1f2937;
+    color: var(--rr-text-primary);
 }
 
 .rr-admin__header {
@@ -123,7 +123,7 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
     margin: 0;
     font-size: 0.75rem;
     letter-spacing: 0.08em;
-    color: #6b7280;
+    color: var(--rr-text-secondary);
 }
 
 .rr-admin__title {
@@ -134,7 +134,7 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
 
 .rr-admin__lead {
     margin: 0;
-    color: #4b5563;
+    color: var(--rr-text-secondary);
     line-height: 1.5;
 }
 
@@ -142,10 +142,10 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    border: 0.5px solid #e5e7eb;
-    border-radius: 12px;
+    border: 0.5px solid var(--rr-border-tertiary);
+    border-radius: var(--rr-radius-lg);
     padding: 1.25rem;
-    background: #fff;
+    background: var(--rr-bg-primary);
 }
 
 .rr-admin__label {
@@ -156,9 +156,9 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
 .rr-admin__select {
     padding: 0.5rem 0.75rem;
     font-size: 0.95rem;
-    border: 0.5px solid #d1d5db;
-    border-radius: 8px;
-    background: #fff;
+    border: 0.5px solid var(--rr-border-secondary);
+    border-radius: var(--rr-radius-md);
+    background: var(--rr-bg-primary);
     color: inherit;
 }
 
@@ -167,16 +167,17 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
     align-items: center;
     gap: 0.75rem;
     margin-top: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .rr-admin__button {
     padding: 0.5rem 1rem;
     font-size: 0.95rem;
     font-weight: 500;
-    border: 0.5px solid #1f2937;
-    border-radius: 8px;
-    background: #1f2937;
-    color: #fff;
+    border: 0.5px solid var(--rr-text-primary);
+    border-radius: var(--rr-radius-md);
+    background: var(--rr-text-primary);
+    color: var(--rr-bg-primary);
     cursor: pointer;
 }
 
@@ -186,21 +187,28 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
 }
 
 .rr-admin__success {
-    color: #047857;
+    color: var(--rr-success-fg);
     font-size: 0.875rem;
 }
 
 .rr-admin__error,
 .rr-admin__error-inline {
-    color: #b91c1c;
+    color: var(--rr-error-fg);
     font-size: 0.875rem;
 }
 
 .rr-admin__error {
     padding: 0.75rem 1rem;
-    border: 0.5px solid #fecaca;
-    background: #fef2f2;
-    border-radius: 8px;
+    border: 0.5px solid var(--rr-error-border);
+    background: var(--rr-error-bg);
+    border-radius: var(--rr-radius-md);
     margin-bottom: 1rem;
+}
+
+@media (max-width: 767px) {
+    .rr-admin {
+        margin: 1rem auto;
+        padding: 1rem;
+    }
 }
 </style>
