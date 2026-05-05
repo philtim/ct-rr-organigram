@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# macOS metadata
+.DS_Store
+
+# Claude Code — personal overrides (do not commit)
+.claude/settings.local.json
+CLAUDE.local.md
