@@ -1,6 +1,6 @@
 import type { GroupChild } from './dashboard.api';
 import { getGroup, getGroupChildren, getGroupMembers } from './dashboard.api';
-import { leadersFromMembers, participantIdsFromMembers } from './counts';
+import { leadersFromMembers, participantsFromMembers } from './counts';
 import { API_TIMEOUT_MS } from '@/shared/constants';
 import type { OrgNode } from '@/shared/types';
 
@@ -31,7 +31,7 @@ function errorNode(groupId: number, fallbackName: string): OrgNode {
         groupId,
         name: fallbackName,
         leaders: [],
-        participantIds: [],
+        participants: [],
         leaderCount: 0,
         memberCount: 0,
         children: [],
@@ -51,16 +51,16 @@ async function safeLoadGroupNode(groupId: number, fallbackName = '?'): Promise<O
             withTimeout(getGroupMembers(groupId)),
         ]);
         const leaders = leadersFromMembers(group, members);
-        const participantIds = participantIdsFromMembers(group, members);
+        const participants = participantsFromMembers(group, members);
         return {
             groupId: group.id,
             name: group.name,
             leaders,
-            participantIds,
+            participants,
             // Team-level display values: this group's own counts. Higher
             // levels overwrite these with deduped unions in loadOrganigram.
             leaderCount: leaders.length,
-            memberCount: participantIds.length,
+            memberCount: participants.length,
             children: [],
         };
     } catch (e) {
@@ -143,7 +143,7 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
             const tsParticipantIds = new Set<number>();
             for (const team of okTeams) {
                 for (const l of team.leaders) tsLeaderIds.add(l.personId);
-                for (const pid of team.participantIds) tsParticipantIds.add(pid);
+                for (const p of team.participants) tsParticipantIds.add(p.personId);
             }
             return {
                 ...ts,
@@ -168,7 +168,7 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
         for (const team of ts.children) {
             if (team.error) continue;
             for (const l of team.leaders) allLeaderIds.add(l.personId);
-            for (const pid of team.participantIds) allParticipantIds.add(pid);
+            for (const p of team.participants) allParticipantIds.add(p.personId);
         }
     }
     return {

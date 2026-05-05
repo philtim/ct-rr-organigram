@@ -37,14 +37,20 @@ export type Leader = {
     leaderClass: LeaderClass;
 };
 
+/** Slim shape for non-leader members; carries name so the duplicates panel can display it. */
+export type Participant = {
+    personId: number;
+    fullName: string;
+};
+
 /** A single organigram node — what each card on the dashboard renders from. */
 export type OrgNode = {
     groupId: number;
     name: string;
     /** Members of THIS group with isLeader=true. Carries the role class so the Hauptstamm hero can split into Leiter / Co-Leiter pills. */
     leaders: Leader[];
-    /** PersonIds of THIS group's non-leader members (role.isLeader=false). Used by parents to dedupe "Mitglieder" totals. */
-    participantIds: number[];
+    /** Non-leader members of THIS group (role.isLeader=false). Carries names so the duplicates panel can list cross-team assignments. */
+    participants: Participant[];
     /**
      * Display count for the leader stat tile.
      *  - Team: this team's own leader headcount.

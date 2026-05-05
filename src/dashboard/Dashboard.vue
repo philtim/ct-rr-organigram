@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import DuplicatesPanel from './DuplicatesPanel.vue';
 import HauptstammCard from './HauptstammCard.vue';
 import SkeletonLayout from './SkeletonLayout.vue';
 import TeilstammCard from './TeilstammCard.vue';
@@ -55,6 +56,7 @@ const showErrorToast = computed(
                     Keine Teilstämme angelegt.
                 </p>
             </div>
+            <DuplicatesPanel :root="state.root" />
         </template>
 
         <p v-else-if="state.phase === 'error'" class="rr-dash__error" role="alert">
