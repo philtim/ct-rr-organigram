@@ -1,4 +1,4 @@
-import type { Group, GroupMember, Leader, LeaderClass } from '@/shared/types';
+import type { Group, GroupMember, Leader, LeaderClass, Participant } from '@/shared/types';
 
 /**
  * Filter members to those whose role on the group has isLeader=true.
@@ -34,20 +34,20 @@ function imageUrlOf(m: GroupMember): string | null {
 }
 
 /**
- * Return personIds of members whose role on the group has isLeader=false.
- * These are the "Mitglieder" the user means: rank-and-file participants,
- * NOT leaders/co-leaders. We use the role's isLeader flag from the
- * embedded `group.roles` array — same source of truth ChurchTools itself
- * uses to compute its memberStatistics.participants count.
+ * Return non-leader members (role.isLeader=false) with their personId
+ * and name. These are the "Mitglieder" the user means: rank-and-file
+ * participants, NOT leaders/co-leaders. We use the role's isLeader flag
+ * from the embedded `group.roles` array — same source of truth
+ * ChurchTools itself uses for memberStatistics.participants.
  */
-export function participantIdsFromMembers(group: Group, members: GroupMember[]): number[] {
+export function participantsFromMembers(group: Group, members: GroupMember[]): Participant[] {
     const roles = group.roles ?? [];
     const leaderRoleIds = new Set(
         roles.filter((r) => r.isLeader === true).map((r) => r.groupTypeRoleId),
     );
     return members
         .filter((m) => !leaderRoleIds.has(m.groupTypeRoleId))
-        .map((m) => personIdOf(m));
+        .map((m) => ({ personId: personIdOf(m), fullName: m.person?.title ?? '' }));
 }
 
 function personIdOf(m: GroupMember): number {
