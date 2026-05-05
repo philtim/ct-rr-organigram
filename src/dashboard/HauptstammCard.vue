@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { OrgNode } from '@/shared/types';
+import type { Leader, OrgNode } from '@/shared/types';
 import { COPY } from '@/shared/constants';
 
 const props = defineProps<{ node: OrgNode }>();
@@ -10,7 +10,10 @@ const primary = computed(() => props.node.leaders.filter((l) => l.leaderClass ==
 const coLeaders = computed(() =>
     props.node.leaders.filter((l) => l.leaderClass === 'coLeader'),
 );
-const allLeaderText = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
+
+function namesOf(leaders: Leader[]): string {
+    return leaders.map((l) => l.fullName).join(', ');
+}
 </script>
 
 <template>
@@ -36,6 +39,7 @@ const allLeaderText = computed(() => props.node.leaders.map((l) => l.fullName).j
                                 {{ l.fullName }}
                             </span>
                         </div>
+                        <p class="hs-card__group-text">{{ namesOf(primary) }}</p>
                     </div>
                     <div v-if="coLeaders.length" class="hs-card__group">
                         <p class="hs-card__label">{{ COPY.hauptstammCoLeader }}</p>
@@ -49,16 +53,12 @@ const allLeaderText = computed(() => props.node.leaders.map((l) => l.fullName).j
                                 {{ l.fullName }}
                             </span>
                         </div>
+                        <p class="hs-card__group-text">{{ namesOf(coLeaders) }}</p>
                     </div>
                     <p v-if="!primary.length && !coLeaders.length" class="hs-card__empty">
                         Keine Leiter eingetragen.
                     </p>
                 </template>
-
-                <!-- Mobile-only comma-separated text (hidden on desktop) -->
-                <p v-if="!isError && allLeaderText" class="hs-card__leaders-text">
-                    {{ allLeaderText }}
-                </p>
             </div>
 
             <div class="hs-card__stats">
@@ -156,7 +156,7 @@ const allLeaderText = computed(() => props.node.leaders.map((l) => l.fullName).j
     font-weight: 500;
     color: var(--rr-text-secondary);
 }
-.hs-card__leaders-text {
+.hs-card__group-text {
     display: none;
 }
 .hs-card__stats {
@@ -211,10 +211,15 @@ const allLeaderText = computed(() => props.node.leaders.map((l) => l.fullName).j
     .hs-card__placeholder {
         display: none;
     }
-    .hs-card__leaders-text {
+    .hs-card__group {
+        margin-bottom: 8px;
+    }
+    .hs-card__group-text {
         display: block;
         margin: 0;
         font-size: 12px;
+        color: var(--rr-text-primary);
+        line-height: 1.4;
     }
 }
 </style>
