@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import HauptstammCard from './HauptstammCard.vue';
+import SkeletonLayout from './SkeletonLayout.vue';
 import TeilstammCard from './TeilstammCard.vue';
 import { formatTimestamp, useDashboard } from './useDashboard';
 import { COPY } from '@/shared/constants';
@@ -39,7 +40,9 @@ const stand = computed(() =>
             </button>
         </header>
 
-        <template v-if="state.phase === 'ready'">
+        <SkeletonLayout v-if="state.phase === 'loading' || state.phase === 'idle'" />
+
+        <template v-else-if="state.phase === 'ready'">
             <HauptstammCard :node="state.root" />
             <div class="rr-dash__divider" aria-hidden="true">│</div>
             <div class="rr-dash__grid">
