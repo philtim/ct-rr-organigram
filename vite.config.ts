@@ -1,6 +1,34 @@
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
+
+// Build-time provenance: shown in the dashboard footer so deployments
+// are identifiable. Falls back gracefully when git/package.json aren't
+// available (e.g. some sandbox build environments).
+function readVersion(): string {
+    try {
+        const pkg = JSON.parse(readFileSync('./package.json', 'utf8')) as {
+            version?: string;
+        };
+        return pkg.version ?? 'unknown';
+    } catch {
+        return 'unknown';
+    }
+}
+
+function readCommit(): string {
+    try {
+        return execSync('git rev-parse --short=7 HEAD', {
+            stdio: ['ignore', 'pipe', 'ignore'],
+        })
+            .toString()
+            .trim();
+    } catch {
+        return 'unknown';
+    }
+}
 
 // https://vitejs.dev/config/
 export default ({ mode }: { mode: string }) => {
@@ -12,6 +40,10 @@ export default ({ mode }: { mode: string }) => {
     return defineConfig({
         base: `/ccm/${env.VITE_KEY}/`,
         plugins: [vue()],
+        define: {
+            __APP_VERSION__: JSON.stringify(readVersion()),
+            __APP_COMMIT__: JSON.stringify(readCommit()),
+        },
         resolve: {
             alias: {
                 '@': fileURLToPath(new URL('./src', import.meta.url)),
