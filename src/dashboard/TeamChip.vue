@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{ node: OrgNode }>();
 
+const isError = computed(() => Boolean(props.node.error));
 const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 </script>
 
@@ -12,10 +13,12 @@ const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).joi
         <div class="team-chip__row">
             <span class="team-chip__name">{{ node.name }}</span>
             <span class="team-chip__counts">
-                {{ node.leaderCount }}L · {{ node.memberCount }}M
+                <template v-if="isError">?L · ?M</template>
+                <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }}M</template>
             </span>
         </div>
-        <span v-if="leaderNames" class="team-chip__leiter">{{ leaderNames }}</span>
+        <span v-if="isError" class="team-chip__leiter">?</span>
+        <span v-else-if="leaderNames" class="team-chip__leiter">{{ leaderNames }}</span>
     </div>
 </template>
 

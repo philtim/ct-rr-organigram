@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
 
-defineProps<{ node: OrgNode }>();
+const props = defineProps<{ node: OrgNode }>();
+const isError = computed(() => Boolean(props.node.error));
 </script>
 
 <template>
@@ -14,29 +16,47 @@ defineProps<{ node: OrgNode }>();
 
         <div class="ts-card__leiter-list">
             <span class="ts-card__label">Leiter</span>
-            <span v-for="l in node.leaders" :key="l.personId" class="ts-card__leiter-name">
-                {{ l.fullName }}
-            </span>
-            <span v-if="!node.leaders.length" class="ts-card__empty">
-                Keine Leiter eingetragen.
-            </span>
+            <template v-if="isError">
+                <span class="ts-card__leiter-name">?</span>
+            </template>
+            <template v-else>
+                <span
+                    v-for="l in node.leaders"
+                    :key="l.personId"
+                    class="ts-card__leiter-name"
+                >
+                    {{ l.fullName }}
+                </span>
+                <span v-if="!node.leaders.length" class="ts-card__empty">
+                    Keine Leiter eingetragen.
+                </span>
+            </template>
         </div>
 
         <div class="ts-card__stat-row">
             <div class="ts-card__stat">
                 <p class="ts-card__stat-label">Leiter</p>
-                <p class="ts-card__stat-value">{{ node.leaderCount }}</p>
+                <p class="ts-card__stat-value">
+                    {{ isError ? '?' : node.leaderCount }}
+                </p>
             </div>
             <div class="ts-card__stat">
                 <p class="ts-card__stat-label">Mitglieder</p>
-                <p class="ts-card__stat-value">{{ node.memberCount }}</p>
+                <p class="ts-card__stat-value">
+                    {{ isError ? '?' : node.memberCount }}
+                </p>
             </div>
         </div>
 
         <section class="ts-card__teams">
             <p class="ts-card__subtitle">TEAMS</p>
-            <TeamChip v-for="team in node.children" :key="team.groupId" :node="team" />
-            <p v-if="!node.children.length" class="ts-card__empty">Keine Teams.</p>
+            <p v-if="isError" class="ts-card__empty">
+                Teams konnten nicht geladen werden.
+            </p>
+            <template v-else>
+                <TeamChip v-for="team in node.children" :key="team.groupId" :node="team" />
+                <p v-if="!node.children.length" class="ts-card__empty">Keine Teams.</p>
+            </template>
         </section>
     </article>
 </template>

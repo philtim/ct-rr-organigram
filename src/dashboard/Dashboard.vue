@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import HauptstammCard from './HauptstammCard.vue';
 import SkeletonLayout from './SkeletonLayout.vue';
 import TeilstammCard from './TeilstammCard.vue';
+import Toast from './Toast.vue';
 import { formatTimestamp, useDashboard } from './useDashboard';
 import { COPY } from '@/shared/constants';
 import type { GatePerson } from '@/gate/useGate';
@@ -17,6 +18,9 @@ onMounted(() => {
 
 const stand = computed(() =>
     state.value.phase === 'ready' ? formatTimestamp(state.value.loadedAt) : null,
+);
+const showErrorToast = computed(
+    () => state.value.phase === 'ready' && state.value.hasErrors,
 );
 </script>
 
@@ -56,6 +60,8 @@ const stand = computed(() =>
         <p v-else-if="state.phase === 'error'" class="rr-dash__error" role="alert">
             {{ state.message }}
         </p>
+
+        <Toast :visible="showErrorToast" :message="COPY.partialErrorToast" />
     </main>
 </template>
 
