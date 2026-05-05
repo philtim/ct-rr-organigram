@@ -140,10 +140,16 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
         }),
     );
 
+    // Hauptstamm leader count covers EVERY leader role across the org
+    // tree: the Hauptstamm group's own Leiter+Co-Leiter, each Teilstamm's
+    // own Stammleiter/Stammwart (ts.leaders.length), and the team-level
+    // total that's already rolled into ts.leaderCount.
     const okTs = teilstaemme.filter((ts) => !ts.error);
+    const hauptstammOwn = root.leaders.length;
+    const teilstaemmeAndTeams = sumBy(okTs, (ts) => ts.leaders.length + ts.leaderCount);
     return {
         ...root,
-        leaderCount: sumBy(okTs, (ts) => ts.leaderCount),
+        leaderCount: hauptstammOwn + teilstaemmeAndTeams,
         memberCount: sumBy(okTs, (ts) => ts.memberCount),
         children: teilstaemme,
     };

@@ -20,4 +20,15 @@ export const COPY = {
     configMissing: 'Bitte zuerst die Hauptstamm-Gruppe unter Admin → Extensions konfigurieren.',
     partialErrorToast: 'Einige Daten konnten nicht geladen werden.',
     loading: 'Lädt …',
+    // Role-based labels. Hauptstamm hero splits leaders into two buckets:
+    //   "Leiter" = role.name === "Leiter"  (Hauptstammleiter / Hauptstammwart)
+    //   "Co-Leiter" = role.name === "Co-Leiter" (Stammleiter / Stammwart / Stammhelfer)
+    // Teilstamm cards label their own leader list (Stammleiter/wart) and
+    // the rolled-up team leader count distinctly.
+    hauptstammLeader: 'Leiter',
+    hauptstammCoLeader: 'Co-Leiter',
+    teilstammLeader: 'Stammleiter/Stammwart',
+    teamleiterStat: 'Teamleiter',
+    leiterStat: 'Leiter',
+    mitgliederStat: 'Mitglieder',
 } as const;
