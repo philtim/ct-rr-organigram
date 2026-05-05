@@ -38,6 +38,10 @@ CORS note: enable cross-origin requests from `http://localhost:5173` in your Chu
 - `npm run check` — lint + typecheck + build (what CI runs).
 - `npm run deploy` — build and package into `releases/*.zip`.
 
+### Cutting a release
+
+Releases are published automatically by `.github/workflows/release.yml`. Trigger one by bumping `version` in `package.json` on a feature branch and merging to `main` — the workflow notices the change, tags `vX.Y.Z`, builds, packages the ZIP, and creates a GitHub release with auto-generated notes. No manual tag push needed.
+
 ### Project layout
 
 Per [ADR-004](docs/adr/004-module-structure.md):
