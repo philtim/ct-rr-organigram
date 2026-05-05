@@ -21,9 +21,16 @@ export function leadersFromMembers(group: Group, members: GroupMember[]): Leader
                 personId,
                 fullName: m.person?.title ?? '',
                 initials: deriveInitials(m),
+                imageUrl: imageUrlOf(m),
                 leaderClass: classByRoleId.get(m.groupTypeRoleId) ?? 'primary',
             };
         });
+}
+
+/** Pull the person's profile-picture URL from the member's inlined person object. */
+function imageUrlOf(m: GroupMember): string | null {
+    const url = (m.person as unknown as { imageUrl?: string | null } | undefined)?.imageUrl;
+    return typeof url === 'string' && url.length > 0 ? url : null;
 }
 
 /**

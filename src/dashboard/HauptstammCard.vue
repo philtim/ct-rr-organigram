@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { Leader, OrgNode } from '@/shared/types';
 import { COPY } from '@/shared/constants';
+import LeaderAvatar from './LeaderAvatar.vue';
 
 const props = defineProps<{ node: OrgNode }>();
 
@@ -35,7 +36,7 @@ function namesOf(leaders: Leader[]): string {
                                 :key="l.personId"
                                 class="hs-card__pill"
                             >
-                                <span class="hs-card__avatar">{{ l.initials }}</span>
+                                <LeaderAvatar :leader="l" />
                                 {{ l.fullName }}
                             </span>
                         </div>
@@ -49,7 +50,7 @@ function namesOf(leaders: Leader[]): string {
                                 :key="l.personId"
                                 class="hs-card__pill"
                             >
-                                <span class="hs-card__avatar">{{ l.initials }}</span>
+                                <LeaderAvatar :leader="l" />
                                 {{ l.fullName }}
                             </span>
                         </div>
@@ -131,18 +132,6 @@ function namesOf(leaders: Leader[]): string {
     border-radius: var(--rr-radius-md);
     padding: 4px 10px;
     font-size: 13px;
-}
-.hs-card__avatar {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--rr-accent-bg);
-    color: var(--rr-accent-fg);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 500;
 }
 .hs-card__empty {
     margin: 0;
