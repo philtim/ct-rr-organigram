@@ -40,9 +40,9 @@ CORS note: enable cross-origin requests from `http://localhost:5173` in your Chu
 
 ### Cutting a release
 
-Releases are published automatically by `.github/workflows/release.yml`. Trigger one by bumping `version` in `package.json` on a feature branch and merging to `main` — the workflow notices the change, tags `vX.Y.Z`, builds, packages the ZIP, and creates a GitHub release with auto-generated notes. No manual tag push needed.
+Releases are driven by [release-please](https://github.com/googleapis/release-please). Use [conventional commit](https://www.conventionalcommits.org/) prefixes on `main` (`feat:`, `fix:`, `feat!:` for breaking changes, `chore:` is ignored) and release-please maintains a rolling **release PR** titled `chore(main): release X.Y.Z` that bumps `package.json` and writes `CHANGELOG.md`. Merge that PR when you want to ship — release-please creates the tag + GitHub release, and the same workflow then builds the ZIP, attaches it to the release, and uploads it to the **rr-demo test instance**. Live customer instances are updated manually from the GitHub release.
 
-After publishing the GitHub release, the same workflow uploads the ZIP to the **rr-demo test instance** so it's immediately runnable there. Live customer instances are updated manually from the GitHub release. The auto-deploy step needs two repo secrets: `CT_DEMO_BASE_URL` (e.g. `https://rr-demo.church.tools`) and `CT_DEMO_LOGIN_TOKEN` (a personal API token from CT under **Personal settings → Login & Security**). The custom module on rr-demo must have `shorty=rr-dashboard` to match `VITE_KEY` in the bundle.
+The auto-deploy step needs two repo secrets: `CT_DEMO_BASE_URL` (e.g. `https://rr-demo.church.tools`) and `CT_DEMO_LOGIN_TOKEN` (a personal API token from CT under **Personal settings → Login & Security**). The workflow self-bootstraps: if no custom module with `shorty=rr-dashboard` exists, it creates one before uploading.
 
 ### Project layout
 

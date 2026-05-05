@@ -1,101 +1,66 @@
-name: Release on version bump
+name: Release Please
 
-# Fires whenever package.json lands on main with a different `version`
-# than the previous commit. The workflow tags the new version (vX.Y.Z),
-# builds the production bundle, packages a ZIP via npm run deploy, and
-# uploads it as a GitHub release asset with auto-generated notes.
-#
-# To cut a release: bump `version` in package.json on a feature branch,
-# merge to main. No manual tag push needed.
+# release-please reads conventional commits on main and maintains a rolling
+# "release PR" that bumps package.json + writes CHANGELOG.md. When that PR
+# is merged it tags vX.Y.Z and creates a GitHub release with the changelog.
+# This workflow then builds the ZIP, attaches it to the release, and uploads
+# it to the rr-demo test instance.
 
 on:
     push:
         branches: [main]
-        paths:
-            - 'package.json'
 
 permissions:
     contents: write
+    pull-requests: write
 
 jobs:
-    release:
+    release-please:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: googleapis/release-please-action@v4
+              id: release
               with:
-                  fetch-depth: 2
+                  config-file: release-please-config.json
+                  manifest-file: .release-please-manifest.json
 
-            - name: Detect version change
-              id: ver
-              run: |
-                  new=$(jq -r '.version' package.json)
-                  old=$(git show HEAD~1:package.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo '')
-                  echo "new=$new"
-                  echo "old=$old"
-                  echo "new=$new" >> "$GITHUB_OUTPUT"
-                  echo "old=$old" >> "$GITHUB_OUTPUT"
-                  if [ -z "$new" ] || [ "$new" = "$old" ] || [ "$new" = "null" ]; then
-                      echo "changed=false" >> "$GITHUB_OUTPUT"
-                  else
-                      echo "changed=true" >> "$GITHUB_OUTPUT"
-                  fi
-
-            - name: Skip if unchanged
-              if: steps.ver.outputs.changed != 'true'
-              run: |
-                  echo "Version field on package.json did not change (still ${{ steps.ver.outputs.new }})."
-                  echo "Skipping release."
+            - uses: actions/checkout@v4
+              if: ${{ steps.release.outputs.release_created }}
 
             - uses: actions/setup-node@v4
-              if: steps.ver.outputs.changed == 'true'
+              if: ${{ steps.release.outputs.release_created }}
               with:
                   node-version: 22
                   cache: npm
 
             - name: Install dependencies
-              if: steps.ver.outputs.changed == 'true'
+              if: ${{ steps.release.outputs.release_created }}
               run: npm ci
 
             - name: Build & package ZIP
-              if: steps.ver.outputs.changed == 'true'
+              if: ${{ steps.release.outputs.release_created }}
               env:
                   VITE_KEY: rr-dashboard
                   VITE_BASE_URL: https://placeholder.church.tools
               run: npm run deploy
 
-            - name: Tag the new version
-              if: steps.ver.outputs.changed == 'true'
-              env:
-                  TAG: v${{ steps.ver.outputs.new }}
-              run: |
-                  git config user.name 'github-actions[bot]'
-                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-                  if git rev-parse "$TAG" >/dev/null 2>&1; then
-                      echo "Tag $TAG already exists; not re-tagging."
-                  else
-                      git tag "$TAG"
-                      git push origin "$TAG"
-                  fi
-
             - name: Locate ZIP artefact
               id: pkg
-              if: steps.ver.outputs.changed == 'true'
+              if: ${{ steps.release.outputs.release_created }}
               run: echo "path=$(ls releases/*.zip | head -1)" >> "$GITHUB_OUTPUT"
 
-            - name: Create GitHub release
-              if: steps.ver.outputs.changed == 'true'
-              uses: softprops/action-gh-release@v2
-              with:
-                  tag_name: v${{ steps.ver.outputs.new }}
-                  files: ${{ steps.pkg.outputs.path }}
-                  generate_release_notes: true
+            - name: Attach ZIP to GitHub release
+              if: ${{ steps.release.outputs.release_created }}
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG: ${{ steps.release.outputs.tag_name }}
+                  ZIP_PATH: ${{ steps.pkg.outputs.path }}
+              run: gh release upload "$TAG" "$ZIP_PATH" --clobber
 
-            # Auto-deploy to the rr-demo test instance. The live customer
-            # instance is updated manually from the GitHub release ZIP.
             # Self-bootstraps: creates the custom module on first run if
             # nothing matches the configured shorty.
             - name: Upload ZIP to rr-demo test instance
-              if: steps.ver.outputs.changed == 'true'
+              if: ${{ steps.release.outputs.release_created }}
               env:
                   CT_BASE_URL: ${{ secrets.CT_DEMO_BASE_URL }}
                   CT_LOGIN_TOKEN: ${{ secrets.CT_DEMO_LOGIN_TOKEN }}
