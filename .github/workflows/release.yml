@@ -1,9 +1,18 @@
-name: Release
+name: Release on version bump
+
+# Fires whenever package.json lands on main with a different `version`
+# than the previous commit. The workflow tags the new version (vX.Y.Z),
+# builds the production bundle, packages a ZIP via npm run deploy, and
+# uploads it as a GitHub release asset with auto-generated notes.
+#
+# To cut a release: bump `version` in package.json on a feature branch,
+# merge to main. No manual tag push needed.
 
 on:
     push:
-        tags:
-            - 'v*.*.*'
+        branches: [main]
+        paths:
+            - 'package.json'
 
 permissions:
     contents: write
@@ -14,21 +23,69 @@ jobs:
         steps:
             - uses: actions/checkout@v4
               with:
-                  fetch-depth: 0
+                  fetch-depth: 2
+
+            - name: Detect version change
+              id: ver
+              run: |
+                  new=$(jq -r '.version' package.json)
+                  old=$(git show HEAD~1:package.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo '')
+                  echo "new=$new"
+                  echo "old=$old"
+                  echo "new=$new" >> "$GITHUB_OUTPUT"
+                  echo "old=$old" >> "$GITHUB_OUTPUT"
+                  if [ -z "$new" ] || [ "$new" = "$old" ] || [ "$new" = "null" ]; then
+                      echo "changed=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "changed=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Skip if unchanged
+              if: steps.ver.outputs.changed != 'true'
+              run: |
+                  echo "Version field on package.json did not change (still ${{ steps.ver.outputs.new }})."
+                  echo "Skipping release."
+
             - uses: actions/setup-node@v4
+              if: steps.ver.outputs.changed == 'true'
               with:
                   node-version: 22
                   cache: npm
-            - run: npm ci
-            - run: npm run deploy
+
+            - name: Install dependencies
+              if: steps.ver.outputs.changed == 'true'
+              run: npm ci
+
+            - name: Build & package ZIP
+              if: steps.ver.outputs.changed == 'true'
               env:
                   VITE_KEY: rr-dashboard
                   VITE_BASE_URL: https://placeholder.church.tools
-            - name: Find package
+              run: npm run deploy
+
+            - name: Tag the new version
+              if: steps.ver.outputs.changed == 'true'
+              env:
+                  TAG: v${{ steps.ver.outputs.new }}
+              run: |
+                  git config user.name 'github-actions[bot]'
+                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  if git rev-parse "$TAG" >/dev/null 2>&1; then
+                      echo "Tag $TAG already exists; not re-tagging."
+                  else
+                      git tag "$TAG"
+                      git push origin "$TAG"
+                  fi
+
+            - name: Locate ZIP artefact
               id: pkg
+              if: steps.ver.outputs.changed == 'true'
               run: echo "path=$(ls releases/*.zip | head -1)" >> "$GITHUB_OUTPUT"
+
             - name: Create GitHub release
+              if: steps.ver.outputs.changed == 'true'
               uses: softprops/action-gh-release@v2
               with:
+                  tag_name: v${{ steps.ver.outputs.new }}
                   files: ${{ steps.pkg.outputs.path }}
                   generate_release_notes: true
