@@ -68,7 +68,10 @@ const appCommit = __APP_COMMIT__;
 
         <Toast :visible="showErrorToast" :message="COPY.partialErrorToast" />
 
-        <footer class="rr-dash__footer">
+        <footer
+            class="rr-dash__footer"
+            :title="`RR Organigram v${appVersion} (build ${appCommit})`"
+        >
             v{{ appVersion }} · {{ appCommit }}
         </footer>
     </main>
