@@ -32,6 +32,8 @@ export type Leader = {
     personId: number;
     fullName: string;
     initials: string;
+    /** Profile picture URL from member.person.imageUrl, or null if the person has none. */
+    imageUrl: string | null;
     leaderClass: LeaderClass;
 };
 
