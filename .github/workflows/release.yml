@@ -89,3 +89,45 @@ jobs:
                   tag_name: v${{ steps.ver.outputs.new }}
                   files: ${{ steps.pkg.outputs.path }}
                   generate_release_notes: true
+
+            # Auto-deploy to the rr-demo test instance. The live customer
+            # instance is updated manually from the GitHub release ZIP.
+            - name: Upload ZIP to rr-demo test instance
+              if: steps.ver.outputs.changed == 'true'
+              env:
+                  CT_BASE_URL: ${{ secrets.CT_DEMO_BASE_URL }}
+                  CT_LOGIN_TOKEN: ${{ secrets.CT_DEMO_LOGIN_TOKEN }}
+                  ZIP_PATH: ${{ steps.pkg.outputs.path }}
+                  SHORTY: rr-dashboard
+              run: |
+                  set -euo pipefail
+
+                  COOKIE_JAR=$(mktemp)
+                  trap 'rm -f "$COOKIE_JAR"' EXIT
+
+                  echo "Authenticating against $CT_BASE_URL..."
+                  curl -fsS -c "$COOKIE_JAR" \
+                      "$CT_BASE_URL/api/whoami?login_token=$CT_LOGIN_TOKEN" \
+                      > /dev/null
+
+                  echo "Fetching CSRF token..."
+                  CSRF=$(curl -fsS -b "$COOKIE_JAR" "$CT_BASE_URL/api/csrftoken" | jq -r '.data')
+
+                  echo "Looking up custom module with shorty=$SHORTY..."
+                  MODULE_ID=$(curl -fsS -b "$COOKIE_JAR" "$CT_BASE_URL/api/custommodules" \
+                      | jq -r --arg shorty "$SHORTY" '.data[] | select(.shorty == $shorty) | .id')
+
+                  if [ -z "$MODULE_ID" ] || [ "$MODULE_ID" = "null" ]; then
+                      echo "::error::No custom module with shorty=$SHORTY found on $CT_BASE_URL"
+                      exit 1
+                  fi
+                  echo "Module ID: $MODULE_ID"
+
+                  echo "Uploading $ZIP_PATH..."
+                  curl -fsS -b "$COOKIE_JAR" \
+                      -H "Csrf-Token: $CSRF" \
+                      -F "files[]=@$ZIP_PATH" \
+                      "$CT_BASE_URL/api/files/custom_module/$MODULE_ID"
+
+                  echo
+                  echo "Upload complete."
