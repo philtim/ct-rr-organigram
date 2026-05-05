@@ -16,8 +16,7 @@ export function leadersFromMembers(group: Group, members: GroupMember[]): Leader
     return members
         .filter((m) => classByRoleId.has(m.groupTypeRoleId))
         .map((m) => {
-            const idStr = m.person?.domainIdentifier;
-            const personId = idStr != null ? parseInt(idStr, 10) : (m.personId ?? 0);
+            const personId = personIdOf(m);
             return {
                 personId,
                 fullName: m.person?.title ?? '',
@@ -25,6 +24,28 @@ export function leadersFromMembers(group: Group, members: GroupMember[]): Leader
                 leaderClass: classByRoleId.get(m.groupTypeRoleId) ?? 'primary',
             };
         });
+}
+
+/**
+ * Return personIds of members whose role on the group has isLeader=false.
+ * These are the "Mitglieder" the user means: rank-and-file participants,
+ * NOT leaders/co-leaders. We use the role's isLeader flag from the
+ * embedded `group.roles` array — same source of truth ChurchTools itself
+ * uses to compute its memberStatistics.participants count.
+ */
+export function participantIdsFromMembers(group: Group, members: GroupMember[]): number[] {
+    const roles = group.roles ?? [];
+    const leaderRoleIds = new Set(
+        roles.filter((r) => r.isLeader === true).map((r) => r.groupTypeRoleId),
+    );
+    return members
+        .filter((m) => !leaderRoleIds.has(m.groupTypeRoleId))
+        .map((m) => personIdOf(m));
+}
+
+function personIdOf(m: GroupMember): number {
+    const idStr = m.person?.domainIdentifier;
+    return idStr != null ? parseInt(idStr, 10) : (m.personId ?? 0);
 }
 
 /**
