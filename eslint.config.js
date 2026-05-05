@@ -15,4 +15,13 @@ export default [
     ...pluginVue.configs['flat/recommended'],
     ...vueTsConfig(),
     prettierConfig,
+    {
+        name: 'app/rules',
+        rules: {
+            // Page-level components (Admin, Gate, Dashboard, App) are never
+            // going to clash with native HTML elements; the warning adds
+            // noise without value.
+            'vue/multi-word-component-names': 'off',
+        },
+    },
 ];
