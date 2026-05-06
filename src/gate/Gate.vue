@@ -13,16 +13,6 @@ defineProps<{ status: GateStatus }>();
             <p class="rr-gate__message">{{ COPY.loading }}</p>
         </div>
 
-        <div v-else-if="status.phase === 'config-missing'" class="rr-gate__panel">
-            <p class="rr-gate__message">
-                {{ COPY.configMissing }}
-            </p>
-            <p class="rr-gate__hint">
-                Admins erreichen die Konfiguration über
-                <code>?admin=1</code> in der URL.
-            </p>
-        </div>
-
         <div v-else-if="status.phase === 'denied'" class="rr-gate__panel rr-gate__panel--warn">
             <p class="rr-gate__message">{{ COPY.accessDenied }}</p>
         </div>
@@ -70,19 +60,6 @@ defineProps<{ status: GateStatus }>();
 .rr-gate__message {
     margin: 0;
     line-height: 1.5;
-}
-
-.rr-gate__hint {
-    margin: 0.5rem 0 0;
-    color: var(--rr-text-secondary);
-    font-size: 0.875rem;
-}
-
-code {
-    background: var(--rr-bg-secondary);
-    padding: 0.05em 0.35em;
-    border-radius: 4px;
-    font-size: 0.85em;
 }
 
 @media (max-width: 767px) {

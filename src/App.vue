@@ -28,6 +28,14 @@ onMounted(async () => {
     await runGate(settings.value?.gateGroupId);
     ready.value = true;
 });
+
+// First-run: when nothing is configured yet, the App renders <Admin> directly
+// instead of pointing the user to ?admin=1. After a successful save, re-run
+// the gate so the dashboard appears without a manual reload.
+async function handleSaved() {
+    await loadSettings();
+    await runGate(settings.value?.gateGroupId);
+}
 </script>
 
 <template>
@@ -35,7 +43,11 @@ onMounted(async () => {
         <h1 class="rr-shell__title">{{ COPY.appTitle }}</h1>
         <p class="rr-shell__subtitle">{{ COPY.loading }}</p>
     </main>
-    <Admin v-else-if="isAdminRoute" />
+    <Admin
+        v-else-if="isAdminRoute || gateStatus.phase === 'config-missing'"
+        :first-run="!isAdminRoute && gateStatus.phase === 'config-missing'"
+        @saved="handleSaved"
+    />
     <Dashboard
         v-else-if="
             gateStatus.phase === 'allowed' && settings && typeof settings.gateGroupId === 'number'

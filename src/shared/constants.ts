@@ -17,7 +17,6 @@ export const COPY = {
     refresh: 'Aktualisieren',
     timestampPrefix: 'Stand: ',
     accessDenied: 'Du hast keinen Zugriff auf das RR Mitarbeiter-Dashboard.',
-    configMissing: 'Bitte zuerst die Hauptstamm-Gruppe unter Admin → Extensions konfigurieren.',
     partialErrorToast: 'Einige Daten konnten nicht geladen werden.',
     loading: 'Lädt …',
     // Role-based labels. Hauptstamm hero splits leaders into two buckets:
