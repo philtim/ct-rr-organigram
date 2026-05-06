@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.7](https://github.com/philtim/ct-rr-organigram/compare/v0.0.6...v0.0.7) (2026-05-06)
+
+
+### Bug Fixes
+
+* **admin:** paginate group list and add searchable picker ([#31](https://github.com/philtim/ct-rr-organigram/issues/31)) ([a9649a0](https://github.com/philtim/ct-rr-organigram/commit/a9649a00b93729b18b3267cb73147827656f87bf))
+
 ## [0.0.6](https://github.com/philtim/ct-rr-organigram/compare/v0.0.5...v0.0.6) (2026-05-06)
 
 
