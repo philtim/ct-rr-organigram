@@ -16,6 +16,7 @@ const { settings, loading: settingsLoading, error: saveError, load, save } = use
 
 const selectedId = ref<number | null>(null);
 const savedJustNow = ref(false);
+const searchText = ref('');
 
 const sortedGroups = computed(() =>
     [...groups.value].sort((a, b) => a.name.localeCompare(b.name, 'de')),
@@ -23,6 +24,13 @@ const sortedGroups = computed(() =>
 const selectedGroupExists = computed(() =>
     selectedId.value == null ? false : groups.value.some((g) => g.id === selectedId.value),
 );
+const filteredGroups = computed(() => {
+    const q = searchText.value.trim().toLocaleLowerCase('de');
+    if (!q) return sortedGroups.value;
+    return sortedGroups.value.filter(
+        (g) => g.name.toLocaleLowerCase('de').includes(q) || String(g.id).includes(q),
+    );
+});
 
 onMounted(async () => {
     groupsLoading.value = true;
@@ -78,24 +86,54 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
         </div>
 
         <form class="rr-admin__form" @submit.prevent="handleSave">
-            <label class="rr-admin__label" for="gate-group">Hauptstamm-Gruppe</label>
-            <select
-                id="gate-group"
-                v-model="selectedId"
-                class="rr-admin__select"
+            <label class="rr-admin__label" for="gate-group-search">Hauptstamm-Gruppe</label>
+            <input
+                id="gate-group-search"
+                v-model="searchText"
+                type="search"
+                class="rr-admin__search"
+                placeholder="Gruppe suchen (Name oder ID)…"
                 :disabled="isLoading"
+                autocomplete="off"
+            />
+
+            <div
+                class="rr-admin__list"
+                role="listbox"
+                aria-label="Hauptstamm-Gruppen"
+                :aria-busy="isLoading || undefined"
             >
-                <option :value="null" disabled>— Bitte auswählen —</option>
-                <option v-for="g in sortedGroups" :key="g.id" :value="g.id">
-                    {{ g.name }} (ID {{ g.id }})
-                </option>
-                <option
-                    v-if="settings && !selectedGroupExists && selectedId != null"
-                    :value="selectedId"
-                >
-                    (nicht mehr vorhanden, ID: {{ selectedId }})
-                </option>
-            </select>
+                <p v-if="isLoading" class="rr-admin__list-empty">{{ COPY.loading }}</p>
+                <template v-else>
+                    <button
+                        v-if="settings && !selectedGroupExists && selectedId != null"
+                        type="button"
+                        role="option"
+                        class="rr-admin__option rr-admin__option--missing"
+                        :aria-selected="true"
+                    >
+                        <span class="rr-admin__option-name">
+                            (nicht mehr vorhanden, ID {{ selectedId }})
+                        </span>
+                    </button>
+                    <button
+                        v-for="g in filteredGroups"
+                        :key="g.id"
+                        type="button"
+                        role="option"
+                        class="rr-admin__option"
+                        :class="{ 'rr-admin__option--selected': g.id === selectedId }"
+                        :aria-selected="g.id === selectedId"
+                        @click="selectedId = g.id"
+                    >
+                        <span class="rr-admin__option-name">{{ g.name }}</span>
+                        <span class="rr-admin__option-id">ID {{ g.id }}</span>
+                    </button>
+                    <p v-if="!filteredGroups.length" class="rr-admin__list-empty">
+                        Keine Gruppe passt zu „{{ searchText }}".
+                    </p>
+                </template>
+            </div>
 
             <div class="rr-admin__actions">
                 <button
@@ -166,13 +204,86 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
     font-weight: 500;
 }
 
-.rr-admin__select {
+.rr-admin__search {
     padding: 0.5rem 0.75rem;
     font-size: 0.95rem;
     border: 0.5px solid var(--rr-border-secondary);
     border-radius: var(--rr-radius-md);
     background: var(--rr-bg-primary);
     color: inherit;
+}
+.rr-admin__search:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 1px;
+}
+
+.rr-admin__list {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 0.5px solid var(--rr-border-tertiary);
+    border-radius: var(--rr-radius-md);
+    background: var(--rr-bg-primary);
+}
+
+.rr-admin__list-empty {
+    margin: 0;
+    padding: 0.75rem 0.875rem;
+    color: var(--rr-text-secondary);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.rr-admin__option {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    border: 0;
+    border-bottom: 0.5px solid var(--rr-border-tertiary);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color var(--rr-dur-hover) var(--rr-ease-out);
+}
+.rr-admin__option:last-child {
+    border-bottom: 0;
+}
+.rr-admin__option:hover {
+    background: var(--rr-bg-hover-on-white);
+}
+.rr-admin__option:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: -2px;
+}
+.rr-admin__option--selected {
+    background: var(--rr-accent-bg);
+    color: var(--rr-accent-fg);
+}
+.rr-admin__option--selected:hover {
+    background: var(--rr-accent-bg);
+}
+.rr-admin__option--missing {
+    background: var(--rr-error-bg);
+    color: var(--rr-error-fg);
+    cursor: default;
+}
+.rr-admin__option-name {
+    font-size: 0.95rem;
+}
+.rr-admin__option-id {
+    font-size: 0.8125rem;
+    color: var(--rr-text-secondary);
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    flex-shrink: 0;
+}
+.rr-admin__option--selected .rr-admin__option-id {
+    color: var(--rr-accent-fg);
+    opacity: 0.8;
 }
 
 .rr-admin__actions {
