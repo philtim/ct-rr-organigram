@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { Leader, OrgNode } from '@/shared/types';
 import { COPY } from '@/shared/constants';
+import { getGroupFrontendUrl } from '@/shared/api';
 import LeaderAvatar from './LeaderAvatar.vue';
 
 const props = defineProps<{ node: OrgNode }>();
@@ -11,6 +12,7 @@ const primary = computed(() => props.node.leaders.filter((l) => l.leaderClass ==
 const coLeaders = computed(() =>
     props.node.leaders.filter((l) => l.leaderClass === 'coLeader'),
 );
+const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 
 function namesOf(leaders: Leader[]): string {
     return leaders.map((l) => l.fullName).join(', ');
@@ -18,7 +20,11 @@ function namesOf(leaders: Leader[]): string {
 </script>
 
 <template>
-    <article class="hs-card">
+    <a
+        class="hs-card"
+        :href="href"
+        :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
+    >
         <p class="hs-card__subtitle">HAUPTSTAMM</p>
         <h2 class="hs-card__name">{{ node.name }}</h2>
 
@@ -77,15 +83,31 @@ function namesOf(leaders: Leader[]): string {
                 </div>
             </div>
         </div>
-    </article>
+    </a>
 </template>
 
 <style scoped>
 .hs-card {
+    display: block;
     background: var(--rr-bg-secondary);
     border: 0.5px solid var(--rr-border-tertiary);
     border-radius: var(--rr-radius-lg);
     padding: 20px 24px;
+    color: inherit;
+    text-decoration: none;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease,
+        box-shadow 150ms ease;
+}
+.hs-card:hover,
+.hs-card:focus-visible {
+    border-color: var(--rr-border-secondary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.hs-card:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 2px;
 }
 .hs-card__subtitle {
     margin: 0;
