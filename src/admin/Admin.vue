@@ -5,6 +5,9 @@ import { useAdminSettings } from './useAdminSettings';
 import type { Group } from '@/shared/types';
 import { COPY } from '@/shared/constants';
 
+const props = defineProps<{ firstRun?: boolean }>();
+const emit = defineEmits<{ saved: [] }>();
+
 const groups = ref<Group[]>([]);
 const groupsLoading = ref(false);
 const groupsError = ref<string | null>(null);
@@ -41,6 +44,7 @@ async function handleSave() {
     try {
         await save({ gateGroupId: selectedId.value });
         savedJustNow.value = true;
+        emit('saved');
     } catch {
         // saveError is already populated by the composable; UI shows it.
     }
@@ -52,11 +56,20 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
 <template>
     <section class="rr-admin">
         <header class="rr-admin__header">
-            <p class="rr-admin__subtitle">EXTENSION SETTINGS</p>
+            <p class="rr-admin__subtitle">
+                {{ props.firstRun ? 'ERSTMALIGES SETUP' : 'EXTENSION SETTINGS' }}
+            </p>
             <h1 class="rr-admin__title">{{ COPY.appTitle }}</h1>
             <p class="rr-admin__lead">
-                Wähle die Hauptstamm-Gruppe. Die Extension nutzt sie für den Zugriffscheck und liest
-                Teilstämme und Teams aus deren Children-Hierarchie.
+                <template v-if="props.firstRun">
+                    Wähle die Hauptstamm-Gruppe, um das Dashboard zu aktivieren. Die Extension
+                    nutzt sie für den Zugriffscheck und liest Teilstämme und Teams aus deren
+                    Children-Hierarchie.
+                </template>
+                <template v-else>
+                    Wähle die Hauptstamm-Gruppe. Die Extension nutzt sie für den Zugriffscheck und
+                    liest Teilstämme und Teams aus deren Children-Hierarchie.
+                </template>
             </p>
         </header>
 
