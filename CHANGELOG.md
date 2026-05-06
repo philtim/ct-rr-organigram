@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.10](https://github.com/philtim/ct-rr-organigram/compare/v0.0.9...v0.0.10) (2026-05-06)
+
+
+### Bug Fixes
+
+* **ui:** reorder Teilstamm tiles and shorten total label ([#38](https://github.com/philtim/ct-rr-organigram/issues/38)) ([6ede2d8](https://github.com/philtim/ct-rr-organigram/commit/6ede2d80dbf614b0627ad9baf3969f70facf52b7))
+
 ## [0.0.9](https://github.com/philtim/ct-rr-organigram/compare/v0.0.8...v0.0.9) (2026-05-06)
 
 
