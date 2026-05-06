@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.6](https://github.com/philtim/ct-rr-organigram/compare/v0.0.5...v0.0.6) (2026-05-06)
+
+
+### Features
+
+* **app:** show admin form directly when not yet configured ([#30](https://github.com/philtim/ct-rr-organigram/issues/30)) ([6eb3380](https://github.com/philtim/ct-rr-organigram/commit/6eb3380d1849bf8f1cf8a26d7a2b3b9161435109))
+
+
+### Bug Fixes
+
+* **dashboard:** snappier hover, stronger contrast, inset hover surface ([#28](https://github.com/philtim/ct-rr-organigram/issues/28)) ([c45dc97](https://github.com/philtim/ct-rr-organigram/commit/c45dc979333b478227aafca4abf47e273054bfe2))
+
 ## [0.0.5](https://github.com/philtim/ct-rr-organigram/compare/v0.0.4...v0.0.5) (2026-05-06)
 
 
