@@ -29,8 +29,8 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
             <div class="ts-card__compact-row">
                 <span class="ts-card__compact-name">{{ node.name }}</span>
                 <span class="ts-card__compact-counts">
-                    <template v-if="isError">?L · ?M</template>
-                    <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }}M</template>
+                    <template v-if="isError">?L · ?TLN</template>
+                    <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }} TLN</template>
                 </span>
             </div>
             <p class="ts-card__compact-summary">{{ summary }}</p>
@@ -65,6 +65,12 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
                     <p class="ts-card__stat-label">{{ COPY.teamleiterStat }}</p>
                     <p class="ts-card__stat-value">
                         {{ isError ? '?' : node.leaderCount }}
+                    </p>
+                </div>
+                <div class="ts-card__stat">
+                    <p class="ts-card__stat-label">{{ COPY.stammgroesseStat }}</p>
+                    <p class="ts-card__stat-value">
+                        {{ isError ? '?' : node.leaderCount + node.memberCount }}
                     </p>
                 </div>
                 <div class="ts-card__stat">

@@ -19,8 +19,8 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
         <div class="team-chip__row">
             <span class="team-chip__name">{{ node.name }}</span>
             <span class="team-chip__counts">
-                <template v-if="isError">?L · ?M</template>
-                <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }}M</template>
+                <template v-if="isError">?L · ?TLN</template>
+                <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }} TLN</template>
             </span>
         </div>
         <span v-if="isError" class="team-chip__leiter">?</span>

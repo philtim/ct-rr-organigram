@@ -76,6 +76,12 @@ function namesOf(leaders: Leader[]): string {
                     </p>
                 </div>
                 <div class="hs-card__stat-tile">
+                    <p class="hs-card__stat-label">{{ COPY.stammgroesseStat }}</p>
+                    <p class="hs-card__stat-value">
+                        {{ isError ? '?' : node.leaderCount + node.memberCount }}
+                    </p>
+                </div>
+                <div class="hs-card__stat-tile">
                     <p class="hs-card__stat-label">{{ COPY.mitgliederStat }}</p>
                     <p class="hs-card__stat-value">
                         {{ isError ? '?' : node.memberCount }}

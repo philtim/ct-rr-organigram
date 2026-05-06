@@ -29,5 +29,6 @@ export const COPY = {
     teilstammLeader: 'Stammleiter/Stammwart',
     teamleiterStat: 'Teamleiter',
     leiterStat: 'Leiter',
-    mitgliederStat: 'Mitglieder',
+    mitgliederStat: 'Teilnehmer',
+    stammgroesseStat: 'Stammgröße',
 } as const;
