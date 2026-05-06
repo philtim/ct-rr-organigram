@@ -30,7 +30,7 @@ const hasAny = computed(() => leaders.value.length > 0 || members.value.length >
             </article>
 
             <article v-if="members.length" class="dup__group">
-                <h3 class="dup__group-title">Mitglieder in mehreren Teams</h3>
+                <h3 class="dup__group-title">Teilnehmer in mehreren Teams</h3>
                 <ul class="dup__list">
                     <li v-for="e in members" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>
