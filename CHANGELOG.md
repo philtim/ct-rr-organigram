@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.11](https://github.com/philtim/ct-rr-organigram/compare/v0.0.10...v0.0.11) (2026-05-06)
+
+
+### Bug Fixes
+
+* trigger patch release for stat tile order changes ([#41](https://github.com/philtim/ct-rr-organigram/issues/41)) ([5e0ab7a](https://github.com/philtim/ct-rr-organigram/commit/5e0ab7af8a63cd500ec6a798ac97989345c3b241))
+
 ## [0.0.10](https://github.com/philtim/ct-rr-organigram/compare/v0.0.9...v0.0.10) (2026-05-06)
 
 
