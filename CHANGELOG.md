@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/philtim/ct-rr-organigram/compare/v0.0.3...v0.0.4) (2026-05-06)
+
+
+### Features
+
+* **dashboard:** link cards/chips to ChurchTools groups ([#24](https://github.com/philtim/ct-rr-organigram/issues/24)) ([3564837](https://github.com/philtim/ct-rr-organigram/commit/3564837f6e0943a1e09162017ccbf2dbc0e730f3))
+
 ## [0.0.3](https://github.com/philtim/ct-rr-organigram/compare/v0.0.2...v0.0.3) (2026-05-05)
 
 
