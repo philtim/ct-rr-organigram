@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.9](https://github.com/philtim/ct-rr-organigram/compare/v0.0.8...v0.0.9) (2026-05-06)
+
+
+### Features
+
+* **ui:** rename Mitglieder to Teilnehmer and add Stammgröße tile ([#35](https://github.com/philtim/ct-rr-organigram/issues/35)) ([9aa7924](https://github.com/philtim/ct-rr-organigram/commit/9aa7924d35b5c707c7b417205b06ba762b9f4d4a))
+
 ## [0.0.8](https://github.com/philtim/ct-rr-organigram/compare/v0.0.7...v0.0.8) (2026-05-06)
 
 
