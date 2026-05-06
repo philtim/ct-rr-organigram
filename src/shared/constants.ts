@@ -30,6 +30,5 @@ export const COPY = {
     teamleiterStat: 'Teamleiter',
     leiterStat: 'Leiter',
     mitgliederStat: 'Teilnehmer',
-    stammgroesseStat: 'Stammgröße',
     gesamtStat: 'Gesamt',
 } as const;
