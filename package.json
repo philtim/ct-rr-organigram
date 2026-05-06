@@ -1,7 +1,7 @@
 {
     "name": "ct-rr-organigram",
     "private": true,
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "ChurchTools extension that visualizes the Royal Rangers staff and leadership structure as an organigram dashboard.",
     "license": "MIT",
     "type": "module",
