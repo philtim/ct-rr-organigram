@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.12](https://github.com/philtim/ct-rr-organigram/compare/v0.0.11...v0.0.12) (2026-05-06)
+
+
+### Bug Fixes
+
+* **ui:** exclude Co-Leiter from Stammleiter/Stammwart list ([#43](https://github.com/philtim/ct-rr-organigram/issues/43)) ([a76d37c](https://github.com/philtim/ct-rr-organigram/commit/a76d37cd9c7e93a24f15d630a53c1d217db0e1a6))
+
 ## [0.0.11](https://github.com/philtim/ct-rr-organigram/compare/v0.0.10...v0.0.11) (2026-05-06)
 
 
