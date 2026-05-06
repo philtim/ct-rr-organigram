@@ -71,6 +71,17 @@ onMounted(async () => {
     --rr-radius-md: 8px;
     --rr-radius-lg: 12px;
     --rr-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    /* Hover surfaces — perceptible on white/grey without reading as "selected". */
+    --rr-bg-hover-on-white: #eef0f3;
+    --rr-bg-hover-on-grey: #e1e4e8;
+    --rr-border-hover: #b8bec7;
+
+    /* Motion — snappy, no overshoot. Joy comes from responsiveness, not bounce. */
+    --rr-ease-out: cubic-bezier(0.2, 0, 0, 1);
+    --rr-ease-press: cubic-bezier(0.4, 0, 1, 1);
+    --rr-dur-hover: 140ms;
+    --rr-dur-press: 60ms;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -89,6 +100,10 @@ onMounted(async () => {
         --rr-error-fg: #fca5a5;
         --rr-success-fg: #6ee7b7;
         --rr-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
+        /* Dark hover: lighten the surface (mirrors the light-mode "darken"). */
+        --rr-bg-hover-on-white: #2a3441;
+        --rr-bg-hover-on-grey: #1a2332;
+        --rr-border-hover: #6b7280;
     }
 }
 </style>

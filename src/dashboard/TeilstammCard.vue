@@ -94,7 +94,9 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     background: var(--rr-bg-primary);
     border: 0.5px solid var(--rr-border-tertiary);
     border-radius: var(--rr-radius-lg);
-    padding: 16px;
+    /* 8px outside + 8px inside link/teams = 16px to text, same as before, but
+       the inner hover surface now sits inset from the card edge. */
+    padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -103,36 +105,37 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding: 8px;
     color: inherit;
     text-decoration: none;
     border-radius: var(--rr-radius-md);
     transition:
-        transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
-        background-color 180ms ease,
-        box-shadow 180ms ease;
+        background-color var(--rr-dur-hover) var(--rr-ease-out),
+        transform var(--rr-dur-hover) var(--rr-ease-out);
 }
 .ts-card__link:hover,
 .ts-card__link:focus-visible {
-    background: var(--rr-bg-tertiary);
+    background: var(--rr-bg-hover-on-white);
     transform: translateY(-1px);
-    box-shadow: var(--rr-shadow-sm);
 }
 .ts-card__link:active {
     transform: translateY(0);
-    box-shadow: none;
-    transition-duration: 80ms;
+    background: var(--rr-bg-hover-on-grey);
+    transition-duration: var(--rr-dur-press);
+    transition-timing-function: var(--rr-ease-press);
 }
 .ts-card__link:focus-visible {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
-    .ts-card__link,
+    .ts-card__link {
+        transition-duration: 0ms;
+    }
     .ts-card__link:hover,
     .ts-card__link:focus-visible,
     .ts-card__link:active {
         transform: none;
-        transition-duration: 0ms;
     }
 }
 .ts-card__head {
@@ -190,7 +193,7 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding-top: 8px;
+    padding: 8px 8px 0;
     border-top: 0.5px solid var(--rr-border-tertiary);
 }
 
@@ -212,6 +215,7 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     }
     .ts-card__link {
         gap: 4px;
+        padding: 0;
     }
     .ts-card__compact-row {
         display: flex;

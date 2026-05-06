@@ -36,32 +36,29 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     padding: 8px 10px;
     color: inherit;
     text-decoration: none;
+    /* Inset 1px ring acts as a "border" without affecting layout. Transparent
+       at rest so only hover/focus reveals it. */
+    box-shadow: inset 0 0 0 1px transparent;
     transition:
-        transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
-        background-color 180ms ease,
-        box-shadow 180ms ease;
+        background-color var(--rr-dur-hover) var(--rr-ease-out),
+        box-shadow var(--rr-dur-hover) var(--rr-ease-out);
 }
 .team-chip:hover,
 .team-chip:focus-visible {
-    background: var(--rr-bg-tertiary);
-    transform: translateY(-1px);
-    box-shadow: var(--rr-shadow-sm);
+    background: var(--rr-bg-hover-on-white);
+    box-shadow: inset 0 0 0 1px var(--rr-border-hover);
 }
 .team-chip:active {
-    transform: translateY(0);
-    box-shadow: none;
-    transition-duration: 80ms;
+    background: var(--rr-bg-hover-on-grey);
+    transition-duration: var(--rr-dur-press);
+    transition-timing-function: var(--rr-ease-press);
 }
 .team-chip:focus-visible {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
-    .team-chip,
-    .team-chip:hover,
-    .team-chip:focus-visible,
-    .team-chip:active {
-        transform: none;
+    .team-chip {
         transition-duration: 0ms;
     }
 }

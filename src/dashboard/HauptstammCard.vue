@@ -96,32 +96,37 @@ function namesOf(leaders: Leader[]): string {
     color: inherit;
     text-decoration: none;
     transition:
-        transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
-        border-color 180ms ease,
-        box-shadow 180ms ease;
+        background-color var(--rr-dur-hover) var(--rr-ease-out),
+        border-color var(--rr-dur-hover) var(--rr-ease-out),
+        box-shadow var(--rr-dur-hover) var(--rr-ease-out),
+        transform var(--rr-dur-hover) var(--rr-ease-out);
 }
 .hs-card:hover,
 .hs-card:focus-visible {
-    border-color: var(--rr-border-secondary);
-    transform: translateY(-1px);
+    background: var(--rr-bg-hover-on-white);
+    border-color: var(--rr-border-hover);
     box-shadow: var(--rr-shadow-sm);
+    transform: translateY(-1px);
 }
 .hs-card:active {
     transform: translateY(0);
     box-shadow: none;
-    transition-duration: 80ms;
+    background: var(--rr-bg-hover-on-grey);
+    transition-duration: var(--rr-dur-press);
+    transition-timing-function: var(--rr-ease-press);
 }
 .hs-card:focus-visible {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
-    .hs-card,
+    .hs-card {
+        transition-duration: 0ms;
+    }
     .hs-card:hover,
     .hs-card:focus-visible,
     .hs-card:active {
         transform: none;
-        transition-duration: 0ms;
     }
 }
 .hs-card__subtitle {
