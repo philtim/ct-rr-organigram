@@ -6,6 +6,21 @@ import { churchtoolsClient } from '@churchtools/churchtools-client';
 
 export const ct = churchtoolsClient;
 
+declare const window: Window &
+    typeof globalThis & {
+        settings?: { base_url?: string };
+    };
+
+/**
+ * Build a same-origin link to a ChurchTools group's detail page.
+ * In dev `window.settings.base_url` is unset, so VITE_BASE_URL is used —
+ * otherwise the link would resolve to the local Vite origin instead of CT.
+ */
+export function getGroupFrontendUrl(groupId: number): string {
+    const host = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL ?? '';
+    return `${host}/groups/${groupId}`;
+}
+
 /**
  * Single shared error type so the toast component can display
  * consistent messages regardless of which feature triggered it.
