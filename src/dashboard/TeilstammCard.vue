@@ -106,15 +106,34 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     color: inherit;
     text-decoration: none;
     border-radius: var(--rr-radius-md);
-    transition: background-color 150ms ease;
+    transition:
+        transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 180ms ease,
+        box-shadow 180ms ease;
 }
 .ts-card__link:hover,
 .ts-card__link:focus-visible {
-    background: var(--rr-bg-secondary);
+    background: var(--rr-bg-tertiary);
+    transform: translateY(-1px);
+    box-shadow: var(--rr-shadow-sm);
+}
+.ts-card__link:active {
+    transform: translateY(0);
+    box-shadow: none;
+    transition-duration: 80ms;
 }
 .ts-card__link:focus-visible {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ts-card__link,
+    .ts-card__link:hover,
+    .ts-card__link:focus-visible,
+    .ts-card__link:active {
+        transform: none;
+        transition-duration: 0ms;
+    }
 }
 .ts-card__head {
     display: contents;
