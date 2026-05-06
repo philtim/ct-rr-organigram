@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.8](https://github.com/philtim/ct-rr-organigram/compare/v0.0.7...v0.0.8) (2026-05-06)
+
+
+### Features
+
+* **admin:** explicit Teilstamm picker, filter Teams to Kleingruppen ([#33](https://github.com/philtim/ct-rr-organigram/issues/33)) ([608badf](https://github.com/philtim/ct-rr-organigram/commit/608badf407528df2d78185caa5cc05fafdac7848))
+
 ## [0.0.7](https://github.com/philtim/ct-rr-organigram/compare/v0.0.6...v0.0.7) (2026-05-06)
 
 
