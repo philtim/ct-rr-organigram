@@ -8,7 +8,13 @@ import { getGroupFrontendUrl } from '@/shared/api';
 const props = defineProps<{ node: OrgNode }>();
 
 const isError = computed(() => Boolean(props.node.error));
-const leaderText = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
+// Stammleiter/Stammwart on the Teilstamm card is the role "Leiter" only
+// (leaderClass='primary'). Co-Leiter belongs to a different responsibility
+// bucket and is intentionally excluded from this list.
+const primaryLeaders = computed(() =>
+    props.node.leaders.filter((l) => l.leaderClass === 'primary'),
+);
+const leaderText = computed(() => primaryLeaders.value.map((l) => l.fullName).join(', '));
 const summary = computed(() => {
     if (isError.value) return 'Teams konnten nicht geladen werden';
     const teamWord = props.node.children.length === 1 ? 'Team' : 'Teams';
@@ -48,13 +54,13 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
                 </template>
                 <template v-else>
                     <span
-                        v-for="l in node.leaders"
+                        v-for="l in primaryLeaders"
                         :key="l.personId"
                         class="ts-card__leiter-name"
                     >
                         {{ l.fullName }}
                     </span>
-                    <span v-if="!node.leaders.length" class="ts-card__empty">
+                    <span v-if="!primaryLeaders.length" class="ts-card__empty">
                         Keine Leiter eingetragen.
                     </span>
                 </template>
