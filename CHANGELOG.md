@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/philtim/ct-rr-organigram/compare/v0.0.4...v0.0.5) (2026-05-06)
+
+
+### Bug Fixes
+
+* **dashboard:** clean group link URL and polish hover affordance ([#26](https://github.com/philtim/ct-rr-organigram/issues/26)) ([1be5030](https://github.com/philtim/ct-rr-organigram/commit/1be50300ac503e4f3b78e27c2dac4287fbbb2f67))
+
 ## [0.0.4](https://github.com/philtim/ct-rr-organigram/compare/v0.0.3...v0.0.4) (2026-05-06)
 
 
