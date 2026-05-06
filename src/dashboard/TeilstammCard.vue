@@ -68,15 +68,15 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
                     </p>
                 </div>
                 <div class="ts-card__stat">
-                    <p class="ts-card__stat-label">{{ COPY.stammgroesseStat }}</p>
-                    <p class="ts-card__stat-value">
-                        {{ isError ? '?' : node.leaderCount + node.memberCount }}
-                    </p>
-                </div>
-                <div class="ts-card__stat">
                     <p class="ts-card__stat-label">{{ COPY.mitgliederStat }}</p>
                     <p class="ts-card__stat-value">
                         {{ isError ? '?' : node.memberCount }}
+                    </p>
+                </div>
+                <div class="ts-card__stat">
+                    <p class="ts-card__stat-label">{{ COPY.gesamtStat }}</p>
+                    <p class="ts-card__stat-value">
+                        {{ isError ? '?' : node.leaderCount + node.memberCount }}
                     </p>
                 </div>
             </div>
