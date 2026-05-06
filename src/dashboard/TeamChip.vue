@@ -36,15 +36,34 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     padding: 8px 10px;
     color: inherit;
     text-decoration: none;
-    transition: background-color 150ms ease;
+    transition:
+        transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 180ms ease,
+        box-shadow 180ms ease;
 }
 .team-chip:hover,
 .team-chip:focus-visible {
-    background: var(--rr-bg-primary);
+    background: var(--rr-bg-tertiary);
+    transform: translateY(-1px);
+    box-shadow: var(--rr-shadow-sm);
+}
+.team-chip:active {
+    transform: translateY(0);
+    box-shadow: none;
+    transition-duration: 80ms;
 }
 .team-chip:focus-visible {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .team-chip,
+    .team-chip:hover,
+    .team-chip:focus-visible,
+    .team-chip:active {
+        transform: none;
+        transition-duration: 0ms;
+    }
 }
 .team-chip__row {
     display: flex;

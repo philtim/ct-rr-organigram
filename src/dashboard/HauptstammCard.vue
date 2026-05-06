@@ -96,18 +96,33 @@ function namesOf(leaders: Leader[]): string {
     color: inherit;
     text-decoration: none;
     transition:
-        border-color 150ms ease,
-        background-color 150ms ease,
-        box-shadow 150ms ease;
+        transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-color 180ms ease,
+        box-shadow 180ms ease;
 }
 .hs-card:hover,
 .hs-card:focus-visible {
     border-color: var(--rr-border-secondary);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+    box-shadow: var(--rr-shadow-sm);
+}
+.hs-card:active {
+    transform: translateY(0);
+    box-shadow: none;
+    transition-duration: 80ms;
 }
 .hs-card:focus-visible {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .hs-card,
+    .hs-card:hover,
+    .hs-card:focus-visible,
+    .hs-card:active {
+        transform: none;
+        transition-duration: 0ms;
+    }
 }
 .hs-card__subtitle {
     margin: 0;

@@ -12,13 +12,20 @@ declare const window: Window &
     };
 
 /**
- * Build a same-origin link to a ChurchTools group's detail page.
- * In dev `window.settings.base_url` is unset, so VITE_BASE_URL is used —
- * otherwise the link would resolve to the local Vite origin instead of CT.
+ * Build a link to a ChurchTools group's detail page.
+ * `base_url` (injected by the host) or VITE_BASE_URL may carry a trailing
+ * path segment (e.g. when the extension is loaded inside a /groups/X view).
+ * Extract the origin so we always emit a clean `{origin}/groups/{id}`.
  */
 export function getGroupFrontendUrl(groupId: number): string {
-    const host = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL ?? '';
-    return `${host}/groups/${groupId}`;
+    const raw = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL ?? '';
+    let origin = raw.replace(/\/+$/, '');
+    try {
+        origin = new URL(raw, window.location.href).origin;
+    } catch {
+        /* fall through with the trimmed value */
+    }
+    return `${origin}/groups/${groupId}`;
 }
 
 /**
