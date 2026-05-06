@@ -9,12 +9,16 @@ import { formatTimestamp, useDashboard } from './useDashboard';
 import { COPY } from '@/shared/constants';
 import type { GatePerson } from '@/gate/useGate';
 
-const props = defineProps<{ person: GatePerson; gateGroupId: number }>();
+const props = defineProps<{
+    person: GatePerson;
+    gateGroupId: number;
+    teilstammIds?: number[];
+}>();
 
 const { state, load } = useDashboard();
 
 onMounted(() => {
-    load(props.gateGroupId);
+    load(props.gateGroupId, props.teilstammIds);
 });
 
 const stand = computed(() =>
@@ -45,7 +49,7 @@ const appCommit = __APP_COMMIT__;
                     type="button"
                     class="rr-dash__refresh"
                     :disabled="state.phase === 'loading'"
-                    @click="load(gateGroupId)"
+                    @click="load(gateGroupId, teilstammIds)"
                 >
                     ↻ <span class="rr-dash__refresh-label">{{ COPY.refresh }}</span>
                 </button>

@@ -10,3 +10,7 @@ import type { Group } from '@/shared/types';
 export async function listGroups(): Promise<Group[]> {
     return await fetchAllPages<Group>('/groups', { limit: 200 });
 }
+
+/** Re-export so the Teilstamm picker can list a Hauptstamm's direct children. */
+export { getGroupChildren } from '@/dashboard/dashboard.api';
+export type { GroupChild } from '@/dashboard/dashboard.api';

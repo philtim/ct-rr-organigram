@@ -11,10 +11,10 @@ export type DashboardState =
 export function useDashboard() {
     const state = ref<DashboardState>({ phase: 'idle' });
 
-    async function load(gateGroupId: number): Promise<void> {
+    async function load(gateGroupId: number, teilstammIds?: number[]): Promise<void> {
         state.value = { phase: 'loading' };
         try {
-            const root = await loadOrganigram(gateGroupId);
+            const root = await loadOrganigram(gateGroupId, teilstammIds);
             state.value = {
                 phase: 'ready',
                 root,

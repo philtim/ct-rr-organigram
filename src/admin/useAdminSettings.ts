@@ -40,10 +40,18 @@ export function useAdminSettings() {
             // object alongside the category fields, so cat.gateGroupId is on
             // the same object once non-null.
             const merged = cat as unknown as (Settings & { id: number }) | undefined;
-            settings.value =
-                merged && typeof merged.gateGroupId === 'number'
-                    ? { gateGroupId: merged.gateGroupId }
-                    : null;
+            if (merged && typeof merged.gateGroupId === 'number') {
+                const next: Settings = { gateGroupId: merged.gateGroupId };
+                if (
+                    Array.isArray(merged.teilstammIds) &&
+                    merged.teilstammIds.every((x) => typeof x === 'number')
+                ) {
+                    next.teilstammIds = merged.teilstammIds;
+                }
+                settings.value = next;
+            } else {
+                settings.value = null;
+            }
         } catch {
             // Module not registered yet, no permission, or any other read
             // failure — UI treats it identically as config-missing.

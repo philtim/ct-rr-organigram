@@ -54,6 +54,7 @@ async function handleSaved() {
         "
         :person="gateStatus.person"
         :gate-group-id="settings.gateGroupId"
+        :teilstamm-ids="settings.teilstammIds"
     />
     <Gate v-else :status="gateStatus" />
 </template>

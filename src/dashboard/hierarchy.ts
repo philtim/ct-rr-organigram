@@ -93,7 +93,10 @@ async function safeGetChildren(groupId: number): Promise<GroupChild[] | null> {
  * sum itself remains usable on partially-failed loads). Leader NAMES on
  * each level still come from that level's own membership.
  */
-export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
+export async function loadOrganigram(
+    rootGroupId: number,
+    teilstammIds?: number[],
+): Promise<OrgNode> {
     const [root, rootChildren] = await Promise.all([
         safeLoadGroupNode(rootGroupId),
         safeGetChildren(rootGroupId),
@@ -110,8 +113,16 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
         };
     }
 
+    // If the admin picked specific Teilstämme, walk only those. Undefined
+    // means "no explicit selection yet" → keep legacy behavior so existing
+    // installations don't break before they've been reconfigured.
+    const teilstammIdSet = teilstammIds ? new Set(teilstammIds) : null;
+    const selectedRootChildren = teilstammIdSet
+        ? rootChildren.filter((c) => teilstammIdSet.has(parseInt(c.domainIdentifier, 10)))
+        : rootChildren;
+
     const teilstaemme: OrgNode[] = await Promise.all(
-        rootChildren.map(async (child) => {
+        selectedRootChildren.map(async (child) => {
             const tsId = parseInt(child.domainIdentifier, 10);
             const [ts, tsChildren] = await Promise.all([
                 safeLoadGroupNode(tsId, child.title),
@@ -126,8 +137,15 @@ export async function loadOrganigram(rootGroupId: number): Promise<OrgNode> {
                 };
             }
 
+            // Teilstamm children may include operational/Maßnahme groups
+            // alongside the actual Kleingruppen-Teams. Only Kleingruppen
+            // (groupTypeId=1) render as team chips and feed into the counts.
+            const teamChildren = tsChildren.filter(
+                (c) => c.domainAttributes.groupTypeId === 1,
+            );
+
             const teams: OrgNode[] = await Promise.all(
-                tsChildren.map((teamChild) =>
+                teamChildren.map((teamChild) =>
                     safeLoadGroupNode(
                         parseInt(teamChild.domainIdentifier, 10),
                         teamChild.title,
