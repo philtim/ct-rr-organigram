@@ -18,6 +18,13 @@ export type {
 /** Persisted shape of `settings` KV entry (US-2). */
 export type Settings = {
     gateGroupId: number;
+    /**
+     * Group-IDs of the actual Teilstämme. Many Hauptstamm children are
+     * operational/Maßnahme groups that should not render as Teilstamm cards;
+     * the admin picks the real ones explicitly. Undefined = legacy behavior
+     * (render all children) so existing installations keep working.
+     */
+    teilstammIds?: number[];
 };
 
 /**

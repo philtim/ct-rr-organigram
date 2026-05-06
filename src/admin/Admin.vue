@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { listGroups } from './admin.api';
+import { computed, onMounted, ref, watch } from 'vue';
+import { getGroupChildren, listGroups } from './admin.api';
+import type { GroupChild } from './admin.api';
 import { useAdminSettings } from './useAdminSettings';
 import type { Group } from '@/shared/types';
 import { COPY } from '@/shared/constants';
@@ -18,6 +19,14 @@ const selectedId = ref<number | null>(null);
 const savedJustNow = ref(false);
 const searchText = ref('');
 
+const hauptstammChildren = ref<GroupChild[]>([]);
+const childrenLoading = ref(false);
+const childrenError = ref<string | null>(null);
+const teilstammSelections = ref<Set<number>>(new Set());
+// Hauptstamm changes after the initial sync should clear the Teilstamm
+// picks (they refer to children of the previously-selected Hauptstamm).
+let initialSyncDone = false;
+
 const sortedGroups = computed(() =>
     [...groups.value].sort((a, b) => a.name.localeCompare(b.name, 'de')),
 );
@@ -32,17 +41,64 @@ const filteredGroups = computed(() => {
     );
 });
 
+const sortedHauptstammChildren = computed(() =>
+    [...hauptstammChildren.value].sort((a, b) => a.title.localeCompare(b.title, 'de')),
+);
+/** Saved IDs that aren't in the freshly fetched children — show as warning. */
+const orphanedTeilstammIds = computed(() => {
+    const present = new Set(
+        hauptstammChildren.value.map((c) => parseInt(c.domainIdentifier, 10)),
+    );
+    return [...teilstammSelections.value].filter((id) => !present.has(id));
+});
+
+async function loadChildrenFor(id: number) {
+    childrenLoading.value = true;
+    childrenError.value = null;
+    try {
+        hauptstammChildren.value = await getGroupChildren(id);
+    } catch (e) {
+        hauptstammChildren.value = [];
+        childrenError.value =
+            e instanceof Error ? e.message : 'Untergruppen konnten nicht geladen werden.';
+    } finally {
+        childrenLoading.value = false;
+    }
+}
+
+function toggleTeilstamm(id: number) {
+    const next = new Set(teilstammSelections.value);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    teilstammSelections.value = next;
+}
+
+watch(selectedId, async (newId) => {
+    if (!initialSyncDone) return;
+    teilstammSelections.value = new Set();
+    if (newId == null) {
+        hauptstammChildren.value = [];
+        return;
+    }
+    await loadChildrenFor(newId);
+});
+
 onMounted(async () => {
     groupsLoading.value = true;
     try {
         const [g] = await Promise.all([listGroups(), load()]);
         groups.value = g;
         selectedId.value = settings.value?.gateGroupId ?? null;
+        teilstammSelections.value = new Set(settings.value?.teilstammIds ?? []);
+        if (selectedId.value !== null) {
+            await loadChildrenFor(selectedId.value);
+        }
     } catch (e) {
         groupsError.value =
             e instanceof Error ? e.message : 'Gruppen konnten nicht geladen werden.';
     } finally {
         groupsLoading.value = false;
+        initialSyncDone = true;
     }
 });
 
@@ -50,7 +106,10 @@ async function handleSave() {
     if (selectedId.value == null) return;
     savedJustNow.value = false;
     try {
-        await save({ gateGroupId: selectedId.value });
+        await save({
+            gateGroupId: selectedId.value,
+            teilstammIds: [...teilstammSelections.value],
+        });
         savedJustNow.value = true;
         emit('saved');
     } catch {
@@ -58,7 +117,17 @@ async function handleSave() {
     }
 }
 
-const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
+const isLoading = computed(
+    () => groupsLoading.value || settingsLoading.value || childrenLoading.value,
+);
+const hasChanges = computed(() => {
+    if (selectedId.value == null) return false;
+    if (selectedId.value !== settings.value?.gateGroupId) return true;
+    const saved = new Set(settings.value?.teilstammIds ?? []);
+    if (saved.size !== teilstammSelections.value.size) return true;
+    for (const id of teilstammSelections.value) if (!saved.has(id)) return true;
+    return false;
+});
 </script>
 
 <template>
@@ -135,13 +204,81 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
                 </template>
             </div>
 
+            <template v-if="selectedId != null">
+                <label class="rr-admin__label rr-admin__label--ts">Teilstämme</label>
+                <p class="rr-admin__help">
+                    Wähle die Untergruppen, die als Teilstamm-Karten erscheinen. Andere
+                    Untergruppen (Maßnahmen, Events) bleiben außen vor und fließen nicht in die
+                    Counts ein.
+                </p>
+                <div
+                    v-if="childrenError"
+                    class="rr-admin__error-inline"
+                    role="alert"
+                >
+                    {{ childrenError }}
+                </div>
+                <div
+                    class="rr-admin__list"
+                    role="group"
+                    aria-label="Teilstämme"
+                    :aria-busy="childrenLoading || undefined"
+                >
+                    <p v-if="childrenLoading" class="rr-admin__list-empty">
+                        {{ COPY.loading }}
+                    </p>
+                    <template v-else>
+                        <div
+                            v-for="id in orphanedTeilstammIds"
+                            :key="`orphan-${id}`"
+                            class="rr-admin__option rr-admin__option--missing"
+                        >
+                            <span class="rr-admin__option-name">
+                                (nicht mehr in Untergruppen, ID {{ id }})
+                            </span>
+                        </div>
+                        <label
+                            v-for="child in sortedHauptstammChildren"
+                            :key="child.domainIdentifier"
+                            class="rr-admin__option rr-admin__option--check"
+                            :class="{
+                                'rr-admin__option--selected': teilstammSelections.has(
+                                    parseInt(child.domainIdentifier, 10),
+                                ),
+                            }"
+                        >
+                            <input
+                                type="checkbox"
+                                class="rr-admin__checkbox"
+                                :checked="
+                                    teilstammSelections.has(
+                                        parseInt(child.domainIdentifier, 10),
+                                    )
+                                "
+                                @change="
+                                    toggleTeilstamm(parseInt(child.domainIdentifier, 10))
+                                "
+                            />
+                            <span class="rr-admin__option-name">{{ child.title }}</span>
+                            <span class="rr-admin__option-id">
+                                ID {{ child.domainIdentifier }}
+                            </span>
+                        </label>
+                        <p
+                            v-if="!sortedHauptstammChildren.length && !orphanedTeilstammIds.length"
+                            class="rr-admin__list-empty"
+                        >
+                            Keine Untergruppen.
+                        </p>
+                    </template>
+                </div>
+            </template>
+
             <div class="rr-admin__actions">
                 <button
                     type="submit"
                     class="rr-admin__button"
-                    :disabled="
-                        isLoading || selectedId == null || selectedId === settings?.gateGroupId
-                    "
+                    :disabled="isLoading || !hasChanges"
                 >
                     Speichern
                 </button>
@@ -202,6 +339,34 @@ const isLoading = computed(() => groupsLoading.value || settingsLoading.value);
 .rr-admin__label {
     font-size: 0.875rem;
     font-weight: 500;
+}
+
+.rr-admin__label--ts {
+    margin-top: 0.5rem;
+}
+
+.rr-admin__help {
+    margin: -0.25rem 0 0;
+    color: var(--rr-text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+.rr-admin__option--check {
+    cursor: pointer;
+    justify-content: flex-start;
+}
+.rr-admin__option--check .rr-admin__option-name {
+    flex: 1;
+}
+
+.rr-admin__checkbox {
+    flex-shrink: 0;
+    margin: 0;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--rr-accent-fg);
+    cursor: pointer;
 }
 
 .rr-admin__search {
