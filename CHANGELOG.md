@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.14](https://github.com/philtim/ct-rr-organigram/compare/v0.0.13...v0.0.14) (2026-05-11)
+
+
+### Features
+
+* **duplicates:** surface cross-class double assignments ([#47](https://github.com/philtim/ct-rr-organigram/issues/47)) ([771637d](https://github.com/philtim/ct-rr-organigram/commit/771637d98ac9ea14de090275bb139c89c8f494c5))
+
 ## [0.0.13](https://github.com/philtim/ct-rr-organigram/compare/v0.0.12...v0.0.13) (2026-05-11)
 
 
