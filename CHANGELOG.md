@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.13](https://github.com/philtim/ct-rr-organigram/compare/v0.0.12...v0.0.13) (2026-05-11)
+
+
+### Bug Fixes
+
+* **counts:** broaden Leiter definition and stop double-counting ([#45](https://github.com/philtim/ct-rr-organigram/issues/45)) ([9aa82d8](https://github.com/philtim/ct-rr-organigram/commit/9aa82d85c7fe10adc30d18c313a6ab9bcd0a0d53))
+
 ## [0.0.12](https://github.com/philtim/ct-rr-organigram/compare/v0.0.11...v0.0.12) (2026-05-06)
 
 
