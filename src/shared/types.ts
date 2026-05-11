@@ -28,12 +28,16 @@ export type Settings = {
 };
 
 /**
- * Discriminates the two leader buckets on the Hauptstamm hero card.
- * `primary` matches role.name === "Leiter" (Hauptstammleiter / Hauptstammwart);
- * `coLeader` matches role.name === "Co-Leiter" (Stammleiter / Stammwart / Stammhelfer).
- * Anything else with isLeader=true falls into `primary` so it isn't lost.
+ * Discriminates the leader display buckets used by the cards.
+ *   `primary`  — role.name === "Leiter"
+ *   `coLeader` — role.name === "Co-Leiter"
+ *   `support`  — Mitarbeiter / Teamhelfer / Organisator (counted as leader but
+ *                not shown as a pill on the Hauptstamm or in the Stammleiter
+ *                list on Teilstamm cards).
+ * Anything else that passes the leader filter (e.g. an unknown isLeader=true
+ * role on a custom installation) falls into `primary` so it isn't lost.
  */
-export type LeaderClass = 'primary' | 'coLeader';
+export type LeaderClass = 'primary' | 'coLeader' | 'support';
 
 export type Leader = {
     personId: number;
