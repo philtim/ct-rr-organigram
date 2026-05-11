@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
-import { findDuplicateLeaders, findDuplicateMembers } from './duplicates';
+import { findDuplicateLeaders, findDuplicateMembers, findMixedAssignments } from './duplicates';
 
 const props = defineProps<{ root: OrgNode }>();
 
 const leaders = computed(() => findDuplicateLeaders(props.root));
 const members = computed(() => findDuplicateMembers(props.root));
-const hasAny = computed(() => leaders.value.length > 0 || members.value.length > 0);
+const mixed = computed(() => findMixedAssignments(props.root));
+const hasAny = computed(
+    () => leaders.value.length > 0 || members.value.length > 0 || mixed.value.length > 0,
+);
 </script>
 
 <template>
@@ -35,6 +38,19 @@ const hasAny = computed(() => leaders.value.length > 0 || members.value.length >
                     <li v-for="e in members" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ e.teamNames.join(', ') }}</span>
+                    </li>
+                </ul>
+            </article>
+
+            <article v-if="mixed.length" class="dup__group">
+                <h3 class="dup__group-title">Leiter in einem Team, Teilnehmer in einem anderen</h3>
+                <ul class="dup__list">
+                    <li v-for="e in mixed" :key="e.personId" class="dup__item">
+                        <span class="dup__name">{{ e.fullName }}</span>
+                        <span class="dup__teams"> Leiter: {{ e.leaderTeams.join(', ') }} </span>
+                        <span class="dup__teams">
+                            Teilnehmer: {{ e.participantTeams.join(', ') }}
+                        </span>
                     </li>
                 </ul>
             </article>
