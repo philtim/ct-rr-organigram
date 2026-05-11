@@ -155,7 +155,11 @@ export async function loadOrganigram(
 
             // Teilstamm aggregation: unique persons across teams.
             // A person who leads two teams (or is a member of two) under
-            // the same Teilstamm is counted once.
+            // the same Teilstamm is counted once. Leader status takes
+            // precedence over participant status — if the same person
+            // leads one team and is a participant in another, they only
+            // count as a leader (so leaderCount + memberCount == unique
+            // persons, no double-count on the "Gesamt" tile).
             const okTeams = teams.filter((t) => !t.error);
             const tsLeaderIds = new Set<number>();
             const tsParticipantIds = new Set<number>();
@@ -163,6 +167,7 @@ export async function loadOrganigram(
                 for (const l of team.leaders) tsLeaderIds.add(l.personId);
                 for (const p of team.participants) tsParticipantIds.add(p.personId);
             }
+            for (const id of tsLeaderIds) tsParticipantIds.delete(id);
             return {
                 ...ts,
                 leaderCount: tsLeaderIds.size,
@@ -173,22 +178,27 @@ export async function loadOrganigram(
     );
 
     // Hauptstamm aggregation: unique persons across the whole tree.
-    //   Leiter = (Hauptstamm own leaders) ∪ (every team's leaders)
-    //   Mitglieder = unique team participants (non-leaders)
-    // A Co-Leiter on the Hauptstamm who is also a Teamleiter is counted
-    // once in Leiter. A person who is a member of two teams is counted
-    // once in Mitglieder.
+    //   Leiter     = (Hauptstamm leaders) ∪ (Teilstamm-MA leaders) ∪ (every team's leaders)
+    //   Mitglieder = unique team participants minus anyone already in Leiter
+    // Leader status takes precedence over participant status, matching
+    // the auto-membership rule of "RR Mitarbeiter" and the existing
+    // DuplicatesPanel semantics. With the precedence applied,
+    // leaderCount + memberCount equals the unique-person count and the
+    // "Gesamt" tile is no longer inflated by leader-on-A / participant-
+    // on-B overlaps.
     const okTs = teilstaemme.filter((ts) => !ts.error);
     const allLeaderIds = new Set<number>();
     const allParticipantIds = new Set<number>();
     for (const l of root.leaders) allLeaderIds.add(l.personId);
     for (const ts of okTs) {
+        for (const l of ts.leaders) allLeaderIds.add(l.personId);
         for (const team of ts.children) {
             if (team.error) continue;
             for (const l of team.leaders) allLeaderIds.add(l.personId);
             for (const p of team.participants) allParticipantIds.add(p.personId);
         }
     }
+    for (const id of allLeaderIds) allParticipantIds.delete(id);
     return {
         ...root,
         leaderCount: allLeaderIds.size,

@@ -11,6 +11,23 @@ export const KV_GATE_GROUP_ID_FIELD = 'gateGroupId';
 /** Hard timeout per outbound API call (US-5 non-functional req). */
 export const API_TIMEOUT_MS = 30_000;
 
+/**
+ * Role names (lowercased) that count as "Leiter" in the stat tiles,
+ * beyond ChurchTools' built-in `role.isLeader === true` flag. Matches
+ * the auto-membership rule of the "RR Mitarbeiter" group on the live
+ * instance, which considers everyone with a Mitarbeiter/Teamhelfer/
+ * Organisator role on any RR group an MA — even when the role itself
+ * has isLeader=false.
+ */
+export const LEADER_ROLE_NAMES: ReadonlySet<string> = new Set([
+    'leiter',
+    'co-leiter',
+    'coleiter',
+    'mitarbeiter',
+    'teamhelfer',
+    'organisator',
+]);
+
 /** UI copy. */
 export const COPY = {
     appTitle: 'RR Mitarbeiter-Dashboard',
