@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/philtim/ct-rr-organigram/compare/v0.0.14...v1.0.0) (2026-05-11)
+
+
+### Miscellaneous Chores
+
+* graduate to 1.0.0 and use standard semver bumps ([#49](https://github.com/philtim/ct-rr-organigram/issues/49)) ([545f3aa](https://github.com/philtim/ct-rr-organigram/commit/545f3aa8b0f88fd97cc10a5a5e62747cf0fcbf51))
+
 ## [0.0.14](https://github.com/philtim/ct-rr-organigram/compare/v0.0.13...v0.0.14) (2026-05-11)
 
 
