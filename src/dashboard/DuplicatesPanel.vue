@@ -21,7 +21,13 @@ const hasAny = computed(
             Keine Person ist mehrfach in Teams zugewiesen.
         </p>
 
-        <div v-else class="dup__groups">
+        <p v-else class="dup__rule">
+            Personen mit Leiter-Rolle in mindestens einem Team werden in der Gesamtzählung
+            immer als Leiter gewertet — auch wenn sie in anderen Teams als Mitglied geführt
+            sind. Dadurch wird niemand doppelt gezählt.
+        </p>
+
+        <div v-if="hasAny" class="dup__groups">
             <article v-if="leaders.length" class="dup__group">
                 <h3 class="dup__group-title">Teamleiter in mehreren Teams</h3>
                 <ul class="dup__list">
@@ -78,6 +84,13 @@ const hasAny = computed(
     font-size: 13px;
     color: var(--rr-text-secondary);
     font-style: italic;
+}
+
+.dup__rule {
+    margin: 0 0 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--rr-text-secondary);
 }
 
 .dup__groups {
