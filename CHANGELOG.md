@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/philtim/ct-rr-organigram/compare/v1.0.0...v1.1.0) (2026-06-03)
+
+
+### Features
+
+* add hint where duplicate people count towards to ([d238464](https://github.com/philtim/ct-rr-organigram/commit/d2384644444392ddc12e9bd87f54f22f700f1c15))
+
 ## [1.0.0](https://github.com/philtim/ct-rr-organigram/compare/v0.0.14...v1.0.0) (2026-05-11)
 
 
