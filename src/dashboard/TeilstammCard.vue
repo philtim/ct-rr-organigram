@@ -22,6 +22,14 @@ const summary = computed(() => {
     return `${lead} · ${props.node.children.length} ${teamWord}`;
 });
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
+// Written-out counts for the mobile compact view — Variante-C style,
+// consistent with TeamChip. Horizont only appears when > 0.
+const compactMeta = computed(() => {
+    if (isError.value) return '? Leiter · ? Teilnehmer';
+    const parts = [`${props.node.leaderCount} Leiter`, `${props.node.memberCount} Teilnehmer`];
+    if (props.node.horizontCount > 0) parts.push(`${props.node.horizontCount}× Horizont`);
+    return parts.join(' · ');
+});
 </script>
 
 <template>
@@ -34,12 +42,9 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
             <!-- Compact mobile row (hidden on tablet+) -->
             <div class="ts-card__compact-row">
                 <span class="ts-card__compact-name">{{ node.name }}</span>
-                <span class="ts-card__compact-counts">
-                    <template v-if="isError">?L · ?TLN</template>
-                    <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }} TLN</template>
-                </span>
             </div>
             <p class="ts-card__compact-summary">{{ summary }}</p>
+            <p class="ts-card__compact-meta">{{ compactMeta }}</p>
 
             <!-- Full layout (hidden on mobile) -->
             <header class="ts-card__head">
@@ -211,7 +216,8 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 
 /* Compact row visible only on mobile */
 .ts-card__compact-row,
-.ts-card__compact-summary {
+.ts-card__compact-summary,
+.ts-card__compact-meta {
     display: none;
 }
 
@@ -239,12 +245,8 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
         font-size: 14px;
         font-weight: 500;
     }
-    .ts-card__compact-counts {
-        font-size: 11px;
-        color: var(--rr-text-secondary);
-        flex-shrink: 0;
-    }
-    .ts-card__compact-summary {
+    .ts-card__compact-summary,
+    .ts-card__compact-meta {
         display: block;
         margin: 0;
         font-size: 11px;

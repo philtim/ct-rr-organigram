@@ -8,6 +8,15 @@ const props = defineProps<{ node: OrgNode }>();
 const isError = computed(() => Boolean(props.node.error));
 const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
+// Variante C meta line: counts written out below the leader names.
+// The Horizont segment only appears when at least one member ordered one,
+// so teams without the field (e.g. Entdecker) keep a two-line chip.
+const metaText = computed(() => {
+    if (isError.value) return '? Leiter · ? Teilnehmer';
+    const parts = [`${props.node.leaderCount} Leiter`, `${props.node.memberCount} Teilnehmer`];
+    if (props.node.horizontCount > 0) parts.push(`${props.node.horizontCount}× Horizont`);
+    return parts.join(' · ');
+});
 </script>
 
 <template>
@@ -18,13 +27,10 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     >
         <div class="team-chip__row">
             <span class="team-chip__name">{{ node.name }}</span>
-            <span class="team-chip__counts">
-                <template v-if="isError">?L · ?TLN</template>
-                <template v-else>{{ node.leaderCount }}L · {{ node.memberCount }} TLN</template>
-            </span>
         </div>
         <span v-if="isError" class="team-chip__leiter">?</span>
         <span v-else-if="leaderNames" class="team-chip__leiter">{{ leaderNames }}</span>
+        <span class="team-chip__meta">{{ metaText }}</span>
     </a>
 </template>
 
@@ -73,15 +79,17 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
     font-size: 13px;
     font-weight: 500;
 }
-.team-chip__counts {
-    font-size: 12px;
-    color: var(--rr-text-secondary);
-    flex-shrink: 0;
-}
 .team-chip__leiter {
     display: block;
     font-size: 12px;
     color: var(--rr-text-secondary);
     line-height: 1.4;
+}
+.team-chip__meta {
+    display: block;
+    font-size: 12px;
+    color: var(--rr-text-secondary);
+    line-height: 1.4;
+    margin-top: 2px;
 }
 </style>

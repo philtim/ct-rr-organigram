@@ -1,6 +1,6 @@
 import type { GroupChild } from './dashboard.api';
 import { getGroup, getGroupChildren, getGroupMembers } from './dashboard.api';
-import { leadersFromMembers, participantsFromMembers } from './counts';
+import { horizontCountFromMembers, leadersFromMembers, participantsFromMembers, sumBy } from './counts';
 import { API_TIMEOUT_MS } from '@/shared/constants';
 import type { OrgNode } from '@/shared/types';
 
@@ -34,6 +34,7 @@ function errorNode(groupId: number, fallbackName: string): OrgNode {
         participants: [],
         leaderCount: 0,
         memberCount: 0,
+        horizontCount: 0,
         children: [],
         error: 'fetch-failed',
     };
@@ -61,6 +62,7 @@ async function safeLoadGroupNode(groupId: number, fallbackName = '?'): Promise<O
             // levels overwrite these with deduped unions in loadOrganigram.
             leaderCount: leaders.length,
             memberCount: participants.length,
+            horizontCount: horizontCountFromMembers(members),
             children: [],
         };
     } catch (e) {
@@ -172,6 +174,7 @@ export async function loadOrganigram(
                 ...ts,
                 leaderCount: tsLeaderIds.size,
                 memberCount: tsParticipantIds.size,
+                horizontCount: sumBy(okTeams, (t) => t.horizontCount),
                 children: teams,
             };
         }),
@@ -203,6 +206,7 @@ export async function loadOrganigram(
         ...root,
         leaderCount: allLeaderIds.size,
         memberCount: allParticipantIds.size,
+        horizontCount: sumBy(okTs, (ts) => ts.horizontCount),
         children: teilstaemme,
     };
 }
