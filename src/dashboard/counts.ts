@@ -113,3 +113,30 @@ function deriveInitials(member: GroupMember): string {
 export function sumBy<T>(items: T[], field: (item: T) => number): number {
     return items.reduce((acc, item) => acc + field(item), 0);
 }
+
+/**
+ * Count members whose "Horizont" group-member field (checkbox) is set.
+ * The live API inlines member fields as an array of {name, value} where
+ * a checked checkbox arrives as value "1"; the generated GroupMember
+ * type declares `fields` as an object, so parse defensively and treat
+ * anything that isn't the recon-confirmed array shape as "no field".
+ */
+export function horizontCountFromMembers(members: GroupMember[]): number {
+    let count = 0;
+    for (const m of members) {
+        const fields = (m as { fields?: unknown }).fields;
+        if (!Array.isArray(fields)) continue;
+        for (const f of fields) {
+            const entry = f as { name?: unknown; value?: unknown };
+            if (
+                typeof entry.name === 'string' &&
+                entry.name.trim().toLowerCase() === 'horizont' &&
+                (entry.value === '1' || entry.value === 1 || entry.value === true)
+            ) {
+                count += 1;
+                break;
+            }
+        }
+    }
+    return count;
+}

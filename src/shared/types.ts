@@ -76,6 +76,14 @@ export type OrgNode = {
      *  - Hauptstamm: unique team participants across the whole tree.
      */
     memberCount: number;
+    /**
+     * Number of members who want the "Horizont" magazine (group member
+     * checkbox field "Horizont" is set).
+     *  - Team: this team's own count.
+     *  - Teilstamm/Hauptstamm: sum over child teams — it is an order
+     *    quantity, so double team memberships intentionally count twice.
+     */
+    horizontCount: number;
     children: OrgNode[];
     /** Set when this node failed to load — drives the "?" rendering of US-5. */
     error?: 'fetch-failed' | 'forbidden';
