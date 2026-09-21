@@ -30,9 +30,7 @@ const compactCounts = computed(() => {
     return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
 const compactHorizont = computed(() =>
-    !isError.value && props.node.horizontCount > 0
-        ? `${props.node.horizontCount}× Horizont`
-        : null,
+    isError.value ? '?× Horizont' : `${props.node.horizontCount}× Horizont`,
 );
 </script>
 
@@ -50,9 +48,7 @@ const compactHorizont = computed(() =>
             <p class="ts-card__compact-summary">{{ summary }}</p>
             <div class="ts-card__compact-meta">
                 <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
-                <span v-if="compactHorizont" class="ts-card__compact-meta-line">{{
-                    compactHorizont
-                }}</span>
+                <span class="ts-card__compact-meta-line">{{ compactHorizont }}</span>
             </div>
 
             <!-- Full layout (hidden on mobile) -->
@@ -97,6 +93,15 @@ const compactHorizont = computed(() =>
                     <p class="ts-card__stat-label">{{ COPY.gesamtStat }}</p>
                     <p class="ts-card__stat-value">
                         {{ isError ? '?' : node.leaderCount + node.memberCount }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="ts-card__horizont-row">
+                <div class="ts-card__stat">
+                    <p class="ts-card__stat-label">{{ COPY.horizontStat }}</p>
+                    <p class="ts-card__stat-value">
+                        {{ isError ? '?' : node.horizontCount }}
                     </p>
                 </div>
             </div>
@@ -205,6 +210,10 @@ const compactHorizont = computed(() =>
 .ts-card__stat {
     flex: 1;
 }
+.ts-card__horizont-row {
+    padding-top: 8px;
+    border-top: 0.5px solid var(--rr-border-tertiary);
+}
 .ts-card__stat-label {
     margin: 0;
     font-size: 11px;
@@ -274,6 +283,7 @@ const compactHorizont = computed(() =>
     .ts-card__head,
     .ts-card__leiter-list,
     .ts-card__stat-row,
+    .ts-card__horizont-row,
     .ts-card__teams {
         display: none;
     }

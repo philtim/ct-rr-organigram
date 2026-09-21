@@ -48,4 +48,5 @@ export const COPY = {
     leiterStat: 'Leiter',
     mitgliederStat: 'Teilnehmer',
     gesamtStat: 'Gesamt',
+    horizontStat: 'Benötigte Horizonte',
 } as const;
