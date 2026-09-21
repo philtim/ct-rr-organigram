@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/philtim/ct-rr-organigram/compare/v1.3.0...v1.4.0) (2026-09-21)
+
+
+### Features
+
+* always show Horizont count and add Teilstamm total section ([#56](https://github.com/philtim/ct-rr-organigram/issues/56)) ([929838b](https://github.com/philtim/ct-rr-organigram/commit/929838b99f0febd634af5a1a37cb720a11f8db81))
+
 ## [1.3.0](https://github.com/philtim/ct-rr-organigram/compare/v1.2.0...v1.3.0) (2026-09-21)
 
 
