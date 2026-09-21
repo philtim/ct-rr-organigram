@@ -10,16 +10,15 @@ const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).joi
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Variante C counts, written out below the leader names and separated
 // from them by a divider. Leiter + Teilnehmer share one line; Horizont
-// gets its own line and only appears when at least one member ordered
-// one, so teams without the field (e.g. Entdecker) stay one line shorter.
+// gets its own line and is always shown — an explicit "0× Horizont"
+// tells the Stammleitung the team really ordered nothing (as opposed
+// to data still missing, which renders as "?").
 const countsText = computed(() => {
     if (isError.value) return '? Leiter · ? Teilnehmer';
     return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
 const horizontText = computed(() =>
-    !isError.value && props.node.horizontCount > 0
-        ? `${props.node.horizontCount}× Horizont`
-        : null,
+    isError.value ? '?× Horizont' : `${props.node.horizontCount}× Horizont`,
 );
 </script>
 
@@ -36,7 +35,7 @@ const horizontText = computed(() =>
         <span v-else-if="leaderNames" class="team-chip__leiter">{{ leaderNames }}</span>
         <div class="team-chip__meta">
             <span class="team-chip__meta-line">{{ countsText }}</span>
-            <span v-if="horizontText" class="team-chip__meta-line">{{ horizontText }}</span>
+            <span class="team-chip__meta-line">{{ horizontText }}</span>
         </div>
     </a>
 </template>
