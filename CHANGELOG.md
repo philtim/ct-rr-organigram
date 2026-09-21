@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/philtim/ct-rr-organigram/compare/v1.1.0...v1.2.0) (2026-09-21)
+
+
+### Features
+
+* show Horizont order count on team chips and mobile teilstamm cards ([#52](https://github.com/philtim/ct-rr-organigram/issues/52)) ([c1fbf33](https://github.com/philtim/ct-rr-organigram/commit/c1fbf330cfbf342b71ab44befb38231c34e945c1))
+
 ## [1.1.0](https://github.com/philtim/ct-rr-organigram/compare/v1.0.0...v1.1.0) (2026-06-03)
 
 
