@@ -8,15 +8,19 @@ const props = defineProps<{ node: OrgNode }>();
 const isError = computed(() => Boolean(props.node.error));
 const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
-// Variante C meta line: counts written out below the leader names.
-// The Horizont segment only appears when at least one member ordered one,
-// so teams without the field (e.g. Entdecker) keep a two-line chip.
-const metaText = computed(() => {
+// Variante C counts, written out below the leader names and separated
+// from them by a divider. Leiter + Teilnehmer share one line; Horizont
+// gets its own line and only appears when at least one member ordered
+// one, so teams without the field (e.g. Entdecker) stay one line shorter.
+const countsText = computed(() => {
     if (isError.value) return '? Leiter · ? Teilnehmer';
-    const parts = [`${props.node.leaderCount} Leiter`, `${props.node.memberCount} Teilnehmer`];
-    if (props.node.horizontCount > 0) parts.push(`${props.node.horizontCount}× Horizont`);
-    return parts.join(' · ');
+    return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
+const horizontText = computed(() =>
+    !isError.value && props.node.horizontCount > 0
+        ? `${props.node.horizontCount}× Horizont`
+        : null,
+);
 </script>
 
 <template>
@@ -30,7 +34,10 @@ const metaText = computed(() => {
         </div>
         <span v-if="isError" class="team-chip__leiter">?</span>
         <span v-else-if="leaderNames" class="team-chip__leiter">{{ leaderNames }}</span>
-        <span class="team-chip__meta">{{ metaText }}</span>
+        <div class="team-chip__meta">
+            <span class="team-chip__meta-line">{{ countsText }}</span>
+            <span v-if="horizontText" class="team-chip__meta-line">{{ horizontText }}</span>
+        </div>
     </a>
 </template>
 
@@ -86,10 +93,14 @@ const metaText = computed(() => {
     line-height: 1.4;
 }
 .team-chip__meta {
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 0.5px solid var(--rr-border-tertiary);
+}
+.team-chip__meta-line {
     display: block;
     font-size: 12px;
     color: var(--rr-text-secondary);
     line-height: 1.4;
-    margin-top: 2px;
 }
 </style>
