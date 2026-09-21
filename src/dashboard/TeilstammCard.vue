@@ -23,13 +23,17 @@ const summary = computed(() => {
 });
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Written-out counts for the mobile compact view — Variante-C style,
-// consistent with TeamChip. Horizont only appears when > 0.
-const compactMeta = computed(() => {
+// consistent with TeamChip: divider above, Leiter + Teilnehmer on one
+// line, Horizont on its own line (only when > 0).
+const compactCounts = computed(() => {
     if (isError.value) return '? Leiter · ? Teilnehmer';
-    const parts = [`${props.node.leaderCount} Leiter`, `${props.node.memberCount} Teilnehmer`];
-    if (props.node.horizontCount > 0) parts.push(`${props.node.horizontCount}× Horizont`);
-    return parts.join(' · ');
+    return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
+const compactHorizont = computed(() =>
+    !isError.value && props.node.horizontCount > 0
+        ? `${props.node.horizontCount}× Horizont`
+        : null,
+);
 </script>
 
 <template>
@@ -44,7 +48,12 @@ const compactMeta = computed(() => {
                 <span class="ts-card__compact-name">{{ node.name }}</span>
             </div>
             <p class="ts-card__compact-summary">{{ summary }}</p>
-            <p class="ts-card__compact-meta">{{ compactMeta }}</p>
+            <div class="ts-card__compact-meta">
+                <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
+                <span v-if="compactHorizont" class="ts-card__compact-meta-line">{{
+                    compactHorizont
+                }}</span>
+            </div>
 
             <!-- Full layout (hidden on mobile) -->
             <header class="ts-card__head">
@@ -245,10 +254,20 @@ const compactMeta = computed(() => {
         font-size: 14px;
         font-weight: 500;
     }
-    .ts-card__compact-summary,
-    .ts-card__compact-meta {
+    .ts-card__compact-summary {
         display: block;
         margin: 0;
+        font-size: 11px;
+        color: var(--rr-text-secondary);
+    }
+    .ts-card__compact-meta {
+        display: block;
+        margin-top: 2px;
+        padding-top: 4px;
+        border-top: 0.5px solid var(--rr-border-tertiary);
+    }
+    .ts-card__compact-meta-line {
+        display: block;
         font-size: 11px;
         color: var(--rr-text-secondary);
     }
