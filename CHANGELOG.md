@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/philtim/ct-rr-organigram/compare/v1.2.0...v1.3.0) (2026-09-21)
+
+
+### Features
+
+* separate counts from names with divider, Horizont on own line ([#54](https://github.com/philtim/ct-rr-organigram/issues/54)) ([4b8bf61](https://github.com/philtim/ct-rr-organigram/commit/4b8bf614e22c3feeccb600f1982c645c9d7641dd))
+
 ## [1.2.0](https://github.com/philtim/ct-rr-organigram/compare/v1.1.0...v1.2.0) (2026-09-21)
 
 
