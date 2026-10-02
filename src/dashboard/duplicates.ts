@@ -109,3 +109,70 @@ export function findMixedAssignments(root: OrgNode): MixedAssignmentEntry[] {
         }))
         .sort((a, b) => a.fullName.localeCompare(b.fullName, 'de'));
 }
+
+export type WithoutTeamEntry = {
+    personId: number;
+    fullName: string;
+    teilstammNames: string[];
+};
+
+/**
+ * People who belong to a Teilstamm group but to none of its teams, split by
+ * whether they hold a leadership role there.
+ *
+ * The two cases mean opposite things. A Stammwart without a team is normal —
+ * that is what the Leitungs-Untergruppen exist for. A plain Mitarbeiter
+ * without a team is usually a leftover: the automatic membership feeds the
+ * Teilstamm from the teams, so someone who is in no team got there by hand or
+ * stayed behind when their team was dissolved.
+ *
+ * A Teilstamm with an errored team is skipped entirely — with incomplete team
+ * membership we would accuse people of having no team when we simply could
+ * not read one.
+ */
+export function findPeopleWithoutTeam(root: OrgNode): {
+    staff: WithoutTeamEntry[];
+    leadership: WithoutTeamEntry[];
+} {
+    type Acc = { fullName: string; teilstaemme: Set<string> };
+    const staff = new Map<number, Acc>();
+    const leadership = new Map<number, Acc>();
+
+    const add = (map: Map<number, Acc>, personId: number, fullName: string, tsName: string) => {
+        const existing = map.get(personId);
+        if (existing) existing.teilstaemme.add(tsName);
+        else map.set(personId, { fullName, teilstaemme: new Set([tsName]) });
+    };
+
+    for (const ts of root.children) {
+        if (ts.error || ts.children.some((team) => team.error)) continue;
+
+        const inTeams = new Set<number>();
+        for (const team of ts.children) {
+            for (const l of team.leaders) inTeams.add(l.personId);
+            for (const p of team.participants) inTeams.add(p.personId);
+        }
+
+        for (const l of ts.leaders) {
+            if (inTeams.has(l.personId)) continue;
+            add(l.isPillRole ? leadership : staff, l.personId, l.fullName, ts.name);
+        }
+        for (const p of ts.participants) {
+            if (inTeams.has(p.personId)) continue;
+            add(staff, p.personId, p.fullName, ts.name);
+        }
+    }
+
+    const shape = (map: Map<number, Acc>): WithoutTeamEntry[] =>
+        Array.from(map.entries())
+            .map(([personId, acc]) => ({
+                personId,
+                fullName: acc.fullName,
+                teilstammNames: Array.from(acc.teilstaemme).sort((a, b) =>
+                    a.localeCompare(b, 'de'),
+                ),
+            }))
+            .sort((a, b) => a.fullName.localeCompare(b.fullName, 'de'));
+
+    return { staff: shape(staff), leadership: shape(leadership) };
+}

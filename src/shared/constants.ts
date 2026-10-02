@@ -28,6 +28,16 @@ export const LEADER_ROLE_NAMES: ReadonlySet<string> = new Set([
     'organisator',
 ]);
 
+/**
+ * Leadership roles that stay visible on a Teilstamm card even when nobody
+ * holds them — a vacant Stammwart is worth seeing, a missing Stammhelfer is
+ * not. ChurchTools has no flag that tells a vacancy apart from an optional
+ * position, so this list is deliberately hardcoded (decision 2026-10-02).
+ * Compare lowercased; this is the single place to adapt for another
+ * installation's role names.
+ */
+export const ALWAYS_SHOWN_LEADER_ROLES: ReadonlySet<string> = new Set(['stammleiter', 'stammwart']);
+
 /** UI copy. */
 export const COPY = {
     appTitle: 'RR Mitarbeiter-Dashboard',
@@ -36,17 +46,14 @@ export const COPY = {
     accessDenied: 'Du hast keinen Zugriff auf das RR Mitarbeiter-Dashboard.',
     partialErrorToast: 'Einige Daten konnten nicht geladen werden.',
     loading: 'Lädt …',
-    // Role-based labels. Hauptstamm hero splits leaders into two buckets:
-    //   "Leiter" = role.name === "Leiter"  (Hauptstammleiter / Hauptstammwart)
-    //   "Co-Leiter" = role.name === "Co-Leiter" (Stammleiter / Stammwart / Stammhelfer)
-    // Teilstamm cards label their own leader list (Stammleiter/wart) and
-    // the rolled-up team leader count distinctly.
-    hauptstammLeader: 'Leiter',
-    hauptstammCoLeader: 'Co-Leiter',
-    teilstammLeader: 'Stammleiter/Stammwart',
+    // Leader lists are labelled with the group role's own name, straight from
+    // ChurchTools — see `groupLeadersByRole` in dashboard/counts.ts. The labels
+    // below are only for the stat tiles and the "?" error state.
     teamleiterStat: 'Teamleiter',
     leiterStat: 'Leiter',
     mitgliederStat: 'Teilnehmer',
     gesamtStat: 'Gesamt',
     horizontStat: 'Benötigte Horizonte',
+    /** Shown in place of a name when a leadership position is unfilled. */
+    vacantRole: 'nicht besetzt',
 } as const;

@@ -1,6 +1,12 @@
 import type { GroupChild } from './dashboard.api';
 import { getGroup, getGroupChildren, getGroupMembers } from './dashboard.api';
-import { horizontCountFromMembers, leadersFromMembers, participantsFromMembers, sumBy } from './counts';
+import {
+    horizontCountFromMembers,
+    leadersFromMembers,
+    leaderRolesOf,
+    participantsFromMembers,
+    sumBy,
+} from './counts';
 import { API_TIMEOUT_MS } from '@/shared/constants';
 import type { OrgNode } from '@/shared/types';
 
@@ -31,6 +37,7 @@ function errorNode(groupId: number, fallbackName: string): OrgNode {
         groupId,
         name: fallbackName,
         leaders: [],
+        leaderRoles: [],
         participants: [],
         leaderCount: 0,
         memberCount: 0,
@@ -57,6 +64,7 @@ async function safeLoadGroupNode(groupId: number, fallbackName = '?'): Promise<O
             groupId: group.id,
             name: group.name,
             leaders,
+            leaderRoles: leaderRolesOf(group),
             participants,
             // Team-level display values: this group's own counts. Higher
             // levels overwrite these with deduped unions in loadOrganigram.
@@ -142,16 +150,11 @@ export async function loadOrganigram(
             // Teilstamm children may include operational/Maßnahme groups
             // alongside the actual Kleingruppen-Teams. Only Kleingruppen
             // (groupTypeId=1) render as team chips and feed into the counts.
-            const teamChildren = tsChildren.filter(
-                (c) => c.domainAttributes.groupTypeId === 1,
-            );
+            const teamChildren = tsChildren.filter((c) => c.domainAttributes.groupTypeId === 1);
 
             const teams: OrgNode[] = await Promise.all(
                 teamChildren.map((teamChild) =>
-                    safeLoadGroupNode(
-                        parseInt(teamChild.domainIdentifier, 10),
-                        teamChild.title,
-                    ),
+                    safeLoadGroupNode(parseInt(teamChild.domainIdentifier, 10), teamChild.title),
                 ),
             );
 

@@ -27,17 +27,11 @@ export type Settings = {
     teilstammIds?: number[];
 };
 
-/**
- * Discriminates the leader display buckets used by the cards.
- *   `primary`  — role.name === "Leiter"
- *   `coLeader` — role.name === "Co-Leiter"
- *   `support`  — Mitarbeiter / Teamhelfer / Organisator (counted as leader but
- *                not shown as a pill on the Hauptstamm or in the Stammleiter
- *                list on Teilstamm cards).
- * Anything else that passes the leader filter (e.g. an unknown isLeader=true
- * role on a custom installation) falls into `primary` so it isn't lost.
- */
-export type LeaderClass = 'primary' | 'coLeader' | 'support';
+/** A leadership role as the group type defines it. */
+export type LeaderRole = {
+    name: string;
+    sortKey: number;
+};
 
 export type Leader = {
     personId: number;
@@ -45,7 +39,22 @@ export type Leader = {
     initials: string;
     /** Profile picture URL from member.person.imageUrl, or null if the person has none. */
     imageUrl: string | null;
-    leaderClass: LeaderClass;
+    /**
+     * The group role's own name, verbatim from ChurchTools — "Stammleiter",
+     * "Hauptstammwart", "Leiter", … The cards group and label by this instead
+     * of mapping it onto fixed buckets, so an installation that renames or
+     * adds roles needs no code change.
+     */
+    roleName: string;
+    /** `role.sortKey`, so the cards can order role groups the way the group type does. */
+    roleSortKey: number;
+    /**
+     * True for roles ChurchTools itself flags as leadership (`role.isLeader`).
+     * Only these render as pills / in the leader list; the broadened
+     * Mitarbeiter/Teamhelfer/Organisator roles count towards the stat tile but
+     * stay out of the name lists.
+     */
+    isPillRole: boolean;
 };
 
 /** Slim shape for non-leader members; carries name so the duplicates panel can display it. */
@@ -58,8 +67,14 @@ export type Participant = {
 export type OrgNode = {
     groupId: number;
     name: string;
-    /** Members of THIS group with isLeader=true. Carries the role class so the Hauptstamm hero can split into Leiter / Co-Leiter pills. */
+    /** Members of THIS group whose role counts as leader. Carries the role name so the cards can group by it. */
     leaders: Leader[];
+    /**
+     * The leadership roles this group defines (active, not hidden), in the
+     * group type's own order. Lets a card show a vacant position — "Stammwart:
+     * nicht besetzt" — instead of silently leaving the line out.
+     */
+    leaderRoles: LeaderRole[];
     /** Non-leader members of THIS group (role.isLeader=false). Carries names so the duplicates panel can list cross-team assignments. */
     participants: Participant[];
     /**

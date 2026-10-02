@@ -3,15 +3,15 @@ import { computed } from 'vue';
 import type { Leader, OrgNode } from '@/shared/types';
 import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
+import { leaderRoleRows } from './counts';
 import LeaderAvatar from './LeaderAvatar.vue';
 
 const props = defineProps<{ node: OrgNode }>();
 
 const isError = computed(() => Boolean(props.node.error));
-const primary = computed(() => props.node.leaders.filter((l) => l.leaderClass === 'primary'));
-const coLeaders = computed(() =>
-    props.node.leaders.filter((l) => l.leaderClass === 'coLeader'),
-);
+// One block per role the group actually defines — "Hauptstammleiter",
+// "Hauptstammwart", … — in the group type's own order.
+const roleGroups = computed(() => leaderRoleRows(props.node.leaderRoles, props.node.leaders));
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 
 function namesOf(leaders: Leader[]): string {
@@ -30,39 +30,21 @@ function namesOf(leaders: Leader[]): string {
 
         <div class="hs-card__body">
             <div class="hs-card__main">
-                <p v-if="isError" class="hs-card__label">{{ COPY.hauptstammLeader }}</p>
+                <p v-if="isError" class="hs-card__label">{{ COPY.leiterStat }}</p>
                 <p v-if="isError" class="hs-card__placeholder" aria-label="unbekannt">?</p>
 
                 <template v-else>
-                    <div v-if="primary.length" class="hs-card__group">
-                        <p class="hs-card__label">{{ COPY.hauptstammLeader }}</p>
+                    <div v-for="g in roleGroups" :key="g.role" class="hs-card__group">
+                        <p class="hs-card__label">{{ g.role }}</p>
                         <div class="hs-card__pills">
-                            <span
-                                v-for="l in primary"
-                                :key="l.personId"
-                                class="hs-card__pill"
-                            >
+                            <span v-for="l in g.leaders" :key="l.personId" class="hs-card__pill">
                                 <LeaderAvatar :leader="l" />
                                 {{ l.fullName }}
                             </span>
                         </div>
-                        <p class="hs-card__group-text">{{ namesOf(primary) }}</p>
+                        <p class="hs-card__group-text">{{ namesOf(g.leaders) }}</p>
                     </div>
-                    <div v-if="coLeaders.length" class="hs-card__group">
-                        <p class="hs-card__label">{{ COPY.hauptstammCoLeader }}</p>
-                        <div class="hs-card__pills">
-                            <span
-                                v-for="l in coLeaders"
-                                :key="l.personId"
-                                class="hs-card__pill"
-                            >
-                                <LeaderAvatar :leader="l" />
-                                {{ l.fullName }}
-                            </span>
-                        </div>
-                        <p class="hs-card__group-text">{{ namesOf(coLeaders) }}</p>
-                    </div>
-                    <p v-if="!primary.length && !coLeaders.length" class="hs-card__empty">
+                    <p v-if="!roleGroups.length" class="hs-card__empty">
                         Keine Leiter eingetragen.
                     </p>
                 </template>

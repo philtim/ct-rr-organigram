@@ -1,5 +1,8 @@
 import { LEADER_ROLE_NAMES } from '@/shared/constants';
-import type { Group, GroupMember, Leader, LeaderClass, Participant } from '@/shared/types';
+import type { Group, GroupMember, Leader, LeaderRole, Participant } from '@/shared/types';
+
+/** What the cards need to know about the role a member holds. */
+type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
 
 /**
  * Filter members to those whose role counts as a "leader" for the
@@ -9,36 +12,51 @@ import type { Group, GroupMember, Leader, LeaderClass, Participant } from '@/sha
  * with the "RR Mitarbeiter" auto-group on the live instance, whose rule
  * treats those non-isLeader roles as MAs.
  *
- * Each returned Leader carries its display class so the cards can split
- * them into Leiter / Co-Leiter pills (and silently keep "support" roles
- * in the count without showing them as pills).
+ * Each returned Leader carries its role name and sort key, so the cards
+ * can group by the role ChurchTools actually defines — Stammleiter,
+ * Hauptstammwart, … — instead of squeezing everything into fixed buckets.
  */
 export function leadersFromMembers(group: Group, members: GroupMember[]): Leader[] {
     const roles = group.roles ?? [];
-    const classByRoleId = new Map<number, LeaderClass>();
+    const infoByRoleId = new Map<number, RoleInfo>();
     for (const r of roles) {
         if (isLeaderRole(r)) {
-            classByRoleId.set(r.groupTypeRoleId, classifyRole(r.name));
+            infoByRoleId.set(r.groupTypeRoleId, {
+                name: (r.name ?? '').trim(),
+                sortKey: r.sortKey ?? 0,
+                isPillRole: isLeadershipRole(r),
+            });
         }
     }
 
     return members
-        .filter((m) => classByRoleId.has(m.groupTypeRoleId))
+        .filter((m) => infoByRoleId.has(m.groupTypeRoleId))
         .map((m) => {
-            const personId = personIdOf(m);
+            const info = infoByRoleId.get(m.groupTypeRoleId)!;
             return {
-                personId,
+                personId: personIdOf(m),
                 fullName: m.person?.title ?? '',
                 initials: deriveInitials(m),
                 imageUrl: imageUrlOf(m),
-                leaderClass: classByRoleId.get(m.groupTypeRoleId) ?? 'primary',
+                roleName: info.name,
+                roleSortKey: info.sortKey,
+                isPillRole: info.isPillRole,
             };
         });
 }
 
+/**
+ * True for roles ChurchTools itself calls leadership. `type` is the current
+ * field; `isLeader` is deprecated in the API spec but still delivered, so we
+ * accept either.
+ */
+function isLeadershipRole(role: { type?: string; isLeader?: boolean }): boolean {
+    return role.type === 'leader' || role.isLeader === true;
+}
+
 /** A role counts as leader iff CT flags it OR its name is in the broadened set. */
-function isLeaderRole(role: { name?: string; isLeader?: boolean }): boolean {
-    if (role.isLeader === true) return true;
+function isLeaderRole(role: { name?: string; type?: string; isLeader?: boolean }): boolean {
+    if (isLeadershipRole(role)) return true;
     return LEADER_ROLE_NAMES.has((role.name ?? '').trim().toLowerCase());
 }
 
@@ -72,22 +90,6 @@ export function participantsFromMembers(group: Group, members: GroupMember[]): P
 function personIdOf(m: GroupMember): number {
     const idStr = m.person?.domainIdentifier;
     return idStr != null ? parseInt(idStr, 10) : (m.personId ?? 0);
-}
-
-/**
- * Map a role name to its display bucket. Inclusion is decided upstream
- * by `isLeaderRole`; this routine only decides which sub-group the
- * leader lands in for display.
- *   "Co-Leiter"                            → coLeader (own pill section)
- *   "Mitarbeiter" / "Teamhelfer" / "Organisator" → support (counted only)
- *   everything else                        → primary  (Leiter pill / Stammleiter list)
- */
-function classifyRole(roleName: string | undefined): LeaderClass {
-    const normalized = (roleName ?? '').trim().toLowerCase();
-    if (normalized === 'co-leiter' || normalized === 'coleiter') return 'coLeader';
-    if (normalized === 'mitarbeiter' || normalized === 'teamhelfer' || normalized === 'organisator')
-        return 'support';
-    return 'primary';
 }
 
 /**
@@ -139,4 +141,49 @@ export function horizontCountFromMembers(members: GroupMember[]): number {
         }
     }
     return count;
+}
+
+/**
+ * Build the rows a card renders: one per leadership role, in the group type's
+ * own order, each with the people holding it.
+ *
+ * A role appears when somebody holds it. `alwaysShow` lets a card keep a role
+ * visible even when vacant — the Teilstamm card uses it so a missing Stammwart
+ * reads as an open position rather than disappearing.
+ */
+export function leaderRoleRows(
+    roles: LeaderRole[],
+    leaders: Leader[],
+    alwaysShow: (roleName: string) => boolean = () => false,
+): Array<{ role: string; leaders: Leader[] }> {
+    const byRole = new Map<string, Leader[]>();
+    for (const l of leaders) {
+        if (!l.isPillRole) continue;
+        const bucket = byRole.get(l.roleName);
+        if (bucket) bucket.push(l);
+        else byRole.set(l.roleName, [l]);
+    }
+
+    const rows: Array<{ role: string; leaders: Leader[] }> = [];
+    const seen = new Set<string>();
+    for (const r of [...roles].sort((a, b) => a.sortKey - b.sortKey)) {
+        seen.add(r.name);
+        const held = byRole.get(r.name) ?? [];
+        if (held.length || alwaysShow(r.name)) rows.push({ role: r.name, leaders: held });
+    }
+    // Roles held by someone but missing from the group's role list (hidden or
+    // deactivated after the fact) must not vanish — append them by sort key.
+    const leftover = [...byRole.entries()]
+        .filter(([name]) => !seen.has(name))
+        .sort((a, b) => a[1][0].roleSortKey - b[1][0].roleSortKey);
+    for (const [role, held] of leftover) rows.push({ role, leaders: held });
+    return rows;
+}
+
+/** The leadership roles a group defines, skipping hidden and deactivated ones. */
+export function leaderRolesOf(group: Group): LeaderRole[] {
+    return (group.roles ?? [])
+        .filter((r) => isLeadershipRole(r) && r.isHidden !== true && r.isActive !== false)
+        .map((r) => ({ name: (r.name ?? '').trim(), sortKey: r.sortKey ?? 0 }))
+        .sort((a, b) => a.sortKey - b.sortKey);
 }
