@@ -2,19 +2,28 @@
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
-import { COPY } from '@/shared/constants';
+import { ALWAYS_SHOWN_LEADER_ROLES, COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
+import { leaderRoleRows } from './counts';
 
 const props = defineProps<{ node: OrgNode }>();
 
 const isError = computed(() => Boolean(props.node.error));
-// Stammleiter/Stammwart on the Teilstamm card is the role "Leiter" only
-// (leaderClass='primary'). Co-Leiter belongs to a different responsibility
-// bucket and is intentionally excluded from this list.
-const primaryLeaders = computed(() =>
-    props.node.leaders.filter((l) => l.leaderClass === 'primary'),
+// One row per leadership role, in the group type's own order. Stammleiter and
+// Stammwart stay visible when vacant (see ALWAYS_SHOWN_LEADER_ROLES) so an
+// open position is readable as such; an unfilled Stammhelfer is simply absent.
+const roleGroups = computed(() =>
+    leaderRoleRows(props.node.leaderRoles, props.node.leaders, (name) =>
+        ALWAYS_SHOWN_LEADER_ROLES.has(name.toLowerCase()),
+    ),
 );
-const leaderText = computed(() => primaryLeaders.value.map((l) => l.fullName).join(', '));
+// The compact mobile row has no space for role labels, so names go flat there.
+const leaderText = computed(() =>
+    roleGroups.value
+        .flatMap((g) => g.leaders)
+        .map((l) => l.fullName)
+        .join(', '),
+);
 const summary = computed(() => {
     if (isError.value) return 'Teams konnten nicht geladen werden';
     const teamWord = props.node.children.length === 1 ? 'Team' : 'Teams';
@@ -58,19 +67,21 @@ const compactHorizont = computed(() =>
             </header>
 
             <div class="ts-card__leiter-list">
-                <span class="ts-card__label">{{ COPY.teilstammLeader }}</span>
                 <template v-if="isError">
+                    <span class="ts-card__label">{{ COPY.leiterStat }}</span>
                     <span class="ts-card__leiter-name">?</span>
                 </template>
                 <template v-else>
-                    <span
-                        v-for="l in primaryLeaders"
-                        :key="l.personId"
-                        class="ts-card__leiter-name"
-                    >
-                        {{ l.fullName }}
-                    </span>
-                    <span v-if="!primaryLeaders.length" class="ts-card__empty">
+                    <template v-for="g in roleGroups" :key="g.role">
+                        <span class="ts-card__label">{{ g.role }}</span>
+                        <span v-for="l in g.leaders" :key="l.personId" class="ts-card__leiter-name">
+                            {{ l.fullName }}
+                        </span>
+                        <span v-if="!g.leaders.length" class="ts-card__vacant">
+                            {{ COPY.vacantRole }}
+                        </span>
+                    </template>
+                    <span v-if="!roleGroups.length" class="ts-card__empty">
                         Keine Leiter eingetragen.
                     </span>
                 </template>
@@ -109,9 +120,7 @@ const compactHorizont = computed(() =>
 
         <section class="ts-card__teams">
             <p class="ts-card__subtitle">TEAMS</p>
-            <p v-if="isError" class="ts-card__empty">
-                Teams konnten nicht geladen werden.
-            </p>
+            <p v-if="isError" class="ts-card__empty">Teams konnten nicht geladen werden.</p>
             <template v-else>
                 <TeamChip v-for="team in node.children" :key="team.groupId" :node="team" />
                 <p v-if="!node.children.length" class="ts-card__empty">Keine Teams.</p>
@@ -194,6 +203,10 @@ const compactHorizont = computed(() =>
 }
 .ts-card__leiter-name {
     font-size: 13px;
+}
+.ts-card__vacant {
+    font-size: 14px;
+    color: var(--rr-text-secondary);
 }
 .ts-card__empty {
     margin: 0;
