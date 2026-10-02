@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/philtim/ct-rr-organigram/compare/v1.4.0...v1.5.0) (2026-10-02)
+
+
+### Features
+
+* label leader lists by their actual group role ([#58](https://github.com/philtim/ct-rr-organigram/issues/58)) ([34ad979](https://github.com/philtim/ct-rr-organigram/commit/34ad9791f158939fd96fcb0b776716f40f3892e9))
+
 ## [1.4.0](https://github.com/philtim/ct-rr-organigram/compare/v1.3.0...v1.4.0) (2026-09-21)
 
 
