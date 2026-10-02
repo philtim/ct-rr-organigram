@@ -1,30 +1,42 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
-import { findDuplicateLeaders, findDuplicateMembers, findMixedAssignments } from './duplicates';
+import {
+    findDuplicateLeaders,
+    findDuplicateMembers,
+    findMixedAssignments,
+    findPeopleWithoutTeam,
+} from './duplicates';
 
 const props = defineProps<{ root: OrgNode }>();
 
 const leaders = computed(() => findDuplicateLeaders(props.root));
 const members = computed(() => findDuplicateMembers(props.root));
 const mixed = computed(() => findMixedAssignments(props.root));
-const hasAny = computed(
+const withoutTeam = computed(() => findPeopleWithoutTeam(props.root));
+const hasDuplicates = computed(
     () => leaders.value.length > 0 || members.value.length > 0 || mixed.value.length > 0,
+);
+const hasAny = computed(
+    () =>
+        hasDuplicates.value ||
+        withoutTeam.value.staff.length > 0 ||
+        withoutTeam.value.leadership.length > 0,
 );
 </script>
 
 <template>
     <section class="dup">
-        <h2 class="dup__title">Doppelt zugewiesen</h2>
+        <h2 class="dup__title">Hinweise</h2>
 
         <p v-if="!hasAny" class="dup__empty">
-            Keine Person ist mehrfach in Teams zugewiesen.
+            Keine Auffälligkeiten — niemand ist mehrfach zugewiesen oder ohne Team.
         </p>
 
-        <p v-else class="dup__rule">
-            Personen mit Leiter-Rolle in mindestens einem Team werden in der Gesamtzählung
-            immer als Leiter gewertet — auch wenn sie in anderen Teams als Mitglied geführt
-            sind. Dadurch wird niemand doppelt gezählt.
+        <p v-if="hasDuplicates" class="dup__rule">
+            Personen mit Leiter-Rolle in mindestens einem Team werden in der Gesamtzählung immer als
+            Leiter gewertet — auch wenn sie in anderen Teams als Mitglied geführt sind. Dadurch wird
+            niemand doppelt gezählt.
         </p>
 
         <div v-if="hasAny" class="dup__groups">
@@ -57,6 +69,26 @@ const hasAny = computed(
                         <span class="dup__teams">
                             Teilnehmer: {{ e.participantTeams.join(', ') }}
                         </span>
+                    </li>
+                </ul>
+            </article>
+
+            <article v-if="withoutTeam.staff.length" class="dup__group">
+                <h3 class="dup__group-title">Mitarbeiter ohne Team</h3>
+                <ul class="dup__list">
+                    <li v-for="e in withoutTeam.staff" :key="e.personId" class="dup__item">
+                        <span class="dup__name">{{ e.fullName }}</span>
+                        <span class="dup__teams">{{ e.teilstammNames.join(', ') }}</span>
+                    </li>
+                </ul>
+            </article>
+
+            <article v-if="withoutTeam.leadership.length" class="dup__group">
+                <h3 class="dup__group-title">Stammleitung ohne Team</h3>
+                <ul class="dup__list">
+                    <li v-for="e in withoutTeam.leadership" :key="e.personId" class="dup__item">
+                        <span class="dup__name">{{ e.fullName }}</span>
+                        <span class="dup__teams">{{ e.teilstammNames.join(', ') }}</span>
                     </li>
                 </ul>
             </article>
@@ -116,11 +148,13 @@ const hasAny = computed(
     padding: 0;
     list-style: none;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 6px;
 }
 
 .dup__item {
+    flex: 1 1 200px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
