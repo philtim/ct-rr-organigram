@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import type { GateStatus } from './useGate';
+import type { AccessStatus } from './useAccessGate';
 import { COPY } from '@/shared/constants';
 
-defineProps<{ status: GateStatus }>();
+/**
+ * `deniedMessage` lets each view name what was refused — the default speaks
+ * of the dashboard, which is wrong when a different tab was the one denied.
+ */
+const props = withDefaults(defineProps<{ status: AccessStatus; deniedMessage?: string }>(), {
+    deniedMessage: COPY.accessDenied,
+});
 </script>
 
 <template>
@@ -14,7 +20,7 @@ defineProps<{ status: GateStatus }>();
         </div>
 
         <div v-else-if="status.phase === 'denied'" class="rr-gate__panel rr-gate__panel--warn">
-            <p class="rr-gate__message">{{ COPY.accessDenied }}</p>
+            <p class="rr-gate__message">{{ props.deniedMessage }}</p>
         </div>
 
         <div v-else-if="status.phase === 'error'" class="rr-gate__panel rr-gate__panel--error">

@@ -12,8 +12,10 @@
         "lint": "eslint .",
         "format": "prettier --write .",
         "typecheck": "vue-tsc --noEmit",
-        "check": "npm run lint && npm run typecheck && npm run build",
-        "deploy": "npm run build && node scripts/package.js"
+        "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+        "deploy": "npm run build && node scripts/package.js",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "@churchtools/churchtools-client": "^1.4.0",
@@ -29,6 +31,7 @@
         "prettier": "^3.4.2",
         "typescript": "^5.9.2",
         "vite": "^7.1.2",
+        "vitest": "^5.0.3",
         "vue-tsc": "^2.1.10"
     }
 }

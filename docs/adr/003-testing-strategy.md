@@ -1,6 +1,6 @@
 # ADR-003: Testing strategy — no automated tests in v1
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-009
 - **Date:** 2026-05-05
 - **Decided by:** [bitte ergänzen]
 

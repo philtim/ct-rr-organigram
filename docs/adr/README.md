@@ -21,10 +21,13 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 |---|---|---|
 | [001](001-frontend-framework.md) | Frontend framework: Vue 3 with Composition API | Accepted |
 | [002](002-css-scoping.md) | CSS scoping: `<style scoped>` + BEM | Accepted |
-| [003](003-testing-strategy.md) | Testing strategy: no tests in v1 | Accepted |
+| [003](003-testing-strategy.md) | Testing strategy: no tests in v1 | Superseded by [009](009-testing-strategy-vitest.md) |
 | [004](004-module-structure.md) | Module structure: feature folders + shared | Accepted |
 | [005](005-api-client.md) | API client: thin wrapper in `src/shared/api.ts` | Accepted |
 | [006](006-linting-and-formatting.md) | Linting and formatting: ESLint flat config + Prettier + eslint-plugin-vue | Accepted |
+| [007](007-multiple-tabs-one-module.md) | Multiple tabs in one extension, not a second custom module | Accepted |
+| [008](008-declarative-access-rules.md) | Access control: declarative access rules per view | Accepted |
+| [009](009-testing-strategy-vitest.md) | Testing strategy: Vitest for pure logic | Accepted |
 
 ## When to write a new ADR
 

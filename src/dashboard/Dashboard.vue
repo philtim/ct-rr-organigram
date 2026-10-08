@@ -7,10 +7,10 @@ import TeilstammCard from './TeilstammCard.vue';
 import Toast from './Toast.vue';
 import { formatTimestamp, useDashboard } from './useDashboard';
 import { COPY } from '@/shared/constants';
-import type { GatePerson } from '@/gate/useGate';
+import type { AccessPerson } from '@/shared/access/useAccessGate';
 
 const props = defineProps<{
-    person: GatePerson;
+    person: AccessPerson;
     gateGroupId: number;
     teilstammIds?: number[];
 }>();

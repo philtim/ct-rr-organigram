@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { getGroupChildren, listGroups } from './admin.api';
-import type { GroupChild } from './admin.api';
+import { getGroupChildren, getGroupRoles, listGroups } from './admin.api';
+import type { GroupChild, PickableRole } from './admin.api';
 import { useAdminSettings } from './useAdminSettings';
 import type { Group } from '@/shared/types';
 import { COPY } from '@/shared/constants';
@@ -23,6 +23,11 @@ const hauptstammChildren = ref<GroupChild[]>([]);
 const childrenLoading = ref(false);
 const childrenError = ref<string | null>(null);
 const teilstammSelections = ref<Set<number>>(new Set());
+
+const hauptstammRoles = ref<PickableRole[]>([]);
+const rolesLoading = ref(false);
+const rolesError = ref<string | null>(null);
+const beitraegeRoleSelections = ref<Set<number>>(new Set());
 // Hauptstamm changes after the initial sync should clear the Teilstamm
 // picks (they refer to children of the previously-selected Hauptstamm).
 let initialSyncDone = false;
@@ -66,6 +71,38 @@ async function loadChildrenFor(id: number) {
     }
 }
 
+const sortedRoles = computed(() =>
+    [...hauptstammRoles.value]
+        .filter((r) => r.isActive)
+        .sort((a, b) => a.sortKey - b.sortKey || a.name.localeCompare(b.name, 'de')),
+);
+
+/** Saved role IDs the group no longer defines — surfaced rather than dropped. */
+const orphanedRoleIds = computed(() => {
+    const present = new Set(hauptstammRoles.value.map((r) => r.groupTypeRoleId));
+    return [...beitraegeRoleSelections.value].filter((id) => !present.has(id));
+});
+
+async function loadRolesFor(id: number) {
+    rolesLoading.value = true;
+    rolesError.value = null;
+    try {
+        hauptstammRoles.value = await getGroupRoles(id);
+    } catch (e) {
+        hauptstammRoles.value = [];
+        rolesError.value = e instanceof Error ? e.message : 'Rollen konnten nicht geladen werden.';
+    } finally {
+        rolesLoading.value = false;
+    }
+}
+
+function toggleBeitraegeRole(id: number) {
+    const next = new Set(beitraegeRoleSelections.value);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    beitraegeRoleSelections.value = next;
+}
+
 function toggleTeilstamm(id: number) {
     const next = new Set(teilstammSelections.value);
     if (next.has(id)) next.delete(id);
@@ -75,12 +112,16 @@ function toggleTeilstamm(id: number) {
 
 watch(selectedId, async (newId) => {
     if (!initialSyncDone) return;
+    // Both picks refer to the previously selected Hauptstamm — its children
+    // and its role definitions — so both are cleared when it changes.
     teilstammSelections.value = new Set();
+    beitraegeRoleSelections.value = new Set();
     if (newId == null) {
         hauptstammChildren.value = [];
+        hauptstammRoles.value = [];
         return;
     }
-    await loadChildrenFor(newId);
+    await Promise.all([loadChildrenFor(newId), loadRolesFor(newId)]);
 });
 
 onMounted(async () => {
@@ -90,8 +131,9 @@ onMounted(async () => {
         groups.value = g;
         selectedId.value = settings.value?.gateGroupId ?? null;
         teilstammSelections.value = new Set(settings.value?.teilstammIds ?? []);
+        beitraegeRoleSelections.value = new Set(settings.value?.beitraegeRoleIds ?? []);
         if (selectedId.value !== null) {
-            await loadChildrenFor(selectedId.value);
+            await Promise.all([loadChildrenFor(selectedId.value), loadRolesFor(selectedId.value)]);
         }
     } catch (e) {
         groupsError.value =
@@ -109,6 +151,7 @@ async function handleSave() {
         await save({
             gateGroupId: selectedId.value,
             teilstammIds: [...teilstammSelections.value],
+            beitraegeRoleIds: [...beitraegeRoleSelections.value],
         });
         savedJustNow.value = true;
         emit('saved');
@@ -118,14 +161,22 @@ async function handleSave() {
 }
 
 const isLoading = computed(
-    () => groupsLoading.value || settingsLoading.value || childrenLoading.value,
+    () =>
+        groupsLoading.value || settingsLoading.value || childrenLoading.value || rolesLoading.value,
 );
+
+function sameIds(saved: number[] | undefined, picked: Set<number>): boolean {
+    const set = new Set(saved ?? []);
+    if (set.size !== picked.size) return false;
+    for (const id of picked) if (!set.has(id)) return false;
+    return true;
+}
+
 const hasChanges = computed(() => {
     if (selectedId.value == null) return false;
     if (selectedId.value !== settings.value?.gateGroupId) return true;
-    const saved = new Set(settings.value?.teilstammIds ?? []);
-    if (saved.size !== teilstammSelections.value.size) return true;
-    for (const id of teilstammSelections.value) if (!saved.has(id)) return true;
+    if (!sameIds(settings.value?.teilstammIds, teilstammSelections.value)) return true;
+    if (!sameIds(settings.value?.beitraegeRoleIds, beitraegeRoleSelections.value)) return true;
     return false;
 });
 </script>
@@ -269,6 +320,62 @@ const hasChanges = computed(() => {
                             class="rr-admin__list-empty"
                         >
                             Keine Untergruppen.
+                        </p>
+                    </template>
+                </div>
+
+                <label class="rr-admin__label rr-admin__label--ts">
+                    Zugriff auf die Beitragsabrechnung
+                </label>
+                <p class="rr-admin__help">
+                    Wähle die Rollen, die den Tab „Beitragsabrechnung" öffnen dürfen. Dessen
+                    Excel-Export enthält Namen, Geburtsdaten und Adressen aller Teilnehmer — wähle
+                    hier so eng wie möglich. Ohne Auswahl bleibt der Tab für alle verborgen.
+                </p>
+                <div v-if="rolesError" class="rr-admin__error-inline" role="alert">
+                    {{ rolesError }}
+                </div>
+                <div
+                    class="rr-admin__list"
+                    role="group"
+                    aria-label="Rollen für die Beitragsabrechnung"
+                    :aria-busy="rolesLoading || undefined"
+                >
+                    <p v-if="rolesLoading" class="rr-admin__list-empty">{{ COPY.loading }}</p>
+                    <template v-else>
+                        <div
+                            v-for="id in orphanedRoleIds"
+                            :key="`orphan-role-${id}`"
+                            class="rr-admin__option rr-admin__option--missing"
+                        >
+                            <span class="rr-admin__option-name">
+                                (Rolle nicht mehr vorhanden, ID {{ id }})
+                            </span>
+                        </div>
+                        <label
+                            v-for="role in sortedRoles"
+                            :key="role.groupTypeRoleId"
+                            class="rr-admin__option rr-admin__option--check"
+                            :class="{
+                                'rr-admin__option--selected': beitraegeRoleSelections.has(
+                                    role.groupTypeRoleId,
+                                ),
+                            }"
+                        >
+                            <input
+                                type="checkbox"
+                                class="rr-admin__checkbox"
+                                :checked="beitraegeRoleSelections.has(role.groupTypeRoleId)"
+                                @change="toggleBeitraegeRole(role.groupTypeRoleId)"
+                            />
+                            <span class="rr-admin__option-name">{{ role.name }}</span>
+                            <span class="rr-admin__option-id">ID {{ role.groupTypeRoleId }}</span>
+                        </label>
+                        <p
+                            v-if="!sortedRoles.length && !orphanedRoleIds.length"
+                            class="rr-admin__list-empty"
+                        >
+                            Keine Rollen.
                         </p>
                     </template>
                 </div>

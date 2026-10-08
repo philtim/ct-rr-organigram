@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import Admin from '@/admin/Admin.vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
-import Gate from '@/gate/Gate.vue';
+import Beitraege from '@/beitraege/Beitraege.vue';
+import Gate from '@/shared/access/Gate.vue';
+import TabBar from '@/shared/TabBar.vue';
 import { useAdminSettings } from '@/admin/useAdminSettings';
-import { useGate } from '@/gate/useGate';
+import { useAccessGate } from '@/shared/access/useAccessGate';
+import type { AccessStatus } from '@/shared/access/useAccessGate';
+import { membershipRule, roleRule } from '@/shared/access/rules';
+import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
+import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/constants';
 
 // Routing: a single SPA serving both the dashboard and the admin form.
@@ -16,17 +22,74 @@ const isAdminRoute = computed(() => {
 });
 
 const { settings, load: loadSettings } = useAdminSettings();
-const { status: gateStatus, check: runGate } = useGate();
+const { status: gateStatus, check: runGate } = useAccessGate();
+const { status: beitraegeStatus, check: runBeitraegeGate } = useAccessGate();
 const ready = ref(false);
 
+// Active tab (ADR-007). Kept in the URL so views can be linked and the
+// browser's back button behaves; popstate keeps the ref in sync.
+const activeTab = ref<TabId>(readTabFromUrl());
+
+function syncTabFromUrl() {
+    activeTab.value = readTabFromUrl();
+}
+
+function selectTab(tab: TabId) {
+    if (tab === activeTab.value) return;
+    activeTab.value = tab;
+    writeTabToUrl(tab);
+}
+
+// Access rule for both views (ADR-008). ?admin=1 used to return early here,
+// skipping loadSettings() and the gate entirely — anyone who knew the URL
+// reached the group picker and could overwrite the configuration. The admin
+// form is now gated like the dashboard; the only ungated path is the
+// first-run case below, where there is no configured group to check against.
+const organigramRule = computed(() => membershipRule(settings.value?.gateGroupId));
+
+// The Beitragsabrechnung needs a role, not just membership: its export carries
+// names, dates of birth and addresses for the whole Stamm, which the Teilstamm
+// leaders in the same group have no need for. Unconfigured roles yield a null
+// rule, and the tab stays unavailable (ADR-008).
+const beitraegeRule = computed(() =>
+    roleRule(settings.value?.gateGroupId, settings.value?.beitraegeRoleIds),
+);
+
+const beitraegeAllowed = computed(() => beitraegeStatus.value.phase === 'allowed');
+
+/**
+ * `idle` means the gate never ran — no rule configured, or the outer gate
+ * already refused. `config-missing` means the roles are unset. Both mean the
+ * view is unavailable, and Gate.vue renders nothing for either, so they are
+ * normalized to a plain denial rather than an empty page.
+ */
+const beitraegeGateStatus = computed<AccessStatus>(() => {
+    const phase = beitraegeStatus.value.phase;
+    return phase === 'idle' || phase === 'config-missing'
+        ? { phase: 'denied' }
+        : beitraegeStatus.value;
+});
+
+const availableTabs = computed(() => {
+    const tabs: { id: TabId; label: string }[] = [{ id: 'organigram', label: COPY.tabOrganigram }];
+    if (beitraegeAllowed.value) tabs.push({ id: 'beitraege', label: COPY.tabBeitraege });
+    return tabs;
+});
+
 onMounted(async () => {
-    if (isAdminRoute.value) {
-        ready.value = true;
-        return;
-    }
+    window.addEventListener('popstate', syncTabFromUrl);
     await loadSettings();
-    await runGate(settings.value?.gateGroupId);
+    await runGate(organigramRule.value);
+    // Only worth asking once the user is through the outer gate, and only
+    // when a rule exists — otherwise it is one wasted request per load.
+    if (gateStatus.value.phase === 'allowed' && beitraegeRule.value) {
+        await runBeitraegeGate(beitraegeRule.value);
+    }
     ready.value = true;
+});
+
+onUnmounted(() => {
+    window.removeEventListener('popstate', syncTabFromUrl);
 });
 
 // First-run: when nothing is configured yet, the App renders <Admin> directly
@@ -34,7 +97,10 @@ onMounted(async () => {
 // the gate so the dashboard appears without a manual reload.
 async function handleSaved() {
     await loadSettings();
-    await runGate(settings.value?.gateGroupId);
+    await runGate(organigramRule.value);
+    if (gateStatus.value.phase === 'allowed' && beitraegeRule.value) {
+        await runBeitraegeGate(beitraegeRule.value);
+    }
 }
 </script>
 
@@ -44,18 +110,33 @@ async function handleSaved() {
         <p class="rr-shell__subtitle">{{ COPY.loading }}</p>
     </main>
     <Admin
-        v-else-if="isAdminRoute || gateStatus.phase === 'config-missing'"
+        v-else-if="
+            gateStatus.phase === 'config-missing' ||
+            (isAdminRoute && gateStatus.phase === 'allowed')
+        "
         :first-run="!isAdminRoute && gateStatus.phase === 'config-missing'"
         @saved="handleSaved"
     />
-    <Dashboard
+    <template
         v-else-if="
             gateStatus.phase === 'allowed' && settings && typeof settings.gateGroupId === 'number'
         "
-        :person="gateStatus.person"
-        :gate-group-id="settings.gateGroupId"
-        :teilstamm-ids="settings.teilstammIds"
-    />
+    >
+        <TabBar :tabs="availableTabs" :active="activeTab" @select="selectTab" />
+        <Dashboard
+            v-if="activeTab === 'organigram'"
+            :person="gateStatus.person"
+            :gate-group-id="settings.gateGroupId"
+            :teilstamm-ids="settings.teilstammIds"
+        />
+        <!--
+          A typed ?tab=beitraege is denied, not quietly redirected to the
+          organigram: the user asked for this view and deserves to be told
+          they may not have it (ADR-008).
+        -->
+        <Beitraege v-else-if="beitraegeAllowed" />
+        <Gate v-else :status="beitraegeGateStatus" :denied-message="COPY.beitraegeAccessDenied" />
+    </template>
     <Gate v-else :status="gateStatus" />
 </template>
 

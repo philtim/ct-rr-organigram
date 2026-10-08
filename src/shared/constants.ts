@@ -56,4 +56,14 @@ export const COPY = {
     horizontStat: 'Benötigte Horizonte',
     /** Shown in place of a name when a leadership position is unfilled. */
     vacantRole: 'nicht besetzt',
+    // Tabs (ADR-007).
+    tabOrganigram: 'Organigramm',
+    tabBeitraege: 'Beitragsabrechnung',
+    beitraegeTitle: 'RR Beitragsabrechnung',
+    beitraegeAccessDenied:
+        'Die Beitragsabrechnung ist der Hauptstammleitung vorbehalten. Falls du Zugriff ' +
+        'brauchst, wende dich an den Stammleiter.',
+    beitraegePlaceholder:
+        'Die Kennzahlen und der Excel-Export folgen. Diese Ansicht zeigt ausschließlich ' +
+        'Summen — Namen, Geburtsdaten und Adressen stehen nur in der Export-Datei.',
 } as const;
