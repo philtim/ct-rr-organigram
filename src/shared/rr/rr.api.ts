@@ -35,7 +35,9 @@ type GroupChildRow = {
  */
 export async function resolveTeams(teilstammIds: number[]): Promise<TeamRef[]> {
     const perTeilstamm = await mapWithConcurrency(teilstammIds, 4, async (teilstammId) => {
-        const children = await ct.get<GroupChildRow[]>(`/groups/${teilstammId}/children`);
+        const children = await withRetryOn429(() =>
+            ct.get<GroupChildRow[]>(`/groups/${teilstammId}/children`),
+        );
         return (children ?? []).filter(
             (child) => child.domainAttributes?.groupTypeId === KLEINGRUPPE_TYPE_ID,
         );
@@ -82,7 +84,9 @@ export async function fetchTeamMembers(teams: TeamRef[]): Promise<TeamMembers> {
 
     const pages = await mapWithConcurrency(teams, 6, async (team) => ({
         team,
-        members: await ct.get<GroupMember[]>(`/groups/${team.groupId}/members?${memberQuery()}`),
+        members: await withRetryOn429(() =>
+            ct.get<GroupMember[]>(`/groups/${team.groupId}/members?${memberQuery()}`),
+        ),
     }));
 
     for (const { team, members } of pages) {
@@ -129,8 +133,10 @@ function memberQuery(): string {
 export async function fetchStaffFromGroups(groupIds: number[]): Promise<Set<number>> {
     const ids = new Set<number>();
     const pages = await mapWithConcurrency(groupIds, 4, (groupId) =>
-        ct.get<GroupMember[]>(
-            `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
+        withRetryOn429(() =>
+            ct.get<GroupMember[]>(
+                `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
+            ),
         ),
     );
     for (const members of pages) {
@@ -181,46 +187,69 @@ const RELATIONSHIP_PARENT_CHILD = 1;
 const RELATIONSHIP_SIBLING = 3;
 
 /**
- * Relationships for the given people, one request each.
+ * The relationship graph, reduced to the edges that touch a participant.
  *
- * Recon note, so nobody retries the obvious shortcut: the bulk endpoint
- * `GET /persons/relationships` ignores `limit` and `page` and accepts no
- * person filter under any spelling. It answers with every relationship in the
- * installation — 5,940 rows, 4.3 MB on the live instance. Fetching per person
- * costs more requests but about 450 KB, and asks only about the people whose
- * fees are being computed.
+ * **One request, not one per person.** `GET /persons/relationships` takes no
+ * person filter and ignores `limit` and `page`, so it answers with every
+ * relationship in the installation — 5,940 rows on the live instance. An
+ * earlier version of this file rejected it for that reason and asked per
+ * person instead. That was the wrong call, from comparing uncompressed sizes:
+ * browsers negotiate gzip, and measured against the live instance the one
+ * request transfers **116 KB in 0.7 s**, while 305 single requests take
+ * 15 s — and trip the instance's rate limit on a second run. Both produce
+ * byte-identical families and totals; that equivalence was verified before
+ * this was changed.
  *
- * `degreeOfRelationship === 'relationship.part.parent'` means the *relative*
- * is the parent of the person asked about. (Recon-confirmed: the bulk feed
- * states the same edge as personA = parent, personB = child.)
+ * The cost is honest over-fetching: the response covers the whole
+ * congregation, including relationship types this code never reads. It
+ * arrives under the viewer's own permissions, nothing is rendered from it,
+ * and only parent and sibling edges touching a participant are kept — the
+ * rest is dropped before anything else sees it.
+ *
+ * Edge direction (recon-confirmed, and the one thing worth getting right
+ * here): for type 1, `personA` is the **parent** and `personB` the **child**.
  */
 export async function fetchRelationships(personIds: number[]): Promise<Relationship[]> {
-    type RelationshipRow = {
-        relationshipTypeId?: number;
-        degreeOfRelationship?: string;
-        relative?: { domainIdentifier?: string };
+    type BulkRow = {
+        personAId?: number;
+        personBId?: number;
+        relationshipType?: { id?: number };
     };
 
-    const perPerson = await mapWithConcurrency(personIds, 4, async (personId) => {
-        const rows = await withRetryOn429(() =>
-            ct.get<RelationshipRow[]>(`/persons/${personId}/relationships`),
-        );
-        return { personId, rows: rows ?? [] };
-    });
+    const participantIds = new Set(personIds);
+    const rows = await withRetryOn429(() => ct.get<BulkRow[]>('/persons/relationships'));
 
     const relationships: Relationship[] = [];
-    for (const { personId, rows } of perPerson) {
-        for (const row of rows) {
-            const relativeId = Number(row.relative?.domainIdentifier);
-            if (!Number.isFinite(relativeId)) continue;
+    for (const row of rows ?? []) {
+        const parentOrSiblingA = row.personAId;
+        const childOrSiblingB = row.personBId;
+        if (typeof parentOrSiblingA !== 'number' || typeof childOrSiblingB !== 'number') continue;
 
-            if (
-                row.relationshipTypeId === RELATIONSHIP_PARENT_CHILD &&
-                row.degreeOfRelationship === 'relationship.part.parent'
-            ) {
-                relationships.push({ personId, relativeId, kind: 'parent' });
-            } else if (row.relationshipTypeId === RELATIONSHIP_SIBLING) {
-                relationships.push({ personId, relativeId, kind: 'sibling' });
+        const typeId = row.relationshipType?.id;
+        if (typeId === RELATIONSHIP_PARENT_CHILD) {
+            if (participantIds.has(childOrSiblingB)) {
+                relationships.push({
+                    personId: childOrSiblingB,
+                    relativeId: parentOrSiblingA,
+                    kind: 'parent',
+                });
+            }
+        } else if (typeId === RELATIONSHIP_SIBLING) {
+            // Stated once in the feed; recorded from both ends so neither
+            // sibling depends on which side of the row they landed on.
+            if (participantIds.has(parentOrSiblingA)) {
+                relationships.push({
+                    personId: parentOrSiblingA,
+                    relativeId: childOrSiblingB,
+                    kind: 'sibling',
+                });
+            }
+            if (participantIds.has(childOrSiblingB)) {
+                relationships.push({
+                    personId: childOrSiblingB,
+                    relativeId: parentOrSiblingA,
+                    kind: 'sibling',
+                });
             }
         }
     }
