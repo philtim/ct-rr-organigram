@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.0](https://github.com/philtim/ct-rr-organigram/compare/v1.7.0...v1.8.0) (2026-10-08)
+
+
+### Features
+
+* **beitraege:** show the figures in the tab ([cd3825a](https://github.com/philtim/ct-rr-organigram/commit/cd3825a993f71960eb1dcefcb2e0fd7228aa30c9))
+
+
+### Bug Fixes
+
+* **rr:** let both role predicates take a whole role ([3a3d875](https://github.com/philtim/ct-rr-organigram/commit/3a3d875e04d95984ff7f1889142e656ee3fdcb1a))
+* **rr:** make both tabs classify leaders by one shared rule ([cd95a7d](https://github.com/philtim/ct-rr-organigram/commit/cd95a7df666c910a92d0abb4877a59a6bd38c2ba))
+
+
+### Performance Improvements
+
+* **rr:** fetch the relationship graph in one request ([37e231a](https://github.com/philtim/ct-rr-organigram/commit/37e231a6a4c633d759a422d13add42b977cfdb5f))
+
 ## [1.7.0](https://github.com/philtim/ct-rr-organigram/compare/v1.6.0...v1.7.0) (2026-10-08)
 
 
