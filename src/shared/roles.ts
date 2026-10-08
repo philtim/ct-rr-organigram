@@ -23,8 +23,19 @@ export type RoleDefinition = {
     isLeader?: boolean;
 };
 
-/** True for roles ChurchTools itself calls leadership. */
-export function isLeadershipRole(role: { type?: string; isLeader?: boolean }): boolean {
+/**
+ * The shape both predicates accept — whatever carries a role's name and
+ * flags, whether it came from a group's `roles` include or from
+ * `GET /group/roles`.
+ */
+export type RoleLike = { name?: string; type?: string; isLeader?: boolean };
+
+/**
+ * True for roles ChurchTools itself calls leadership. `type` is the current
+ * field; `isLeader` is deprecated in the API spec but still delivered, so
+ * either is accepted.
+ */
+export function isLeadershipRole(role: RoleLike): boolean {
     return role.type === 'leader' || role.isLeader === true;
 }
 
@@ -33,7 +44,7 @@ export function isLeadershipRole(role: { type?: string; isLeader?: boolean }): b
  * broadened set — Mitarbeiter, Teamhelfer and Organisator are `participant`
  * roles that the Stamm treats as MAs.
  */
-export function isLeaderRole(role: { name?: string; type?: string; isLeader?: boolean }): boolean {
+export function isLeaderRole(role: RoleLike): boolean {
     if (isLeadershipRole(role)) return true;
     return LEADER_ROLE_NAMES.has((role.name ?? '').trim().toLowerCase());
 }
