@@ -2,9 +2,10 @@
 import { computed, onMounted, ref } from 'vue';
 import Admin from '@/admin/Admin.vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
-import Gate from '@/gate/Gate.vue';
+import Gate from '@/shared/access/Gate.vue';
 import { useAdminSettings } from '@/admin/useAdminSettings';
-import { useGate } from '@/gate/useGate';
+import { useAccessGate } from '@/shared/access/useAccessGate';
+import { membershipRule } from '@/shared/access/rules';
 import { COPY } from '@/shared/constants';
 
 // Routing: a single SPA serving both the dashboard and the admin form.
@@ -16,16 +17,19 @@ const isAdminRoute = computed(() => {
 });
 
 const { settings, load: loadSettings } = useAdminSettings();
-const { status: gateStatus, check: runGate } = useGate();
+const { status: gateStatus, check: runGate } = useAccessGate();
 const ready = ref(false);
 
+// Access rule for the dashboard (ADR-008). ?admin=1 used to return early in
+// onMounted, skipping loadSettings() and the gate entirely — anyone who knew
+// the URL reached the group picker and could overwrite the configuration. The
+// admin form is now gated like the dashboard; the only ungated path is the
+// first-run case below, where there is no configured group to check against.
+const organigramRule = computed(() => membershipRule(settings.value?.gateGroupId));
+
 onMounted(async () => {
-    if (isAdminRoute.value) {
-        ready.value = true;
-        return;
-    }
     await loadSettings();
-    await runGate(settings.value?.gateGroupId);
+    await runGate(organigramRule.value);
     ready.value = true;
 });
 
@@ -34,7 +38,7 @@ onMounted(async () => {
 // the gate so the dashboard appears without a manual reload.
 async function handleSaved() {
     await loadSettings();
-    await runGate(settings.value?.gateGroupId);
+    await runGate(organigramRule.value);
 }
 </script>
 
@@ -44,7 +48,10 @@ async function handleSaved() {
         <p class="rr-shell__subtitle">{{ COPY.loading }}</p>
     </main>
     <Admin
-        v-else-if="isAdminRoute || gateStatus.phase === 'config-missing'"
+        v-else-if="
+            gateStatus.phase === 'config-missing' ||
+            (isAdminRoute && gateStatus.phase === 'allowed')
+        "
         :first-run="!isAdminRoute && gateStatus.phase === 'config-missing'"
         @saved="handleSaved"
     />

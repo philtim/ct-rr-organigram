@@ -25,6 +25,10 @@ const CATEGORY_DESCRIPTION = 'Persistierte Konfiguration der Extension.';
  * trace. Write path uses getOrCreateModule and creates the category
  * on first save.
  */
+function isNumberArray(value: unknown): value is number[] {
+    return Array.isArray(value) && value.every((x) => typeof x === 'number');
+}
+
 export function useAdminSettings() {
     const settings = ref<Settings | null>(null);
     const loading = ref(false);
@@ -42,11 +46,14 @@ export function useAdminSettings() {
             const merged = cat as unknown as (Settings & { id: number }) | undefined;
             if (merged && typeof merged.gateGroupId === 'number') {
                 const next: Settings = { gateGroupId: merged.gateGroupId };
-                if (
-                    Array.isArray(merged.teilstammIds) &&
-                    merged.teilstammIds.every((x) => typeof x === 'number')
-                ) {
+                if (isNumberArray(merged.teilstammIds)) {
                     next.teilstammIds = merged.teilstammIds;
+                }
+                // An unparsable or missing value leaves the field undefined,
+                // which makes the Beitragsabrechnung unavailable rather than
+                // open to everyone (ADR-008, fail closed).
+                if (isNumberArray(merged.beitraegeRoleIds)) {
+                    next.beitraegeRoleIds = merged.beitraegeRoleIds;
                 }
                 settings.value = next;
             } else {

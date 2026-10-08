@@ -25,6 +25,13 @@ export type Settings = {
      * (render all children) so existing installations keep working.
      */
     teilstammIds?: number[];
+    /**
+     * `groupTypeRoleId`s within the Hauptstamm group that may open the
+     * Beitragsabrechnung tab (ADR-008 role rule). Undefined or empty means
+     * the tab is available to nobody — fail closed, since its export carries
+     * names, dates of birth and addresses.
+     */
+    beitraegeRoleIds?: number[];
 };
 
 /** A leadership role as the group type defines it. */
