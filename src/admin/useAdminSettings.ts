@@ -25,6 +25,19 @@ const CATEGORY_DESCRIPTION = 'Persistierte Konfiguration der Extension.';
  * trace. Write path uses getOrCreateModule and creates the category
  * on first save.
  */
+/**
+ * The metadata `getCustomDataCategory` returns alongside the parsed settings.
+ * All optional: the read path tolerates a category that predates these
+ * fields, and the write path falls back to the constants above.
+ */
+type ExistingCategory = {
+    id: number;
+    customModuleId?: number;
+    description?: string;
+    name?: string;
+    shorty?: string;
+};
+
 function isNumberArray(value: unknown): value is number[] {
     return Array.isArray(value) && value.every((x) => typeof x === 'number');
 }
@@ -78,12 +91,27 @@ export function useAdminSettings() {
                 MODULE_DESCRIPTION,
             );
             const existing = (await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY)) as
-                | (Settings & { id: number })
+                | (Settings & ExistingCategory)
                 | undefined;
             const data = JSON.stringify(next);
 
             if (existing) {
-                await updateCustomDataCategory(existing.id, { data }, moduleObj.id);
+                // A PUT replaces the record, so the metadata has to travel
+                // with the payload — sending `{ data }` alone fails with
+                // HTTP 400. The existing values are reused rather than
+                // overwritten with our constants, so a category someone
+                // renamed in ChurchTools keeps its name.
+                await updateCustomDataCategory(
+                    existing.id,
+                    {
+                        customModuleId: existing.customModuleId ?? moduleObj.id,
+                        data,
+                        description: existing.description ?? CATEGORY_DESCRIPTION,
+                        name: existing.name ?? CATEGORY_NAME,
+                        shorty: existing.shorty ?? KV_CATEGORY_SHORTY,
+                    },
+                    moduleObj.id,
+                );
             } else {
                 await createCustomDataCategory(
                     {

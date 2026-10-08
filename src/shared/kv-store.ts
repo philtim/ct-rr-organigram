@@ -148,11 +148,18 @@ export async function createCustomDataCategory(
 /**
  * update an existing custom data category
  * implements  PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`
+ *
+ * The PUT **replaces** the record, so the payload has to be complete. A body
+ * carrying only `data` is rejected with HTTP 400 and validation errors on
+ * `customModuleId` and `shorty` — which is why this takes the full
+ * `CustomModuleDataCategoryCreate` rather than a `Partial`. The type used to
+ * promise a partial update the API does not offer.
+ *
  * @param moduleId - optional module id - otherwise tries default
  */
 export async function updateCustomDataCategory(
     dataCategoryId: number,
-    payload: Partial<CustomModuleDataCategory>,
+    payload: CustomModuleDataCategoryCreate,
     moduleId?: number,
 ): Promise<void> {
     moduleId = await resolveModuleId(moduleId);
