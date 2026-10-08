@@ -1,4 +1,4 @@
-import { LEADER_ROLE_NAMES } from '@/shared/constants';
+import { isLeaderRole, isLeadershipRole } from '@/shared/roles';
 import type { Group, GroupMember, Leader, LeaderRole, Participant } from '@/shared/types';
 
 /** What the cards need to know about the role a member holds. */
@@ -43,21 +43,6 @@ export function leadersFromMembers(group: Group, members: GroupMember[]): Leader
                 isPillRole: info.isPillRole,
             };
         });
-}
-
-/**
- * True for roles ChurchTools itself calls leadership. `type` is the current
- * field; `isLeader` is deprecated in the API spec but still delivered, so we
- * accept either.
- */
-function isLeadershipRole(role: { type?: string; isLeader?: boolean }): boolean {
-    return role.type === 'leader' || role.isLeader === true;
-}
-
-/** A role counts as leader iff CT flags it OR its name is in the broadened set. */
-function isLeaderRole(role: { name?: string; type?: string; isLeader?: boolean }): boolean {
-    if (isLeadershipRole(role)) return true;
-    return LEADER_ROLE_NAMES.has((role.name ?? '').trim().toLowerCase());
 }
 
 /** Pull the person's profile-picture URL from the member's inlined person object. */

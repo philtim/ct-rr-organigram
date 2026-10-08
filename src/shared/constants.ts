@@ -72,6 +72,14 @@ export const COPY = {
         'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
         'stehen nur in der Export-Datei, die als Nächstes folgt.',
     feesTotalLabel: 'Einzuziehender Gesamtbetrag',
+    feesOrganigramTitle: 'Abgleich mit dem Organigramm',
+    feesLeaders: 'Leiter',
+    feesMembers: 'Mitglieder',
+    feesReconciliation: (members: number, staffChildren: number, participants: number) =>
+        `Dieselben Zahlen wie im Tab „Organigramm", aus denselben Daten nach denselben ` +
+        `Regeln. Die Abrechnung zählt zusätzlich die ${staffChildren} Mitarbeiter, die ` +
+        `selbst Teilnehmer sind: ${members} + ${staffChildren} = ${participants}. Im ` +
+        'Organigramm stehen sie bei den Leitern, hier als beitragsfreie Teilnehmer.',
     feesPeopleTitle: 'Teilnehmer',
     feesParticipants: 'Teilnehmer gesamt',
     feesLiable: 'beitragspflichtig',

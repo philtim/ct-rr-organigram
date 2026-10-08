@@ -5,6 +5,7 @@ import {
     fetchTeamMembers,
     resolveTeams,
 } from '@/shared/rr/rr.api';
+import { fetchLeaderRoleIds } from '@/shared/roles';
 import { groupFamilies } from '@/shared/rr/families';
 import { assignFees, summarize } from '@/shared/rr/fee-tiers';
 import { summarizeDataQuality } from '@/shared/rr/data-quality';
@@ -15,6 +16,15 @@ import type { FeeConfig } from '@/shared/rr/types';
 
 export type BeitraegeResult = {
     totals: FeeTotals;
+    /**
+     * The organigram's two headline counts, computed from the same data by the
+     * same rules, so a reader can hold the tabs side by side and have them
+     * agree. `participants = members + staffParticipants` — the Mitarbeiter
+     * the organigram counts as leaders are participants here, exempt rather
+     * than absent.
+     */
+    leaders: number;
+    members: number;
     quality: DataQuality;
     config: FeeConfig;
     /** How many team groups the figures cover — the scope, made visible. */
@@ -74,11 +84,12 @@ export function useBeitraege() {
                 return;
             }
 
-            const [{ participants, staffPersonIds }, leaderIds] = await Promise.all([
-                fetchTeamMembers(teams),
-                fetchStaffFromGroups([gateGroupId, ...teilstammIds]),
+            const leaderRoleIds = await fetchLeaderRoleIds();
+            const [{ participants, staffPersonIds }, groupLeaderIds] = await Promise.all([
+                fetchTeamMembers(teams, leaderRoleIds),
+                fetchStaffFromGroups([gateGroupId, ...teilstammIds], leaderRoleIds),
             ]);
-            for (const id of leaderIds) staffPersonIds.add(id);
+            for (const id of groupLeaderIds) staffPersonIds.add(id);
 
             const personIds = participants.map((p) => p.personId);
             const relationships = await fetchRelationships(personIds);
@@ -86,10 +97,18 @@ export function useBeitraege() {
             const families = groupFamilies(participants, relationships);
             const assignments = assignFees(participants, families, staffPersonIds, config);
 
+            // Leader status takes precedence over participant status, exactly
+            // as `hierarchy.ts` resolves it for the organigram's tiles.
+            const staffParticipants = participants.filter((p) =>
+                staffPersonIds.has(p.personId),
+            ).length;
+
             state.value = {
                 phase: 'ready',
                 result: {
                     totals: summarize(assignments, families),
+                    leaders: staffPersonIds.size,
+                    members: participants.length - staffParticipants,
                     quality: summarizeDataQuality(participants, relationships),
                     config,
                     teamCount: teams.length,

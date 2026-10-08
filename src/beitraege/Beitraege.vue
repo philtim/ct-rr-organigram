@@ -63,6 +63,29 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
                 </section>
 
                 <section class="rr-fees__panel">
+                    <h2 class="rr-fees__section-title">{{ COPY.feesOrganigramTitle }}</h2>
+                    <dl class="rr-fees__grid">
+                        <div class="rr-fees__stat">
+                            <dt class="rr-fees__stat-label">{{ COPY.feesLeaders }}</dt>
+                            <dd class="rr-fees__stat-value">{{ state.result.leaders }}</dd>
+                        </div>
+                        <div class="rr-fees__stat">
+                            <dt class="rr-fees__stat-label">{{ COPY.feesMembers }}</dt>
+                            <dd class="rr-fees__stat-value">{{ state.result.members }}</dd>
+                        </div>
+                    </dl>
+                    <p class="rr-fees__detail">
+                        {{
+                            COPY.feesReconciliation(
+                                state.result.members,
+                                state.result.totals.exemptStaff,
+                                state.result.totals.participants,
+                            )
+                        }}
+                    </p>
+                </section>
+
+                <section class="rr-fees__panel">
                     <h2 class="rr-fees__section-title">{{ COPY.feesPeopleTitle }}</h2>
                     <dl class="rr-fees__grid">
                         <div class="rr-fees__stat">

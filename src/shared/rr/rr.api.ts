@@ -2,9 +2,6 @@ import { ct } from '@/shared/api';
 import type { GroupMember } from '@/shared/types';
 import type { Relationship, RrParticipant } from './types';
 
-/** `groupTypeRoleId` of "Teilnehmer" in a Kleingruppe (group type 1). */
-export const TEILNEHMER_ROLE_ID = 8;
-
 /** Kleingruppe — the group type the actual RR teams use. */
 const KLEINGRUPPE_TYPE_ID = 1;
 
@@ -60,6 +57,9 @@ export type TeamMembers = {
     staffPersonIds: Set<number>;
 };
 
+/** Used by both tabs, so both answer "who leads" the same way (`shared/roles`). */
+export type LeaderRoleIds = ReadonlySet<number>;
+
 /**
  * Active members of the given team groups, one request per team, split into
  * participants and staff.
@@ -72,13 +72,23 @@ export type TeamMembers = {
  * That group is auto-populated from exactly these memberships, so the two
  * agree (checked against the live instance: both yield the same 17 people, no
  * difference either way), and deriving it needs no installation-specific group
- * id in the source or in the configuration.
+ * id in the source or in the configuration. It also removes the staleness the
+ * Merkmal group carries: its nightly run means a participant added today is in
+ * neither Merkmal group yet, while the roles are current the moment someone
+ * saves them.
+ *
+ * Which roles count as leading comes from `shared/roles` via `leaderRoleIds`
+ * — the same rule the organigram uses, so both tabs classify the same person
+ * the same way.
  *
  * Someone can be a participant in more than one team, so results are merged by
  * person id and the team names collected — otherwise they would be counted
  * twice and billed twice.
  */
-export async function fetchTeamMembers(teams: TeamRef[]): Promise<TeamMembers> {
+export async function fetchTeamMembers(
+    teams: TeamRef[],
+    leaderRoleIds: LeaderRoleIds,
+): Promise<TeamMembers> {
     const byPerson = new Map<number, RrParticipant>();
     const staffPersonIds = new Set<number>();
 
@@ -96,7 +106,7 @@ export async function fetchTeamMembers(teams: TeamRef[]): Promise<TeamMembers> {
             const personId = Number(member.person?.domainIdentifier);
             if (!Number.isFinite(personId)) continue;
 
-            if (member.groupTypeRoleId !== TEILNEHMER_ROLE_ID) {
+            if (leaderRoleIds.has(member.groupTypeRoleId)) {
                 staffPersonIds.add(personId);
                 continue;
             }
@@ -116,6 +126,8 @@ export async function fetchTeamMembers(teams: TeamRef[]): Promise<TeamMembers> {
 
 function memberQuery(): string {
     const params = new URLSearchParams();
+    // Same filter the organigram applies, so neither tab counts a person the
+    // other does not. A `waiting` or `requested` member belongs in neither.
     params.append('group_member_statuses[]', 'active');
     for (const field of PERSON_FIELDS) params.append('personFields[]', field);
     params.set('limit', '200');
@@ -130,7 +142,10 @@ function memberQuery(): string {
  * Adds nobody on the live instance today; it is the cheap half of the staff
  * definition that does not depend on team roles being maintained.
  */
-export async function fetchStaffFromGroups(groupIds: number[]): Promise<Set<number>> {
+export async function fetchStaffFromGroups(
+    groupIds: number[],
+    leaderRoleIds: LeaderRoleIds,
+): Promise<Set<number>> {
     const ids = new Set<number>();
     const pages = await mapWithConcurrency(groupIds, 4, (groupId) =>
         withRetryOn429(() =>
@@ -141,6 +156,7 @@ export async function fetchStaffFromGroups(groupIds: number[]): Promise<Set<numb
     );
     for (const members of pages) {
         for (const member of members ?? []) {
+            if (!leaderRoleIds.has(member.groupTypeRoleId)) continue;
             const personId = Number(member.person?.domainIdentifier);
             if (Number.isFinite(personId)) ids.add(personId);
         }
