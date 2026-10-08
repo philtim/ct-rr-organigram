@@ -21,7 +21,17 @@ export async function getGroup(groupId: number): Promise<Group> {
     return await ct.get<Group>(`/groups/${groupId}?include[]=memberStatistics&include[]=roles`);
 }
 
-/** Members of a group (inlined person object — no extra /persons calls needed). */
+/**
+ * Members of a group (inlined person object — no extra /persons calls needed).
+ *
+ * Active only, which is the same filter the Beitragsabrechnung applies, so the
+ * two tabs cannot count different people. Previously unfiltered: a `waiting`
+ * or `requested` member was counted here and not there. Nobody on the live
+ * instance holds such a status today — 463 memberships, all active — so this
+ * closes a gap rather than changing a number.
+ */
 export async function getGroupMembers(groupId: number): Promise<GroupMember[]> {
-    return await ct.get<GroupMember[]>(`/groups/${groupId}/members?limit=200`);
+    return await ct.get<GroupMember[]>(
+        `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
+    );
 }

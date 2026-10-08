@@ -145,7 +145,11 @@ async function handleSaved() {
           organigram: the user asked for this view and deserves to be told
           they may not have it (ADR-008).
         -->
-        <Beitraege v-else-if="beitraegeAllowed" />
+        <Beitraege
+            v-else-if="beitraegeAllowed"
+            :gate-group-id="settings.gateGroupId"
+            :teilstamm-ids="settings.teilstammIds"
+        />
         <Gate v-else :status="beitraegeGateStatus" :denied-message="COPY.beitraegeAccessDenied" />
     </template>
     <Gate v-else :status="gateStatus" />

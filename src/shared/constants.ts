@@ -67,7 +67,36 @@ export const COPY = {
         'Die Beitragsabrechnung ist noch für keine Rolle freigegeben und bleibt deshalb ' +
         'für alle verborgen.',
     beitraegeSetupHintLink: 'Jetzt konfigurieren',
-    beitraegePlaceholder:
-        'Die Kennzahlen und der Excel-Export folgen. Diese Ansicht zeigt ausschließlich ' +
-        'Summen — Namen, Geburtsdaten und Adressen stehen nur in der Export-Datei.',
+    beitraegeLoadError: 'Die Beitragsdaten konnten nicht geladen werden.',
+    beitraegeExportPending:
+        'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
+        'stehen nur in der Export-Datei, die als Nächstes folgt.',
+    feesTotalLabel: 'Einzuziehender Gesamtbetrag',
+    feesOrganigramTitle: 'Abgleich mit dem Organigramm',
+    feesLeaders: 'Leiter',
+    feesMembers: 'Mitglieder',
+    feesReconciliation: (members: number, staffChildren: number, participants: number) =>
+        `Dieselben Zahlen wie im Tab „Organigramm", aus denselben Daten nach denselben ` +
+        `Regeln. Die Abrechnung zählt zusätzlich die ${staffChildren} Mitarbeiter, die ` +
+        `selbst Teilnehmer sind: ${members} + ${staffChildren} = ${participants}. Im ` +
+        'Organigramm stehen sie bei den Leitern, hier als beitragsfreie Teilnehmer.',
+    feesPeopleTitle: 'Teilnehmer',
+    feesParticipants: 'Teilnehmer gesamt',
+    feesLiable: 'beitragspflichtig',
+    feesExempt: 'beitragsfrei',
+    feesExemptStaff: 'davon Mitarbeiter',
+    feesExemptThirdChild: 'davon ab 3. Kind',
+    feesFamiliesTitle: 'Familien',
+    feesFamilies: 'Familien gesamt',
+    feesFamiliesThreePlus: 'mit 3+ RR-Kindern',
+    feesQualityTitle: 'Unvollständige Daten',
+    feesQualityHint: (count: number) =>
+        `${count} ${count === 1 ? 'Teilnehmer hat' : 'Teilnehmer haben'} weder eine Adresse ` +
+        `noch eine Beziehung zu ${count === 1 ? 'einem anderen' : 'anderen'} Teilnehmer` +
+        `${count === 1 ? '' : 'n'} und ${count === 1 ? 'gilt' : 'gelten'} deshalb als ` +
+        'Einzelkind. Falls es Geschwister gibt, wird zu viel berechnet — die Lücke muss ' +
+        'in ChurchTools geschlossen werden.',
+    feesMissingAddress: 'ohne Adresse',
+    feesMissingRelationship: 'ohne Beziehung',
+    feesMissingBirthday: 'ohne Geburtsdatum',
 } as const;
