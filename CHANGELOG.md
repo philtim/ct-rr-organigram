@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.0](https://github.com/philtim/ct-rr-organigram/compare/v1.5.0...v1.6.0) (2026-10-08)
+
+
+### Features
+
+* add Beitragsabrechnung tab with access rules and fee domain logic ([9dfdd2f](https://github.com/philtim/ct-rr-organigram/commit/9dfdd2f4f6a4f08e660fb2e3c7a18f1f10e3e85c))
+* **rr:** add fee domain logic with Vitest coverage ([4e73e18](https://github.com/philtim/ct-rr-organigram/commit/4e73e18fc2b97e2f87eadbc93fb82978d6f1b4ac))
+* **tabs:** add tab navigation with an empty Beitragsabrechnung tab ([6226502](https://github.com/philtim/ct-rr-organigram/commit/6226502fb11ce35dec97d78f4c2ca6d4f6c7c1bc))
+
 ## [1.5.0](https://github.com/philtim/ct-rr-organigram/compare/v1.4.0...v1.5.0) (2026-10-02)
 
 
