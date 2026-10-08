@@ -63,6 +63,10 @@ export const COPY = {
     beitraegeAccessDenied:
         'Die Beitragsabrechnung ist der Hauptstammleitung vorbehalten. Falls du Zugriff ' +
         'brauchst, wende dich an den Stammleiter.',
+    beitraegeSetupHint:
+        'Die Beitragsabrechnung ist noch für keine Rolle freigegeben und bleibt deshalb ' +
+        'für alle verborgen.',
+    beitraegeSetupHintLink: 'Jetzt konfigurieren',
     beitraegePlaceholder:
         'Die Kennzahlen und der Excel-Export folgen. Diese Ansicht zeigt ausschließlich ' +
         'Summen — Namen, Geburtsdaten und Adressen stehen nur in der Export-Datei.',
