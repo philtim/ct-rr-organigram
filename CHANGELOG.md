@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.0](https://github.com/philtim/ct-rr-organigram/compare/v1.6.0...v1.7.0) (2026-10-08)
+
+
+### Features
+
+* **beitraege:** point out that the tab is released to nobody ([ecb9b27](https://github.com/philtim/ct-rr-organigram/commit/ecb9b27c4cbba71724320a16a47881352e9cca94))
+* **beitraege:** point out that the tab is released to nobody ([e368291](https://github.com/philtim/ct-rr-organigram/commit/e3682913f514e7739f253a53f2c7e3c5fbbf9ed6))
+
+
+### Bug Fixes
+
+* **admin:** send the full record when updating stored settings ([1a24ed0](https://github.com/philtim/ct-rr-organigram/commit/1a24ed0f8a9696f9e789c4e3850fdf9d69cb427a))
+* **admin:** send the full record when updating stored settings ([4198c18](https://github.com/philtim/ct-rr-organigram/commit/4198c18669d739785682b6f620b66c3874a7cb2c))
+
 ## [1.6.0](https://github.com/philtim/ct-rr-organigram/compare/v1.5.0...v1.6.0) (2026-10-08)
 
 
