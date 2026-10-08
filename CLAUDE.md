@@ -38,3 +38,8 @@ See "Open Questions / TBDs" at the bottom of PRD.md. Don't quietly choose
 
 - Commit messages: imperative mood ("add feature", not "added feature")
 - Keep PRs focused — one logical change per PR
+- Keep a feature branch current by **rebasing** it onto `main`, never by
+  merging `main` into it
+- Land a branch on `main` with a **real merge commit** — never squash. The
+  individual commits are what release-please reads for the changelog, and
+  what makes a single step revertable on its own
