@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import Admin from '@/admin/Admin.vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
 import Beitraege from '@/beitraege/Beitraege.vue';
+import SetupHint from '@/beitraege/SetupHint.vue';
 import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
 import { useAdminSettings } from '@/admin/useAdminSettings';
@@ -70,6 +71,15 @@ const beitraegeGateStatus = computed<AccessStatus>(() => {
         : beitraegeStatus.value;
 });
 
+/**
+ * The feature is deployed but released to nobody. Worth saying out loud,
+ * because the tab bar hides itself at a single tab and the view would
+ * otherwise be invisible with no hint that it exists.
+ */
+const beitraegeUnconfigured = computed(
+    () => !settings.value?.beitraegeRoleIds || settings.value.beitraegeRoleIds.length === 0,
+);
+
 const availableTabs = computed(() => {
     const tabs: { id: TabId; label: string }[] = [{ id: 'organigram', label: COPY.tabOrganigram }];
     if (beitraegeAllowed.value) tabs.push({ id: 'beitraege', label: COPY.tabBeitraege });
@@ -123,6 +133,7 @@ async function handleSaved() {
         "
     >
         <TabBar :tabs="availableTabs" :active="activeTab" @select="selectTab" />
+        <SetupHint v-if="beitraegeUnconfigured && activeTab === 'organigram'" />
         <Dashboard
             v-if="activeTab === 'organigram'"
             :person="gateStatus.person"
