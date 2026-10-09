@@ -13,6 +13,7 @@ function participant(personId: number, overrides: Partial<RrParticipant> = {}): 
         zip: '72213',
         city: 'Altensteig',
         teamNames: ['Team A'],
+        stammNames: ['RR Musterstamm-MA'],
         ...overrides,
     };
 }

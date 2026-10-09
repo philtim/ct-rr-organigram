@@ -12,20 +12,23 @@ declare const window: Window &
     };
 
 /**
- * Build a link to a ChurchTools group's detail page.
+ * The ChurchTools instance this extension is talking to.
  * `base_url` (injected by the host) or VITE_BASE_URL may carry a trailing
- * path segment (e.g. when the extension is loaded inside a /groups/X view).
- * Extract the origin so we always emit a clean `{origin}/groups/{id}`.
+ * path segment (e.g. when the extension is loaded inside a /groups/X view),
+ * so reduce it to the origin.
  */
-export function getGroupFrontendUrl(groupId: number): string {
+export function getInstanceOrigin(): string {
     const raw = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL ?? '';
-    let origin = raw.replace(/\/+$/, '');
     try {
-        origin = new URL(raw, window.location.href).origin;
+        return new URL(raw, window.location.href).origin;
     } catch {
-        /* fall through with the trimmed value */
+        return raw.replace(/\/+$/, '');
     }
-    return `${origin}/groups/${groupId}`;
+}
+
+/** Build a link to a ChurchTools group's detail page. */
+export function getGroupFrontendUrl(groupId: number): string {
+    return `${getInstanceOrigin()}/groups/${groupId}`;
 }
 
 /**
