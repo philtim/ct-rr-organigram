@@ -111,4 +111,99 @@ export const COPY = {
     feesExportPrivacy:
         'Die Datei enthält Adressen von Minderjährigen. Nur an das Gemeindebüro ' +
         'weitergeben und nach dem Einzug löschen.',
+    // Jahresmeldung. The column headings deliberately repeat the wording of
+    // the Bund's "Mitgliederzahlen" form, so that abtippen needs no mental
+    // translation step (docs/design/001-jahresmeldung.md).
+    tabJahresmeldung: 'Jahresmeldung',
+    jahresmeldungTitle: 'RR Jahresmeldung',
+    jahresmeldungIntro:
+        'Aktueller Stand aus ChurchTools, gegliedert wie das Formular „Mitgliederzahlen" ' +
+        'im Bundesportal. Zeilen und Spalten stehen in derselben Reihenfolge.',
+    jahresmeldungTableTitle: 'Mitgliederzahlen',
+    jahresmeldungTableCaption: 'Mitgliederzahlen für die Jahresmeldung an den Bund',
+    jahresmeldungScope: (teams: number) =>
+        `Grundlage: ${teams} ${teams === 1 ? 'Team' : 'Teams'} unter den konfigurierten Teilstämmen.`,
+    jahresmeldungColJungen: 'Jungen',
+    jahresmeldungColMaedchen: 'Mädchen',
+    jahresmeldungColJuniorM: 'Juniorleiter männlich',
+    jahresmeldungColJuniorW: 'Juniorleiter weiblich',
+    jahresmeldungColMitarbeiterM: 'Mitarbeiter männlich',
+    jahresmeldungColMitarbeiterW: 'Mitarbeiter weiblich',
+    jahresmeldungColUnassigned: 'ohne Zuordnung',
+    jahresmeldungColUnassignedNote: 'ohne Zuordnung, nicht Teil des Formulars',
+    jahresmeldungRowTotal: 'Gesamt',
+    jahresmeldungSummenTitle: 'Summen',
+    jahresmeldungSumEntdecker: 'Gesamt Entdecker',
+    jahresmeldungSumOhneEntdecker: 'Gesamt Rangers und Leiter (ohne Entdecker)',
+    jahresmeldungSumStamm: 'Gesamt Stamm',
+    jahresmeldungSumUnknown: 'Kein Teilstamm als Entdecker erkennbar.',
+    jahresmeldungUnassignedHint: 'Diese Spalte gehört nicht ins Bundesformular.',
+    jahresmeldungMethodTitle: 'Wie wird gezählt?',
+    /**
+     * Every cell of the table, explained — so the figures can be defended
+     * against a query from the Bundesgeschäftsstelle without reading the code.
+     */
+    jahresmeldungMethod: [
+        {
+            term: 'Zeile',
+            text:
+                'Der Teilstamm, unter dem die Person in einem Team steht. Wer in keinem Team ' +
+                'steht, aber Mitarbeiter ist, zählt unter „Mitarbeiter ohne Team".',
+        },
+        {
+            term: 'Jungen / Mädchen',
+            text: 'Teilnehmer ohne Leitungs- oder Mitarbeiterrolle.',
+        },
+        {
+            term: 'Juniorleiter',
+            text:
+                'Leiter unter 18 Jahren. Sie zählen nicht zusätzlich bei Jungen/Mädchen — ' +
+                'ein Pfadranger, der leitet, erscheint also nur hier.',
+        },
+        {
+            term: 'Mitarbeiter',
+            text:
+                'Leiter ab 18 Jahren. Als Leitungsrolle gelten Leiter, Co-Leiter, ' +
+                'Mitarbeiter, Teamhelfer und Organisator.',
+        },
+        {
+            term: 'Mehrfach',
+            text:
+                'Wer in zwei Teams steht, zählt einmal — bei mehreren Teilstämmen dort, wo ' +
+                'die Person leitet.',
+        },
+        {
+            term: 'Stand',
+            text: 'Alle Zahlen beziehen sich auf jetzt, nicht auf einen Stichtag.',
+        },
+    ],
+    jahresmeldungCopied: (value: number) => `${value} kopiert`,
+    jahresmeldungCopyHint: 'Klick auf eine Zahl kopiert sie.',
+    jahresmeldungUnknownCell: 'unbekannt, Daten konnten nicht vollständig geladen werden',
+    jahresmeldungIncomplete:
+        'Nicht alle Teams konnten geladen werden. Die mit „?" markierten Zahlen sind ' +
+        'unvollständig — bitte nicht melden, sondern neu laden.',
+    jahresmeldungNoTeilstaemme:
+        'Es sind keine Teilstämme konfiguriert. Ohne diese Auswahl steht nicht fest, welche ' +
+        'Teams in die Meldung gehören — bitte zuerst in der Konfiguration festlegen.',
+    jahresmeldungLoadError: 'Die Zahlen für die Jahresmeldung konnten nicht geladen werden.',
+    jahresmeldungQualityTitle: 'Datenqualität',
+    jahresmeldungQualityNone: 'Alle Personen konnten einer Spalte des Formulars zugeordnet werden.',
+    jahresmeldungQualityLead: (count: number) =>
+        `${count} ${count === 1 ? 'Person fehlt' : 'Personen fehlen'} in den Formularspalten, ` +
+        `${count === 1 ? 'zählt' : 'zählen'} aber in „Gesamt Stamm".`,
+    jahresmeldungQualityGenderMissing: 'Geschlecht nicht gepflegt',
+    jahresmeldungQualityGenderMissingHint: 'In ChurchTools nachtragen, dann neu laden.',
+    jahresmeldungQualityGenderDiverse: 'Geschlecht divers',
+    jahresmeldungQualityGenderDiverseHint:
+        'Vollständig erfasst — das Formular kennt dafür nur zwei Spalten. Hier ist nichts zu ' +
+        'korrigieren; wie gemeldet wird, entscheidet die Stammleitung.',
+    jahresmeldungQualityAgeUnknown: 'Leiter ohne Geburtsdatum',
+    jahresmeldungQualityAgeUnknownHint:
+        'Ohne Geburtsdatum lässt sich Mitarbeiter nicht von Juniorleiter unterscheiden.',
+    jahresmeldungQualityMulti: 'In mehreren Teilstämmen aktiv',
+    jahresmeldungQualityMultiHint: 'Jeweils einmal gezählt, in der genannten Zeile.',
+    jahresmeldungQualityCountedIn: (row: string) => `gezählt bei: ${row}`,
+    jahresmeldungQualityPersonLink: 'In ChurchTools',
+    jahresmeldungQualityShowAll: (rest: number) => `Alle anzeigen (${rest} weitere)`,
 } as const;

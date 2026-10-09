@@ -31,6 +31,7 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [010](010-xlsx-export.md) | Client-side .xlsx export with `write-excel-file` | Accepted |
 | [011](011-personal-data.md) | Personal data: aggregates on screen, detail only in the export | Accepted |
 | [012](012-no-web-workers.md) | No Web Workers — the host CSP refuses them | Accepted |
+| [013](013-jahresmeldung-personal-data.md) | The Jahresmeldung names people with data gaps, never their values | Accepted |
 
 ## When to write a new ADR
 
