@@ -120,15 +120,39 @@ const personCount = computed(() =>
           ),
 );
 
+/**
+ * Only the roles that can actually occur in the configured scope.
+ *
+ * `GET /group/roles` returns one definition *per group type*, so an
+ * installation with four types offers four roles called "Leiter" — identical
+ * in the list and impossible to tell apart. Narrowing to the types in play
+ * removes most of the duplication; what remains gets the type name appended,
+ * because two roles with the same name in two types are genuinely different
+ * roles and the admin has to be able to pick the right one.
+ */
+const relevantRoles = computed(() => {
+    const types = new Set([...stammTypeIds.value, ...draft.value.teamGroupTypeIds]);
+    const inScope = roles.value.filter((r) => r.groupTypeId !== null && types.has(r.groupTypeId));
+
+    const nameCounts = new Map<string, number>();
+    for (const role of inScope) nameCounts.set(role.name, (nameCounts.get(role.name) ?? 0) + 1);
+
+    return inScope
+        .map((role) => ({
+            ...role,
+            label:
+                (nameCounts.get(role.name) ?? 0) > 1
+                    ? `${role.name} (${typeNameById.value.get(role.groupTypeId ?? -1) ?? '?'})`
+                    : role.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'de'));
+});
+
 /** Roles ChurchTools itself calls leadership — always count, never togglable. */
-const leadershipRoles = computed(() =>
-    roles.value.filter((r) => r.isLeadership).sort((a, b) => a.name.localeCompare(b.name, 'de')),
-);
+const leadershipRoles = computed(() => relevantRoles.value.filter((r) => r.isLeadership));
 
 /** Participant roles the Stamm may additionally treat as Mitarbeiter. */
-const participantRoles = computed(() =>
-    roles.value.filter((r) => !r.isLeadership).sort((a, b) => a.name.localeCompare(b.name, 'de')),
-);
+const participantRoles = computed(() => relevantRoles.value.filter((r) => !r.isLeadership));
 
 /** Only roles that can actually appear as a vacancy are worth offering. */
 const vacancyRoles = computed(() => leadershipRoles.value);
@@ -184,7 +208,14 @@ async function runScan() {
 watch(() => draft.value.gateGroupId, refreshChildren);
 watch(() => draft.value.teilstammIds.join(','), runScan);
 
-/** Euro in the input, cents in the model — the arithmetic stays exact. */
+/**
+ * Euro in the input, cents in the model — the arithmetic stays exact.
+ *
+ * The inputs commit on `change`, not on `input`. Re-formatting on every
+ * keystroke rewrites the field under the typist: entering "80" produced
+ * "8.00", because the first digit was reformatted and the cursor moved before
+ * the second arrived.
+ */
 function toEuro(cents: number): string {
     return (cents / 100).toFixed(2);
 }
@@ -423,8 +454,10 @@ onMounted(async () => {
                         class="rr-admin__option rr-admin__option--fixed"
                     >
                         <input class="rr-admin__checkbox" type="checkbox" checked disabled />
-                        <span class="rr-admin__option-name">{{ role.name }}</span>
-                        <span class="rr-admin__option-id">immer · {{ roleHolders(role.id) }}</span>
+                        <span class="rr-admin__option-name">{{ role.label }}</span>
+                        <span class="rr-admin__option-id">
+                            immer · {{ roleHolders(role.id) }} Personen
+                        </span>
                     </li>
                     <li
                         v-for="role in participantRoles"
@@ -447,7 +480,7 @@ onMounted(async () => {
                                 draft.extraLeaderRoleIds = toggle(draft.extraLeaderRoleIds, role.id)
                             "
                         />
-                        <span class="rr-admin__option-name">{{ role.name }}</span>
+                        <span class="rr-admin__option-name">{{ role.label }}</span>
                         <span class="rr-admin__option-id">{{ roleHolders(role.id) }} Personen</span>
                     </li>
                 </ul>
@@ -480,7 +513,7 @@ onMounted(async () => {
                                 draft.alwaysShownRoleIds = toggle(draft.alwaysShownRoleIds, role.id)
                             "
                         />
-                        <span class="rr-admin__option-name">{{ role.name }}</span>
+                        <span class="rr-admin__option-name">{{ role.label }}</span>
                     </li>
                 </ul>
 
@@ -522,7 +555,7 @@ onMounted(async () => {
                         min="0"
                         step="0.01"
                         :value="toEuro(cents)"
-                        @input="setRung(index, ($event.target as HTMLInputElement).value)"
+                        @change="setRung(index, ($event.target as HTMLInputElement).value)"
                     />
                     <span class="rr-admin__fee-unit">€</span>
                 </div>
@@ -551,7 +584,7 @@ onMounted(async () => {
                         min="0"
                         step="0.01"
                         :value="toEuro(draft.fees.staffCents)"
-                        @input="
+                        @change="
                             draft.fees = {
                                 ...draft.fees,
                                 staffCents: fromEuro(($event.target as HTMLInputElement).value),
@@ -568,7 +601,7 @@ onMounted(async () => {
                         min="0"
                         step="0.01"
                         :value="toEuro(draft.fees.juniorLeaderCents)"
-                        @input="
+                        @change="
                             draft.fees = {
                                 ...draft.fees,
                                 juniorLeaderCents: fromEuro(
@@ -854,10 +887,15 @@ onMounted(async () => {
     color: var(--rr-text-secondary);
 }
 
-/* A role ChurchTools itself calls leadership: shown, counted, not togglable. */
+/* A role ChurchTools itself calls leadership: shown, counted, not togglable.
+   Same layout as a checkable row, so the two lists read as one column. */
 .rr-admin__option--fixed {
     opacity: 0.75;
     cursor: default;
+    justify-content: flex-start;
+}
+.rr-admin__option--fixed .rr-admin__option-name {
+    flex: 1;
 }
 
 .rr-admin__preview {

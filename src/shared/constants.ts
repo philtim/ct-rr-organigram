@@ -14,6 +14,10 @@ export const API_TIMEOUT_MS = 30_000;
 /** UI copy. */
 export const COPY = {
     appTitle: 'RR Mitarbeiter-Dashboard',
+    configUnreadable:
+        'Die Konfiguration konnte nicht gelesen werden. Das heißt nicht, dass keine ' +
+        'vorhanden ist — bitte die Seite neu laden. Hält das an, fehlen vermutlich die ' +
+        'Rechte auf das Modul.',
     configMissing:
         'Diese Ansicht ist noch nicht konfiguriert. Unter Admin → Extensions müssen ' +
         'Hauptstamm-Gruppe, Teilstämme und die Gruppentypen der Teams festgelegt werden.',
@@ -58,6 +62,7 @@ export const COPY = {
     feesExempt: 'beitragsfrei',
     feesExemptStaff: 'davon Mitarbeiter',
     feesExemptLadder: 'davon beitragsfreie Kinder',
+    feesExemptJuniorLeader: 'davon Juniorleiter',
     feesFamiliesTitle: 'Familien',
     feesFamilies: 'Familien gesamt',
     feesFamiliesThreePlus: 'mit 3+ RR-Kindern',

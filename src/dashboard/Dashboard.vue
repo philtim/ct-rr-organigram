@@ -23,10 +23,11 @@ onMounted(() => {
 
 /**
  * A small Stamm names the same group as Hauptstamm and as its only Teilstamm.
- * Rendering both would put the identical card under its own hero, so the row
- * collapses and the hero stands alone.
+ * The hero card then already says everything the Teilstamm card would, so the
+ * card below drops to its team chips — which live nowhere else. Collapsing
+ * the row entirely was the first attempt and hid the teams completely.
  */
-const hideTeilstammRow = computed(
+const teamsOnly = computed(
     () =>
         state.value.phase === 'ready' &&
         state.value.root.children.length === 1 &&
@@ -67,20 +68,19 @@ const appCommit = __APP_COMMIT__;
 
             <template v-else-if="state.phase === 'ready'">
                 <HauptstammCard :node="state.root" />
-                <template v-if="!hideTeilstammRow">
-                    <div class="rr-dash__divider" aria-hidden="true">│</div>
-                    <div class="rr-dash__grid">
-                        <TeilstammCard
-                            v-for="ts in state.root.children"
-                            :key="ts.groupId"
-                            :node="ts"
-                            :always-shown-role-ids="settings.alwaysShownRoleIds"
-                        />
-                        <p v-if="!state.root.children.length" class="rr-dash__empty">
-                            Keine Teilstämme angelegt.
-                        </p>
-                    </div>
-                </template>
+                <div class="rr-dash__divider" aria-hidden="true">│</div>
+                <div class="rr-dash__grid" :class="{ 'rr-dash__grid--single': teamsOnly }">
+                    <TeilstammCard
+                        v-for="ts in state.root.children"
+                        :key="ts.groupId"
+                        :node="ts"
+                        :always-shown-role-ids="settings.alwaysShownRoleIds"
+                        :teams-only="teamsOnly"
+                    />
+                    <p v-if="!state.root.children.length" class="rr-dash__empty">
+                        Keine Teilstämme angelegt.
+                    </p>
+                </div>
                 <DuplicatesPanel :root="state.root" />
             </template>
 
@@ -176,6 +176,12 @@ const appCommit = __APP_COMMIT__;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
     align-items: start;
+}
+
+/* A small Stamm has one card carrying only team chips — a five-column grid
+   would squeeze it into a sliver. */
+.rr-dash__grid--single {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .rr-dash__empty {

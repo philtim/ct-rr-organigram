@@ -148,3 +148,41 @@ export function isDashboardConfigured(settings: Settings): boolean {
 export function areFeesConfigured(settings: Settings): boolean {
     return settings.fees.childCents.length > 0;
 }
+
+/** What the shell knows when it decides which screen to render. */
+export type ShellState = {
+    /** The configuration could not be read — not the same as "is absent". */
+    loadFailed: boolean;
+    /** A Hauptstamm group is configured, so membership can be checked at all. */
+    hasGateGroup: boolean;
+    /** Every required setting is present. */
+    configured: boolean;
+    /** The viewer passed the membership gate. */
+    gateAllowed: boolean;
+    /** The viewer asked for the form with `?admin=1`. */
+    isAdminRoute: boolean;
+};
+
+/**
+ * Whether to render the configuration form.
+ *
+ * Extracted from the template because it is an access decision, and the two
+ * ways of getting it wrong are both quiet:
+ *
+ *  - Showing the form when the configuration merely could not be *read* lets
+ *    somebody overwrite a configuration that still exists.
+ *  - Showing it ungated whenever something is missing hands the form to
+ *    anyone who can reach the bundle, even though a Hauptstamm group is
+ *    configured and could have been checked. That is the hole ADR-008 closed
+ *    for `?admin=1`, reopened through the back door.
+ *
+ * The one ungated case is a genuine first run: with no group configured there
+ * is nothing to check membership against, and requiring it would lock
+ * everybody out for good.
+ */
+export function shouldShowAdmin(state: ShellState): boolean {
+    if (state.loadFailed) return false;
+    if (!state.hasGateGroup) return true;
+    if (!state.gateAllowed) return false;
+    return state.isAdminRoute || !state.configured;
+}

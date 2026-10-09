@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     EMPTY_SETTINGS,
+    shouldShowAdmin,
     areFeesConfigured,
     isDashboardConfigured,
     missingDashboardFields,
@@ -149,5 +150,47 @@ describe('areFeesConfigured', () => {
         const settings = { ...EMPTY_SETTINGS, fees: { ...EMPTY_SETTINGS.fees, childCents: [0] } };
 
         expect(areFeesConfigured(settings)).toBe(true);
+    });
+});
+
+describe('shouldShowAdmin', () => {
+    const base = {
+        loadFailed: false,
+        hasGateGroup: true,
+        configured: true,
+        gateAllowed: true,
+        isAdminRoute: false,
+    };
+
+    it('shows the form on a genuine first run, without a gate', () => {
+        // Nothing to check membership against; requiring it would lock
+        // everybody out permanently.
+        expect(
+            shouldShowAdmin({ ...base, hasGateGroup: false, configured: false, gateAllowed: false }),
+        ).toBe(true);
+    });
+
+    it('does not show it when the configuration could not be read', () => {
+        // The dangerous case: a 5xx looks like "nothing configured", and a
+        // save would overwrite a configuration that still exists.
+        expect(
+            shouldShowAdmin({ ...base, loadFailed: true, hasGateGroup: false, configured: false }),
+        ).toBe(false);
+        expect(shouldShowAdmin({ ...base, loadFailed: true })).toBe(false);
+    });
+
+    it('gates a half-configured installation', () => {
+        // A Hauptstamm exists, so membership can be checked — and must be.
+        expect(shouldShowAdmin({ ...base, configured: false, gateAllowed: false })).toBe(false);
+        expect(shouldShowAdmin({ ...base, configured: false, gateAllowed: true })).toBe(true);
+    });
+
+    it('gates ?admin=1 as well', () => {
+        expect(shouldShowAdmin({ ...base, isAdminRoute: true, gateAllowed: false })).toBe(false);
+        expect(shouldShowAdmin({ ...base, isAdminRoute: true, gateAllowed: true })).toBe(true);
+    });
+
+    it('stays out of the way once everything is configured', () => {
+        expect(shouldShowAdmin(base)).toBe(false);
     });
 });

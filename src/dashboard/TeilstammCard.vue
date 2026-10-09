@@ -6,7 +6,17 @@ import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { leaderRoleRows } from './counts';
 
-const props = defineProps<{ node: OrgNode; alwaysShownRoleIds: number[] }>();
+const props = defineProps<{
+    node: OrgNode;
+    alwaysShownRoleIds: number[];
+    /**
+     * A small Stamm names the same group as Hauptstamm and as its only
+     * Teilstamm. The hero card above already carries the name, the leaders
+     * and the figures, so this card drops to its teams — which live nowhere
+     * else and would otherwise simply not be shown.
+     */
+    teamsOnly?: boolean;
+}>();
 
 const isError = computed(() => Boolean(props.node.error));
 // One row per leadership role, in the group type's own order. Stammleiter and
@@ -51,22 +61,22 @@ const compactHorizont = computed(() =>
             :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
         >
             <!-- Compact mobile row (hidden on tablet+) -->
-            <div class="ts-card__compact-row">
+            <div v-if="!props.teamsOnly" class="ts-card__compact-row">
                 <span class="ts-card__compact-name">{{ node.name }}</span>
             </div>
-            <p class="ts-card__compact-summary">{{ summary }}</p>
-            <div class="ts-card__compact-meta">
+            <p v-if="!props.teamsOnly" class="ts-card__compact-summary">{{ summary }}</p>
+            <div v-if="!props.teamsOnly" class="ts-card__compact-meta">
                 <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
                 <span class="ts-card__compact-meta-line">{{ compactHorizont }}</span>
             </div>
 
             <!-- Full layout (hidden on mobile) -->
-            <header class="ts-card__head">
+            <header v-if="!props.teamsOnly" class="ts-card__head">
                 <p class="ts-card__subtitle">TEILSTAMM</p>
                 <h3 class="ts-card__name">{{ node.name }}</h3>
             </header>
 
-            <div class="ts-card__leiter-list">
+            <div v-if="!props.teamsOnly" class="ts-card__leiter-list">
                 <template v-if="isError">
                     <span class="ts-card__label">{{ COPY.leiterStat }}</span>
                     <span class="ts-card__leiter-name">?</span>
@@ -87,7 +97,7 @@ const compactHorizont = computed(() =>
                 </template>
             </div>
 
-            <div class="ts-card__stat-row">
+            <div v-if="!props.teamsOnly" class="ts-card__stat-row">
                 <div class="ts-card__stat">
                     <p class="ts-card__stat-label">{{ COPY.teamleiterStat }}</p>
                     <p class="ts-card__stat-value">

@@ -124,6 +124,14 @@ const dueDateLabel = computed(() =>
                                 {{ state.result.totals.exemptLadder }}
                             </dd>
                         </div>
+                        <div class="rr-fees__stat">
+                            <dt class="rr-fees__stat-label">
+                                {{ COPY.feesExemptJuniorLeader }}
+                            </dt>
+                            <dd class="rr-fees__stat-value">
+                                {{ state.result.totals.exemptJuniorLeader }}
+                            </dd>
+                        </div>
                     </dl>
                 </section>
 

@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import {
-    getModule,
+    findModule,
     getOrCreateModule,
     getCustomDataCategory,
     createCustomDataCategory,
@@ -42,12 +42,27 @@ export function useAdminSettings() {
     const settings = ref<Settings>(EMPTY_SETTINGS);
     const loading = ref(false);
     const error = ref<string | null>(null);
+    /**
+     * True when the configuration could not be read at all — as opposed to
+     * being absent. The two must not be confused: treating a failed request
+     * as "nothing configured yet" would show the setup form to whoever is
+     * looking, and a save would overwrite a configuration that is merely
+     * unreachable.
+     */
+    const loadFailed = ref(false);
 
     async function load(): Promise<void> {
         loading.value = true;
         error.value = null;
+        loadFailed.value = false;
         try {
-            await getModule(EXTENSION_KEY);
+            const module = await findModule(EXTENSION_KEY);
+            if (!module) {
+                // Not installed yet. A genuine first run: nothing is
+                // configured and there is nothing to fail at.
+                settings.value = EMPTY_SETTINGS;
+                return;
+            }
             const cat = await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY);
             // The kv-store helper merges the parsed JSON into the returned
             // object alongside the category fields, so the settings live on
@@ -55,10 +70,10 @@ export function useAdminSettings() {
             // invents nothing for what is not (shared/settings.ts).
             settings.value = cat ? parseSettings(cat) : EMPTY_SETTINGS;
         } catch {
-            // Module not registered yet, no permission, or any other read
-            // failure — indistinguishable from "nothing configured yet", and
-            // handled the same way: the configuration hint.
+            // No permission, a 5xx, a timeout. We do not know what is
+            // configured, so we must not act as though nothing is.
             settings.value = EMPTY_SETTINGS;
+            loadFailed.value = true;
         } finally {
             loading.value = false;
         }
@@ -116,5 +131,5 @@ export function useAdminSettings() {
         }
     }
 
-    return { settings, loading, error, load, save };
+    return { settings, loading, error, loadFailed, load, save };
 }

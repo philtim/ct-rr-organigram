@@ -44,16 +44,15 @@ export type PickableRole = {
  * of them without caring which group type each belongs to.
  */
 export async function listRoles(): Promise<PickableRole[]> {
-    const roles =
-        await ct.get<
-            Array<{
-                id?: number;
-                name?: string;
-                groupTypeId?: number;
-                type?: string;
-                isLeader?: boolean;
-            }>
-        >('/group/roles');
+    const roles = await ct.get<
+        Array<{
+            id?: number;
+            name?: string;
+            groupTypeId?: number;
+            type?: string;
+            isLeader?: boolean;
+        }>
+    >('/group/roles');
     return (roles ?? [])
         .filter((r): r is { id: number } & typeof r => typeof r.id === 'number')
         .map((r) => ({

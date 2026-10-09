@@ -9,7 +9,7 @@ import TabBar from '@/shared/TabBar.vue';
 import { useAdminSettings } from '@/admin/useAdminSettings';
 import { useAccessGate } from '@/shared/access/useAccessGate';
 import { membershipRule } from '@/shared/access/rules';
-import { isDashboardConfigured } from '@/shared/settings';
+import { isDashboardConfigured, shouldShowAdmin } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/constants';
@@ -22,7 +22,7 @@ const isAdminRoute = computed(() => {
     return new URLSearchParams(window.location.search).get('admin') === '1';
 });
 
-const { settings, load: loadSettings } = useAdminSettings();
+const { settings, loadFailed, load: loadSettings } = useAdminSettings();
 const { status: gateStatus, check: runGate } = useAccessGate();
 const ready = ref(false);
 
@@ -50,6 +50,25 @@ function selectTab(tab: TabId) {
 const organigramRule = computed(() => membershipRule(settings.value.gateGroupId));
 
 const configured = computed(() => isDashboardConfigured(settings.value));
+
+/**
+ * The only case where the setup form may be shown without passing the gate:
+ * no Hauptstamm group is configured, so there is nothing to check membership
+ * against and requiring it would lock everybody out permanently.
+ *
+ * A *partly* configured installation does have a group, so it gets checked —
+ * otherwise anyone who can reach the bundle could open the form and overwrite
+ * the configuration, which is the hole ADR-008 closed for `?admin=1`.
+ */
+const showAdmin = computed(() =>
+    shouldShowAdmin({
+        loadFailed: loadFailed.value,
+        hasGateGroup: settings.value.gateGroupId !== null,
+        configured: configured.value,
+        gateAllowed: gateStatus.value.phase === 'allowed',
+        isAdminRoute: isAdminRoute.value,
+    }),
+);
 
 const availableTabs = computed<{ id: TabId; label: string }[]>(() => [
     { id: 'organigram', label: COPY.tabOrganigram },
@@ -83,15 +102,15 @@ async function handleSaved() {
         <p class="rr-shell__subtitle">{{ COPY.loading }}</p>
     </main>
     <!--
-      Nothing configured yet, or an admin asked for the form. The first-run
-      case is deliberately ungated: there is no configured group to check
-      against, so requiring membership in it would lock everybody out.
+      The configuration could not be read. Deliberately NOT treated as "not
+      configured": showing the setup form here would invite somebody to
+      overwrite a configuration that is merely unreachable.
     -->
-    <Admin
-        v-else-if="!configured || (isAdminRoute && gateStatus.phase === 'allowed')"
-        :first-run="!isAdminRoute && !configured"
-        @saved="handleSaved"
-    />
+    <main v-else-if="loadFailed" class="rr-shell">
+        <h1 class="rr-shell__title">{{ COPY.appTitle }}</h1>
+        <p class="rr-shell__error" role="alert">{{ COPY.configUnreadable }}</p>
+    </main>
+    <Admin v-else-if="showAdmin" :first-run="!isAdminRoute && !configured" @saved="handleSaved" />
     <template v-else-if="gateStatus.phase === 'allowed'">
         <TabBar :tabs="availableTabs" :active="activeTab" @select="selectTab" />
         <Dashboard
@@ -181,6 +200,18 @@ async function handleSaved() {
     font-size: 1.5rem;
     font-weight: 600;
     margin: 0;
+}
+
+.rr-shell__error {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-width: 60ch;
+    color: var(--rr-error-fg);
+    background: var(--rr-error-bg);
+    border: 0.5px solid var(--rr-error-border);
+    border-radius: var(--rr-radius-md);
+    padding: 0.75rem 1rem;
 }
 
 .rr-shell__subtitle {
