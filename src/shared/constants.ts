@@ -36,7 +36,6 @@ export const COPY = {
     leiterStat: 'Leiter',
     mitgliederStat: 'Teilnehmer',
     gesamtStat: 'Gesamt',
-    horizontStat: 'Benötigte Horizonte',
     /** Shown in place of a name when a leadership position is unfilled. */
     vacantRole: 'nicht besetzt',
     // Tabs (ADR-007).
@@ -141,8 +140,9 @@ export const COPY = {
         {
             term: 'Mitarbeiter',
             text:
-                'Leiter ab 18 Jahren. Als Leitungsrolle gelten Leiter, Co-Leiter, ' +
-                'Mitarbeiter, Teamhelfer und Organisator.',
+                'Leiter ab 18 Jahren. Als Leitungsrolle gilt, was ChurchTools selbst als ' +
+                'Leitung führt, dazu die Rollen, die unter Admin → Extensions zusätzlich ' +
+                'angehakt sind.',
         },
         {
             term: 'Mehrfach',

@@ -121,8 +121,11 @@ export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
     // child, so the old children-based lookup came back empty for them.
     const teamTypeIds = new Set(settings.teamGroupTypeIds);
 
+    // Deduplicated: the admin's picker cannot produce a repeat, but a
+    // hand-edited KV entry can, and it would render the same card twice under
+    // a colliding key.
     const teilstaemme: OrgNode[] = await Promise.all(
-        settings.teilstammIds.map(async (tsId) => {
+        [...new Set(settings.teilstammIds)].map(async (tsId) => {
             const [ts, tsChildren] = await Promise.all([
                 safeLoadGroupNode(tsId, settings),
                 safeGetChildren(tsId),

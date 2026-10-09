@@ -86,8 +86,14 @@ export type ScopeScan = {
     rolesByPerson: Map<number, Set<number>>;
     /** groupId → the person ids active in it. */
     personsByGroup: Map<number, Set<number>>;
-    /** Member field names found on team memberships, for the Horizont hint. */
+    /** Member field names found on team memberships, for the member-field hint. */
     memberFieldNames: string[];
+    /**
+     * True when at least one group could not be read. Every count derived
+     * from this scan is then a lower bound, and the screen says so instead of
+     * presenting a short number as the answer.
+     */
+    incomplete: boolean;
 };
 
 type MemberRow = {
@@ -96,21 +102,36 @@ type MemberRow = {
     fields?: unknown;
 };
 
-async function membersOf(groupId: number): Promise<MemberRow[]> {
+/**
+ * Active members of one group, all pages.
+ *
+ * Paginated rather than capped at 200: a Stamm with a larger group would
+ * otherwise see its hints and its preview quietly under-report, and an admin
+ * could conclude from "0 Personen" that a role is unused. A failure is
+ * reported rather than swallowed, for the same reason.
+ */
+async function membersOf(groupId: number): Promise<MemberRow[] | null> {
     try {
-        return (
-            (await withRetryOn429(() =>
+        const rows: MemberRow[] = [];
+        for (let page = 1; page <= 20; page++) {
+            const batch = await withRetryOn429(() =>
                 ct.get<MemberRow[]>(
-                    `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
+                    `/groups/${groupId}/members?group_member_statuses[]=active` +
+                        `&limit=200&page=${page}`,
                 ),
-            )) ?? []
-        );
-    } catch {
-        return [];
+            );
+            if (!batch || batch.length === 0) break;
+            rows.push(...batch);
+            if (batch.length < 200) break;
+        }
+        return rows;
+    } catch (e) {
+        console.error(`[rr-dashboard] admin scan: members of ${groupId} unavailable:`, e);
+        return null;
     }
 }
 
-async function childrenOf(groupId: number): Promise<ChildGroup[]> {
+async function childrenOf(groupId: number): Promise<ChildGroup[] | null> {
     try {
         const rows = await withRetryOn429(() =>
             ct.get<
@@ -129,8 +150,9 @@ async function childrenOf(groupId: number): Promise<ChildGroup[]> {
                 teilstammId: groupId,
             }))
             .filter((c) => Number.isFinite(c.id));
-    } catch {
-        return [];
+    } catch (e) {
+        console.error(`[rr-dashboard] admin scan: children of ${groupId} unavailable:`, e);
+        return null;
     }
 }
 
@@ -142,8 +164,10 @@ export async function scanScope(
     gateGroupId: number | null,
     teilstammIds: number[],
 ): Promise<ScopeScan> {
+    let incomplete = false;
     const childLists = await mapWithConcurrency(teilstammIds, 4, childrenOf);
-    const children = childLists.flat();
+    for (const list of childLists) if (list === null) incomplete = true;
+    const children = childLists.flat().filter((c): c is ChildGroup => c !== null);
 
     const groupIds = [
         ...new Set([
@@ -162,8 +186,9 @@ export async function scanScope(
     const fieldNames = new Set<string>();
 
     for (const { id, members } of memberLists) {
+        if (members === null) incomplete = true;
         const persons = new Set<number>();
-        for (const member of members) {
+        for (const member of members ?? []) {
             const personId = Number(member.person?.domainIdentifier);
             if (!Number.isFinite(personId)) continue;
             persons.add(personId);
@@ -187,6 +212,7 @@ export async function scanScope(
         rolesByPerson,
         personsByGroup,
         memberFieldNames: [...fieldNames].sort((a, b) => a.localeCompare(b, 'de')),
+        incomplete,
     };
 }
 

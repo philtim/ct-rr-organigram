@@ -29,7 +29,7 @@ import { COPY } from '@/shared/constants';
 const props = defineProps<{ firstRun?: boolean }>();
 const emit = defineEmits<{ saved: [] }>();
 
-const { settings, loading: saving, error: saveError, load, save } = useAdminSettings();
+const { settings, loading: saving, error: saveError, loadFailed, load, save } = useAdminSettings();
 
 /** The edited copy. Saved only on demand, so a half-made change cannot leak. */
 const draft = ref<Settings>({ ...EMPTY_SETTINGS, fees: { ...EMPTY_SETTINGS.fees } });
@@ -170,9 +170,12 @@ function toggle(list: number[], id: number): number[] {
 function selectHauptstamm(id: number) {
     if (draft.value.gateGroupId === id) return;
     draft.value.gateGroupId = id;
-    // The previous picks referred to another Hauptstamm's structure.
+    // Every dependent pick referred to the previous Hauptstamm's structure —
+    // including the type filter, which otherwise keeps the old Hauptstamm's
+    // group type and quietly narrows the Teilstamm list to the wrong set.
     draft.value.teilstammIds = [];
     draft.value.teamGroupTypeIds = [];
+    draft.value.stammGroupTypeIds = [];
     searchText.value = '';
 }
 
@@ -192,16 +195,27 @@ async function refreshChildren(id: number | null) {
     }
 }
 
+/**
+ * Sequence number for the scan. The watcher fires on every toggle and a scan
+ * is some thirty requests, so a slower earlier run could land after a newer
+ * one and leave the preview describing a selection the admin has moved on
+ * from — a stale "0 Personen" being exactly the kind of wrong number this
+ * screen exists to prevent.
+ */
+let scanSequence = 0;
+
 async function runScan() {
+    const mine = ++scanSequence;
     if (draft.value.gateGroupId === null || draft.value.teilstammIds.length === 0) {
         scan.value = null;
         return;
     }
     scanning.value = true;
     try {
-        scan.value = await scanScope(draft.value.gateGroupId, draft.value.teilstammIds);
+        const result = await scanScope(draft.value.gateGroupId, draft.value.teilstammIds);
+        if (mine === scanSequence) scan.value = result;
     } finally {
-        scanning.value = false;
+        if (mine === scanSequence) scanning.value = false;
     }
 }
 
@@ -248,7 +262,10 @@ function removeRung() {
 
 /** The label a rung carries — the last one applies to every further child. */
 function rungLabel(index: number, total: number): string {
-    return index === total - 1 && total > 1 ? `ab ${index + 1}. Kind` : `${index + 1}. Kind`;
+    // The last rung always reads "ab N", a single-rung ladder included: it
+    // applies to every further child either way, and saying "1. Kind" would
+    // promise a rate that stops there.
+    return index === total - 1 ? `ab ${index + 1}. Kind` : `${index + 1}. Kind`;
 }
 
 async function onSave() {
@@ -276,6 +293,12 @@ onMounted(async () => {
         groupTypes.value = t;
         roles.value = r;
         await load();
+        if (loadFailed.value) {
+            // Do not seed an empty draft from a failed read: saving it would
+            // overwrite a configuration that is merely unreachable.
+            loadError.value = COPY.configUnreadable;
+            return;
+        }
         draft.value = { ...settings.value, fees: { ...settings.value.fees } };
         await refreshChildren(draft.value.gateGroupId);
         await runScan();
@@ -432,6 +455,10 @@ onMounted(async () => {
                     </li>
                 </ul>
 
+                <p v-if="scan?.incomplete" class="rr-admin__error-inline" role="alert">
+                    Mindestens eine Gruppe konnte nicht gelesen werden. Die Zahlen unten sind
+                    deshalb Untergrenzen — eine 0 heißt hier nicht zwingend „niemand".
+                </p>
                 <p class="rr-admin__preview">
                     Mit dieser Einstellung:
                     <strong>{{ draft.teilstammIds.length }}</strong> Teilstämme ·

@@ -16,6 +16,8 @@ const props = defineProps<{
      * else and would otherwise simply not be shown.
      */
     teamsOnly?: boolean;
+    /** The configured member field, or '' when the Stamm keeps none. */
+    memberFieldName: string;
 }>();
 
 const isError = computed(() => Boolean(props.node.error));
@@ -43,13 +45,15 @@ const summary = computed(() => {
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Written-out counts for the mobile compact view — Variante-C style,
 // consistent with TeamChip: divider above, Leiter + Teilnehmer on one
-// line, Horizont on its own line (only when > 0).
+// line, the configured member field on its own line when there is one.
 const compactCounts = computed(() => {
     if (isError.value) return '? Leiter · ? Teilnehmer';
     return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
-const compactHorizont = computed(() =>
-    isError.value ? '?× Horizont' : `${props.node.horizontCount}× Horizont`,
+const compactField = computed(() =>
+    props.memberFieldName
+        ? `${isError.value ? '?' : props.node.horizontCount}× ${props.memberFieldName}`
+        : null,
 );
 </script>
 
@@ -67,7 +71,9 @@ const compactHorizont = computed(() =>
             <p v-if="!props.teamsOnly" class="ts-card__compact-summary">{{ summary }}</p>
             <div v-if="!props.teamsOnly" class="ts-card__compact-meta">
                 <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
-                <span class="ts-card__compact-meta-line">{{ compactHorizont }}</span>
+                <span v-if="compactField" class="ts-card__compact-meta-line">
+                    {{ compactField }}
+                </span>
             </div>
 
             <!-- Full layout (hidden on mobile) -->
@@ -118,9 +124,9 @@ const compactHorizont = computed(() =>
                 </div>
             </div>
 
-            <div class="ts-card__horizont-row">
+            <div v-if="props.memberFieldName" class="ts-card__horizont-row">
                 <div class="ts-card__stat">
-                    <p class="ts-card__stat-label">{{ COPY.horizontStat }}</p>
+                    <p class="ts-card__stat-label">{{ props.memberFieldName }}</p>
                     <p class="ts-card__stat-value">
                         {{ isError ? '?' : node.horizontCount }}
                     </p>
@@ -132,7 +138,12 @@ const compactHorizont = computed(() =>
             <p class="ts-card__subtitle">TEAMS</p>
             <p v-if="isError" class="ts-card__empty">Teams konnten nicht geladen werden.</p>
             <template v-else>
-                <TeamChip v-for="team in node.children" :key="team.groupId" :node="team" />
+                <TeamChip
+                    v-for="team in node.children"
+                    :key="team.groupId"
+                    :node="team"
+                    :member-field-name="props.memberFieldName"
+                />
                 <p v-if="!node.children.length" class="ts-card__empty">Keine Teams.</p>
             </template>
         </section>

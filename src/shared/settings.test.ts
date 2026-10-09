@@ -166,7 +166,12 @@ describe('shouldShowAdmin', () => {
         // Nothing to check membership against; requiring it would lock
         // everybody out permanently.
         expect(
-            shouldShowAdmin({ ...base, hasGateGroup: false, configured: false, gateAllowed: false }),
+            shouldShowAdmin({
+                ...base,
+                hasGateGroup: false,
+                configured: false,
+                gateAllowed: false,
+            }),
         ).toBe(true);
     });
 

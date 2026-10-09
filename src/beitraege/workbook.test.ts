@@ -133,7 +133,7 @@ describe('buildSheets — formula ranges cover every data row', () => {
         const [, summary] = buildSheets(rows(7), META);
         const participantCount = cellsOf(
             summary,
-            rowIndexOf(summary, 'Aktive RR Teilnehmer (gelistet)'),
+            rowIndexOf(summary, 'Aktive Teilnehmer (gelistet)'),
         );
 
         expect(participantCount[1]?.value).toBe('COUNTA(Teilnehmer!$A$2:$A$8)');
@@ -150,7 +150,7 @@ describe('buildSheets — the control block points at the right rows', () => {
     it('compares the grand total against the sum of the ladder lines', () => {
         const [, summary] = buildSheets(rows(4), META);
         const total = rowIndexOf(summary, 'Gesamtbetrag (€)') + 1;
-        const tiers = rowIndexOf(summary, 'Summe der Staffel-Zeilen') + 1;
+        const tiers = rowIndexOf(summary, 'Summe der Satz-Zeilen') + 1;
         const deviation = cellsOf(summary, rowIndexOf(summary, 'Abweichung zum Gesamtbetrag'));
 
         expect(deviation[2]?.value).toBe(`C${total}-C${tiers}`);
@@ -184,6 +184,60 @@ describe('buildSheets — the control block points at the right rows', () => {
  * gives about editing, so it must not appear anywhere a formula would be
  * overwritten.
  */
+/**
+ * The two shapes the first version got wrong, both invisible to a reader: a
+ * ladder with a single rung, and a Stamm that charges its Mitarbeiter or
+ * Juniorleiter something.
+ */
+describe('buildSheets — ladders the authors do not use', () => {
+    it('treats a single rung as the one that applies to every child', () => {
+        // With one rung, MIN() sends the second and third child to it as
+        // well. Counting only M=1 made the control row report a difference
+        // on a perfectly correct file.
+        const meta = {
+            ...META,
+            config: { childCents: [8000], staffCents: 0, juniorLeaderCents: 0 },
+        };
+        const [, summary] = buildSheets(rows(4), meta);
+        const line = rowIndexOf(summary, 'Kinder ab Satz 1. Kind');
+
+        // ">=1", not "=1": the label and the criterion have to agree that
+        // this rung is the one every further child lands on.
+        expect(cellsOf(summary, line)[1]?.value).toBe(
+            'COUNTIFS(Teilnehmer!$N$2:$N$5,"beitragspflichtig",Teilnehmer!$M$2:$M$5,">=1")',
+        );
+    });
+
+    it('counts Mitarbeiter and Juniorleiter who pay into the control sum', () => {
+        const meta = {
+            ...META,
+            config: { childCents: [8000, 0], staffCents: 2000, juniorLeaderCents: 1000 },
+        };
+        const [, summary] = buildSheets(rows(4), meta);
+
+        const staffLine = rowIndexOf(summary, 'Mitarbeiter mit eigenem Satz');
+        const juniorLine = rowIndexOf(summary, 'Juniorleiter mit eigenem Satz');
+        expect(cellsOf(summary, staffLine)[2]?.value).toBe(`B${staffLine + 1}*$B$6`);
+        expect(cellsOf(summary, juniorLine)[2]?.value).toBe(`B${juniorLine + 1}*$B$7`);
+
+        // The control row must add up every line that carries money, or it
+        // reports a phantom difference whenever an own rate is non-zero.
+        const control = cellsOf(summary, rowIndexOf(summary, 'Summe der Satz-Zeilen'));
+        expect(control[2]?.value).toContain(`C${staffLine + 1}`);
+        expect(control[2]?.value).toContain(`C${juniorLine + 1}`);
+    });
+
+    it('calls a row beitragsfrei only when it pays nothing', () => {
+        const [participants] = buildSheets(rows(2), META);
+        const reason = (cellsOf(participants, 1)[15] as { value?: string })?.value ?? '';
+
+        // Guarded by the amount, not by the MA/JL marker: a Stamm with a
+        // non-zero staff rate would otherwise see a paying row labelled
+        // "Mitarbeiter – beitragsfrei" and counted among the exemptions.
+        expect(reason).toMatch(/^IF\(\$O2>0,""/);
+    });
+});
+
 describe('buildSheets — yellow marks only what may be edited', () => {
     it('fills the Familien-ID column and the rate cells, nothing else', () => {
         const sheets = buildSheets(rows(4), META);

@@ -5,16 +5,14 @@ import type { Group, GroupMember, Leader, LeaderRole, Participant } from '@/shar
 type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
 
 /**
- * Filter members to those whose role counts as a "leader" for the
- * Leiter stat tile. A role counts when ChurchTools flags it isLeader=true
- * OR its (lowercased) name matches one of the broadened role names
- * (Mitarbeiter / Teamhelfer / Organisator) — needed to align the count
- * with the "RR Mitarbeiter" auto-group on the live instance, whose rule
- * treats those non-isLeader roles as MAs.
+ * Filter members to those whose role counts as a "leader" for the Leiter stat
+ * tile. A role counts when ChurchTools flags it as leadership, or when the
+ * admin added its id to `Settings.extraLeaderRoleIds` — see `shared/roles.ts`
+ * for why the second half is configuration rather than a list of names.
  *
- * Each returned Leader carries its role name and sort key, so the cards
- * can group by the role ChurchTools actually defines — Stammleiter,
- * Hauptstammwart, … — instead of squeezing everything into fixed buckets.
+ * Each returned Leader carries its role name and sort key, so the cards can
+ * group by the role ChurchTools actually defines instead of squeezing
+ * everything into fixed buckets.
  */
 export function leadersFromMembers(
     group: Group,
@@ -57,10 +55,9 @@ function imageUrlOf(m: GroupMember): string | null {
 }
 
 /**
- * Return non-leader members with their personId and name — the rank-
- * and-file participants. "Leader" here uses the same broadened filter
- * as `leadersFromMembers`, so a Mitarbeiter/Teamhelfer/Organisator is
- * not double-classified into participants.
+ * Return non-leader members with their personId and name — the rank-and-file
+ * participants. "Leader" here uses the same rule as `leadersFromMembers`, so
+ * a configured extra leader role is not double-classified into participants.
  *
  * Note: a person can still appear here for group A and as a leader for
  * group B in the same load — the per-Teilstamm and Hauptstamm

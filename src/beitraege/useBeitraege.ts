@@ -127,15 +127,20 @@ export function useBeitraege() {
 
             // A Juniorleiter is a leader under 18, so they are already in
             // `staffPersonIds`; the age is what separates the two rates. Only
-            // people who are also participants can be billed at all, and those
-            // are the ones whose birthday we hold.
-            const today = new Date();
+            // people who are also participants can be billed at all, and
+            // those are the ones whose birthday we hold.
+            //
+            // Measured at the due date, not today: that is the date the fee
+            // is for, and it is the date the export's own "Alter am Stichtag"
+            // column shows. Using today would bill somebody at the
+            // Juniorleiter rate beside a column saying they are 18.
+            const dueDate = nextDueDate(new Date());
             const juniorLeaderPersonIds = new Set(
                 participants
                     .filter(
                         (p) =>
                             staffPersonIds.has(p.personId) &&
-                            ageBucket(p.birthday, today) === 'minor',
+                            ageBucket(p.birthday, dueDate) === 'minor',
                     )
                     .map((p) => p.personId),
             );

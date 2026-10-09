@@ -76,6 +76,7 @@ const appCommit = __APP_COMMIT__;
                         :node="ts"
                         :always-shown-role-ids="settings.alwaysShownRoleIds"
                         :teams-only="teamsOnly"
+                        :member-field-name="settings.horizontFieldName"
                     />
                     <p v-if="!state.root.children.length" class="rr-dash__empty">
                         Keine Teilstämme angelegt.
