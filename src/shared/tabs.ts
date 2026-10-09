@@ -4,11 +4,11 @@
  * already established. No Vue Router: flat views, no nested routes, no
  * route params.
  */
-export type TabId = 'organigram' | 'beitraege';
+export type TabId = 'organigram' | 'beitraege' | 'jahresmeldung';
 
 export const DEFAULT_TAB: TabId = 'organigram';
 
-const TAB_IDS: readonly TabId[] = ['organigram', 'beitraege'];
+const TAB_IDS: readonly TabId[] = ['organigram', 'beitraege', 'jahresmeldung'];
 
 export function isTabId(value: string | null | undefined): value is TabId {
     return value != null && (TAB_IDS as readonly string[]).includes(value);

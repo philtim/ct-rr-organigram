@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import Admin from '@/admin/Admin.vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
 import Beitraege from '@/beitraege/Beitraege.vue';
+import Jahresmeldung from '@/jahresmeldung/Jahresmeldung.vue';
 import SetupHint from '@/beitraege/SetupHint.vue';
 import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
@@ -80,9 +81,16 @@ const beitraegeUnconfigured = computed(
     () => !settings.value?.beitraegeRoleIds || settings.value.beitraegeRoleIds.length === 0,
 );
 
+/**
+ * The Jahresmeldung carries no rule of its own: whoever may see the dashboard
+ * may see it (ADR-013). It is therefore always in the bar, which means the bar
+ * itself is now always rendered — `TabBar` hides itself only below two tabs,
+ * and that case no longer occurs here.
+ */
 const availableTabs = computed(() => {
     const tabs: { id: TabId; label: string }[] = [{ id: 'organigram', label: COPY.tabOrganigram }];
     if (beitraegeAllowed.value) tabs.push({ id: 'beitraege', label: COPY.tabBeitraege });
+    tabs.push({ id: 'jahresmeldung', label: COPY.tabJahresmeldung });
     return tabs;
 });
 
@@ -140,13 +148,21 @@ async function handleSaved() {
             :gate-group-id="settings.gateGroupId"
             :teilstamm-ids="settings.teilstammIds"
         />
+        <Jahresmeldung
+            v-else-if="activeTab === 'jahresmeldung'"
+            :gate-group-id="settings.gateGroupId"
+            :teilstamm-ids="settings.teilstammIds"
+        />
         <!--
           A typed ?tab=beitraege is denied, not quietly redirected to the
           organigram: the user asked for this view and deserves to be told
-          they may not have it (ADR-008).
+          they may not have it (ADR-008). The tab is matched explicitly rather
+          than left as the fallthrough — with a third tab in the chain, a bare
+          `v-else-if="beitraegeAllowed"` would serve the Beitragsabrechnung to
+          anyone who asked for a view further down the list.
         -->
         <Beitraege
-            v-else-if="beitraegeAllowed"
+            v-else-if="activeTab === 'beitraege' && beitraegeAllowed"
             :gate-group-id="settings.gateGroupId"
             :teilstamm-ids="settings.teilstammIds"
         />
