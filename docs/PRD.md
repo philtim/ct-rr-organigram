@@ -15,6 +15,23 @@
 | 2026-05-05 | 0.2 | [bitte ergänzen] | Visuelle Spezifikation aus Designentwurf eingearbeitet: Hauptstamm-Hero-Card mit Avatar-Initialen, Teilstamm-Karten als nested Cards mit eingebetteten Team-Chips, Timestamp im Header, Divider-Linie zwischen Ebenen, monochrome Farbpalette, Mobile-Collapse-Verhalten. US-6 Non-Goal "zuletzt aktualisiert" gestrichen — wurde zu Pflicht-Feature im Header. Neue US-9 für visuelles Layout-System ergänzt. |
 | 2026-05-05 | 0.1 | [bitte ergänzen] | Initiales Draft |
 
+## Status dieses Dokuments
+
+Dieses PRD beschreibt **v1 des Organigramms** (US-1 bis US-9) und ist historisch:
+es ist umgesetzt und abgenommen. Zwei Dinge sind seitdem dazugekommen und haben
+eigene Dokumente — das PRD wurde dafür nicht rückwirkend geändert:
+
+- Die Tabs **Beitragsabrechnung** (ADR-007, ADR-010, ADR-011) und
+  **Jahresmeldung** (`docs/design/001-jahresmeldung.md`, ADR-013).
+- Die **Konfigurierbarkeit für fremde Stämme**
+  (`docs/design/002-konfigurierbarkeit.md`, ADR-014). Sie löst mehrere
+  Annahmen dieses PRDs ab: US-2 ist nicht mehr nur die Auswahl der
+  Hauptstamm-Gruppe, Teilstämme werden nicht mehr zwingend als Children
+  gelesen, und die Rollen- und Feldnamen, die hier noch als gegeben gelten,
+  kommen aus der Konfiguration.
+
+Bei Widersprüchen gilt das jeweils neuere Dokument.
+
 ## TL;DR
 
 Eine ChurchTools-Extension, die für die Mitarbeiter einer konfigurierten Hauptstamm-Gruppe ein dreistufiges Organigramm der Mitarbeiterstruktur darstellt: Hauptstamm, alle direkten Kind-Gruppen ("Teilstämme") und deren Kind-Gruppen ("Teams"). Pro Box werden die Leiter namentlich angezeigt; pro Teilstamm und Hauptstamm werden Leiter- und Mitgliederzahlen aus den darunterliegenden Teams aufsummiert. Die Extension ist nur für Mitglieder der konfigurierten Hauptstamm-Gruppe zugänglich. Erfolg ist erreicht, wenn ein Stammleiter mit einem Klick einen aktuellen Überblick über die Besetzungssituation aller Teams hat, ohne sich durch die Gruppenstruktur klicken zu müssen.
