@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.12.0](https://github.com/philtim/ct-rr-organigram/compare/v1.11.0...v1.12.0) (2026-10-09)
+
+
+### Features
+
+* make every installation-specific value configurable ([13399eb](https://github.com/philtim/ct-rr-organigram/commit/13399eb0fb22af87cdfcfa802e7d04298ed5b524))
+* **settings:** read the configuration without inventing defaults ([7fafc58](https://github.com/philtim/ct-rr-organigram/commit/7fafc58b7e773128f5ffadef52d3099f1a572c9b))
+
+
+### Bug Fixes
+
+* close two holes the security review found, and three the browser did ([b409388](https://github.com/philtim/ct-rr-organigram/commit/b409388567d8756aa3be35c6b40a724ef8d3796f))
+* fail at the member page cap instead of truncating ([a5b392b](https://github.com/philtim/ct-rr-organigram/commit/a5b392bfc1bde7e60b6ecb0232c4708eff31c765))
+* read every page of a group's members, and compare ages in one timezone ([8141a1d](https://github.com/philtim/ct-rr-organigram/commit/8141a1ddcac86ea306d1e29a8bdbb1b536b59e2d))
+* work through the code review ([f2f78fc](https://github.com/philtim/ct-rr-organigram/commit/f2f78fcf9b84719ef2af589ff177df4a2e7a008d))
+
 ## [1.11.0](https://github.com/philtim/ct-rr-organigram/compare/v1.10.0...v1.11.0) (2026-10-09)
 
 
