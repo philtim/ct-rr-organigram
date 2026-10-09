@@ -30,6 +30,19 @@ const ENTRY_BUDGET_GZIP = 86 * 1024;
 /** Modules that must stay behind a dynamic import, by chunk-name prefix. */
 const REQUIRED_LAZY_CHUNKS = ['xlsx', 'workbook'];
 
+/**
+ * ChurchTools serves the extension under a Content-Security-Policy whose
+ * `child-src *` does not cover `blob:`, so a Web Worker spawned from a blob URL
+ * is refused and whatever needed it fails outright.
+ *
+ * `fflate` — the zip backend under `write-excel-file` — does exactly that for
+ * payloads over 160 kB, which is why the export worked on every fixture and
+ * failed on the live Stamm. `vite.config.ts` aliases it to a synchronous shim;
+ * drop that alias and the worker comes back silently. So: no worker
+ * construction in any shipped chunk.
+ */
+const FORBIDDEN_IN_CHUNKS = [{ pattern: /new Worker\s*\(/, what: 'a Web Worker constructor' }];
+
 const gzipSize = (file) => gzipSync(fs.readFileSync(file)).length;
 const kb = (bytes) => `${(bytes / 1024).toFixed(2)} kB`;
 
@@ -65,6 +78,18 @@ for (const prefix of REQUIRED_LAZY_CHUNKS) {
             `No "${prefix}" chunk in dist/assets. It must stay behind a dynamic import() ` +
                 'so the organigram does not carry the export code.',
         );
+    }
+}
+
+for (const file of chunks) {
+    const source = fs.readFileSync(path.join(assetsDir, file), 'utf8');
+    for (const { pattern, what } of FORBIDDEN_IN_CHUNKS) {
+        if (pattern.test(source)) {
+            failures.push(
+                `${file} contains ${what}, which the ChurchTools CSP refuses. See the ` +
+                    'note in scripts/check-bundle.js and src/beitraege/fflate-sync.ts.',
+            );
+        }
     }
 }
 

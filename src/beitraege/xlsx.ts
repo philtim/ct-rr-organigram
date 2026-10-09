@@ -9,6 +9,10 @@ import type { ExportSheet } from './workbook';
  * never carries a spreadsheet writer it has no use for. Keep this file free of
  * anything but the write call for the same reason: whatever is imported here
  * is imported with the library.
+ *
+ * Its zip backend is redirected to a synchronous one in `vite.config.ts`,
+ * because the host's CSP refuses the Web Worker the asynchronous one spawns
+ * (ADR-012, `./fflate-sync.ts`).
  */
 export async function downloadWorkbook(sheets: ExportSheet[], fileName: string): Promise<void> {
     await writeXlsxFile(sheets, { fontFamily: 'Arial', fontSize: 11 }).toFile(fileName);
