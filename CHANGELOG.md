@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/philtim/ct-rr-organigram/compare/v1.9.0...v1.9.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **beitraege:** zip the export without a Web Worker ([225f0d2](https://github.com/philtim/ct-rr-organigram/commit/225f0d26cb69f606fcf1fc1578335f169868c06d))
+
 ## [1.9.0](https://github.com/philtim/ct-rr-organigram/compare/v1.8.0...v1.9.0) (2026-10-09)
 
 
