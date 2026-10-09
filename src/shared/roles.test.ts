@@ -1,48 +1,71 @@
 import { describe, expect, it } from 'vitest';
-import { isLeaderRole, isLeadershipRole } from './roles';
+import { isLeaderRole, isLeadershipRole, roleIdOf } from './roles';
 
 /**
- * The role names are the live instance's; the point of these cases is that
- * both tabs answer "is this a leader?" identically, especially for the roles
- * nobody holds yet.
+ * The role ids are the live instance's; the point of these cases is that all
+ * three tabs answer "is this a leader?" identically, and that the answer now
+ * comes from configuration rather than from a list of names in the source.
  */
+
+/** What the admin ticked: Mitarbeiter, Teamhelfer, Organisator on live. */
+const EXTRA = new Set([15, 20, 19]);
+
 describe('isLeaderRole', () => {
-    it('accepts what ChurchTools itself flags as leadership', () => {
-        expect(isLeaderRole({ name: 'Leiter', type: 'leader' })).toBe(true);
-        expect(isLeaderRole({ name: 'Co-Leiter', type: 'leader' })).toBe(true);
-        expect(isLeaderRole({ name: 'Hauptstammleiter', type: 'leader' })).toBe(true);
+    it('accepts what ChurchTools itself flags as leadership, configured or not', () => {
+        // Always true, so a role added to the group type later counts
+        // immediately instead of silently going missing until somebody
+        // notices the figures are low.
+        expect(isLeaderRole({ groupTypeRoleId: 16, name: 'Leiter', type: 'leader' }, EXTRA)).toBe(
+            true,
+        );
+        expect(
+            isLeaderRole({ groupTypeRoleId: 99, name: 'Brandneu', type: 'leader' }, new Set()),
+        ).toBe(true);
     });
 
     it('accepts the deprecated isLeader flag when type is absent', () => {
-        expect(isLeaderRole({ name: 'Stammwart', isLeader: true })).toBe(true);
+        expect(isLeaderRole({ groupTypeRoleId: 41, isLeader: true }, new Set())).toBe(true);
     });
 
-    it('accepts the broadened names the Stamm treats as MAs', () => {
-        // `participant` roles in ChurchTools, leaders in practice.
-        expect(isLeaderRole({ name: 'Mitarbeiter', type: 'participant' })).toBe(true);
-        expect(isLeaderRole({ name: 'Teamhelfer', type: 'participant' })).toBe(true);
-        expect(isLeaderRole({ name: 'Organisator', type: 'participant' })).toBe(true);
+    it('accepts a participant role the admin ticked', () => {
+        expect(
+            isLeaderRole({ groupTypeRoleId: 15, name: 'Mitarbeiter', type: 'participant' }, EXTRA),
+        ).toBe(true);
     });
 
-    it('is not fooled by case or stray whitespace', () => {
-        expect(isLeaderRole({ name: '  MITARBEITER ', type: 'participant' })).toBe(true);
+    it('rejects the same role when the admin did not tick it', () => {
+        expect(
+            isLeaderRole(
+                { groupTypeRoleId: 15, name: 'Mitarbeiter', type: 'participant' },
+                new Set(),
+            ),
+        ).toBe(false);
     });
 
-    it('rejects Teilnehmer', () => {
-        expect(isLeaderRole({ name: 'Teilnehmer', type: 'participant' })).toBe(false);
-    });
-
-    it('rejects Coach and Interessent', () => {
+    it('rejects a participant role nobody ticked', () => {
         // The regression this module exists for: the Beitragsabrechnung used
         // to treat everything that was not role 8 as a Mitarbeiter, which
-        // would have exempted these two from the fee while the organigram
-        // counted them as members. Nobody holds them today.
-        expect(isLeaderRole({ name: 'Coach', type: 'participant' })).toBe(false);
-        expect(isLeaderRole({ name: 'Interessent', type: 'participant' })).toBe(false);
+        // would have exempted Coach and Interessent from the fee while the
+        // organigram counted them as members.
+        expect(
+            isLeaderRole({ groupTypeRoleId: 18, name: 'Coach', type: 'participant' }, EXTRA),
+        ).toBe(false);
+        expect(
+            isLeaderRole({ groupTypeRoleId: 8, name: 'Teilnehmer', type: 'participant' }, EXTRA),
+        ).toBe(false);
     });
 
-    it('rejects a role with no name and no flags', () => {
-        expect(isLeaderRole({})).toBe(false);
+    it('goes by the id, not the name — a renamed role keeps counting', () => {
+        expect(
+            isLeaderRole(
+                { groupTypeRoleId: 15, name: 'Helfende Hand', type: 'participant' },
+                EXTRA,
+            ),
+        ).toBe(true);
+    });
+
+    it('rejects a role with no id, no name and no flags', () => {
+        expect(isLeaderRole({}, EXTRA)).toBe(false);
     });
 });
 
@@ -50,5 +73,15 @@ describe('isLeadershipRole', () => {
     it('is narrower than isLeaderRole — only what ChurchTools calls leadership', () => {
         expect(isLeadershipRole({ name: 'Mitarbeiter', type: 'participant' })).toBe(false);
         expect(isLeadershipRole({ name: 'Leiter', type: 'leader' })).toBe(true);
+    });
+});
+
+describe('roleIdOf', () => {
+    it('reads the id from either shape the API delivers', () => {
+        // A group's `roles` include calls it groupTypeRoleId; GET /group/roles
+        // calls the same number id.
+        expect(roleIdOf({ groupTypeRoleId: 15 })).toBe(15);
+        expect(roleIdOf({ id: 15 })).toBe(15);
+        expect(roleIdOf({})).toBeNull();
     });
 });

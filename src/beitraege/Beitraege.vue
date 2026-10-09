@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import { formatEuro, useBeitraege } from './useBeitraege';
 import { nextDueDate } from '@/shared/rr/dates';
 import { COPY } from '@/shared/constants';
+import type { Settings } from '@/shared/settings';
 
 /**
  * Beitragsabrechnung — figures only (ADR-007).
@@ -13,14 +14,11 @@ import { COPY } from '@/shared/constants';
  * fee assignments that carry no person fields, so the boundary is a type
  * signature rather than a promise (ADR-011).
  */
-const props = defineProps<{
-    gateGroupId: number;
-    teilstammIds?: number[];
-}>();
+const props = defineProps<{ settings: Settings }>();
 
 const { state, exportState, load, exportXlsx } = useBeitraege();
 
-onMounted(() => load(props.gateGroupId, props.teilstammIds ?? []));
+onMounted(() => load(props.settings));
 
 const dateFormat = new Intl.DateTimeFormat('de-DE', {
     dateStyle: 'medium',
@@ -63,10 +61,12 @@ const dueDateLabel = computed(() =>
                     <p class="rr-fees__total-label">{{ COPY.feesTotalLabel }}</p>
                     <p class="rr-fees__total">{{ formatEuro(state.result.totals.totalCents) }}</p>
                     <p class="rr-fees__total-note">
-                        {{ state.result.totals.firstChildren }} ×
-                        {{ formatEuro(state.result.config.firstChildCents) }} ·
-                        {{ state.result.totals.secondChildren }} ×
-                        {{ formatEuro(state.result.config.secondChildCents) }}
+                        <!-- One term per rung of the configured ladder, so the
+                             note explains the total whatever the Stamm charges. -->
+                        <template v-for="(count, i) in state.result.totals.perRung" :key="i">
+                            <span v-if="i > 0"> · </span>{{ count }} ×
+                            {{ formatEuro(state.result.config.childCents[i] ?? 0) }}
+                        </template>
                     </p>
                 </section>
 
@@ -119,9 +119,9 @@ const dueDateLabel = computed(() =>
                             </dd>
                         </div>
                         <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesExemptThirdChild }}</dt>
+                            <dt class="rr-fees__stat-label">{{ COPY.feesExemptLadder }}</dt>
                             <dd class="rr-fees__stat-value">
-                                {{ state.result.totals.exemptThirdChild }}
+                                {{ state.result.totals.exemptLadder }}
                             </dd>
                         </div>
                     </dl>

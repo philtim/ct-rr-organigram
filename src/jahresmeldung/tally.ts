@@ -12,6 +12,8 @@
  * ChurchTools. See `docs/design/001-jahresmeldung.md` for the full derivation.
  */
 
+export { ageBucket } from '@/shared/rr/dates';
+
 export const COLUMNS = [
     'jungen',
     'maedchen',
@@ -138,30 +140,6 @@ export function genderOf(sexId: number | null | undefined): {
         gender: 'unassignable',
         genderGap: sexId === SEX_DIVERSE ? 'diverse' : 'not-maintained',
     };
-}
-
-/**
- * Whether a person is 18 yet, on the day the figures are read.
- *
- * The Stamm's own definition of a Juniorleiter is a leader under 18, and
- * ChurchTools has no Juniorleiter role to read instead — the live instance
- * defines 33 roles and none of them is one. `birthday` arrives as an ISO date;
- * anything unparseable is treated as unknown rather than as an adult, because
- * a silent misfiling into Mitarbeiter is exactly the error this view exists to
- * prevent.
- */
-export function ageAt(birthday: string | null | undefined, today: Date): Age {
-    if (!birthday) return 'unknown';
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthday);
-    if (!match) return 'unknown';
-
-    const [, year, month, day] = match.map(Number);
-    let age = today.getFullYear() - year;
-    const hadBirthday =
-        today.getMonth() + 1 > month || (today.getMonth() + 1 === month && today.getDate() >= day);
-    if (!hadBirthday) age -= 1;
-
-    return age >= 18 ? 'adult' : 'minor';
 }
 
 function emptyCells(): Cells {

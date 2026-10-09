@@ -7,7 +7,8 @@ import {
     updateCustomDataCategory,
 } from '@/shared/kv-store';
 import { COPY, EXTENSION_KEY, KV_CATEGORY_SHORTY } from '@/shared/constants';
-import type { Settings } from '@/shared/types';
+import { EMPTY_SETTINGS, parseSettings } from '@/shared/settings';
+import type { Settings } from '@/shared/settings';
 
 const MODULE_NAME = COPY.appTitle;
 const MODULE_DESCRIPTION =
@@ -16,13 +17,12 @@ const CATEGORY_NAME = 'Settings';
 const CATEGORY_DESCRIPTION = 'Persistierte Konfiguration der Extension.';
 
 /**
- * Reads and writes `settings.gateGroupId` against the ChurchTools KV-Store.
+ * Reads and writes the configuration against the ChurchTools KV-Store.
  *
  * Read path is "soft": a missing module or category resolves to
- * `settings.value === null` (config-missing) instead of throwing — so
- * non-admin users hitting the dashboard before any admin has configured
- * it see the friendly "please configure" message rather than a stack
- * trace. Write path uses getOrCreateModule and creates the category
+ * `EMPTY_SETTINGS` instead of throwing, so somebody opening the dashboard
+ * before any admin has configured it sees the configuration hint rather than
+ * a stack trace. Write path uses getOrCreateModule and creates the category
  * on first save.
  */
 /**
@@ -38,12 +38,8 @@ type ExistingCategory = {
     shorty?: string;
 };
 
-function isNumberArray(value: unknown): value is number[] {
-    return Array.isArray(value) && value.every((x) => typeof x === 'number');
-}
-
 export function useAdminSettings() {
-    const settings = ref<Settings | null>(null);
+    const settings = ref<Settings>(EMPTY_SETTINGS);
     const loading = ref(false);
     const error = ref<string | null>(null);
 
@@ -54,28 +50,15 @@ export function useAdminSettings() {
             await getModule(EXTENSION_KEY);
             const cat = await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY);
             // The kv-store helper merges the parsed JSON into the returned
-            // object alongside the category fields, so cat.gateGroupId is on
-            // the same object once non-null.
-            const merged = cat as unknown as (Settings & { id: number }) | undefined;
-            if (merged && typeof merged.gateGroupId === 'number') {
-                const next: Settings = { gateGroupId: merged.gateGroupId };
-                if (isNumberArray(merged.teilstammIds)) {
-                    next.teilstammIds = merged.teilstammIds;
-                }
-                // An unparsable or missing value leaves the field undefined,
-                // which makes the Beitragsabrechnung unavailable rather than
-                // open to everyone (ADR-008, fail closed).
-                if (isNumberArray(merged.beitraegeRoleIds)) {
-                    next.beitraegeRoleIds = merged.beitraegeRoleIds;
-                }
-                settings.value = next;
-            } else {
-                settings.value = null;
-            }
+            // object alongside the category fields, so the settings live on
+            // the same object. `parseSettings` reads what is there and
+            // invents nothing for what is not (shared/settings.ts).
+            settings.value = cat ? parseSettings(cat) : EMPTY_SETTINGS;
         } catch {
             // Module not registered yet, no permission, or any other read
-            // failure — UI treats it identically as config-missing.
-            settings.value = null;
+            // failure — indistinguishable from "nothing configured yet", and
+            // handled the same way: the configuration hint.
+            settings.value = EMPTY_SETTINGS;
         } finally {
             loading.value = false;
         }

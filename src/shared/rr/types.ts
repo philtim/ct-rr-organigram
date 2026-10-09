@@ -46,25 +46,15 @@ export type Relationship = {
 };
 
 /**
- * Fee rates, configurable so a rate change doesn't need a release.
- * In cents, to keep the arithmetic exact.
+ * `staff` — the participant is themselves a Mitarbeiter. `juniorLeader` — a
+ * leader under 18. Both pay their own configured rate, which is zero at most
+ * Stämme, and both are taken *out* of the sibling count rather than occupying
+ * a position in it.
+ *
+ * `child` carries its rung in `payingPosition`; the rate comes from
+ * `FeeConfig.childCents`, whose last entry applies to every further child.
  */
-export type FeeConfig = {
-    firstChildCents: number;
-    secondChildCents: number;
-};
-
-export const DEFAULT_FEE_CONFIG: FeeConfig = {
-    firstChildCents: 8000,
-    secondChildCents: 6000,
-};
-
-/**
- * `staff` — the participant is a Mitarbeiter and pays nothing on that ground,
- * regardless of sibling position. Note this is the person's *own* MA status;
- * whether their parents are Mitarbeiter is irrelevant.
- */
-export type FeeTier = 'child1' | 'child2' | 'child3plus' | 'staff';
+export type FeeTier = 'child' | 'staff' | 'juniorLeader';
 
 /** Deliberately carries no name, birthday or address — see the note above. */
 export type FeeAssignment = {
@@ -73,10 +63,10 @@ export type FeeAssignment = {
     tier: FeeTier;
     amountCents: number;
     /**
-     * Position among the family's *paying* children, 1-based. Null for staff,
-     * who are removed from the count entirely: in a family of three where the
-     * eldest is a Mitarbeiter, the next child is the first paying one and owes
-     * the full first-child rate.
+     * Position among the family's paying children, 1-based. Null for staff and
+     * Juniorleiter, who are removed from the count entirely: in a family of
+     * three where the eldest is a Mitarbeiter, the next child is the first
+     * paying one and owes the full first-child rate.
      */
     payingPosition: number | null;
 };

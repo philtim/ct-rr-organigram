@@ -4,7 +4,11 @@ import type { ExportRow } from './export-rows';
 import { dataQualityFlags } from './data-quality';
 import { assignFees } from './fee-tiers';
 import { groupFamilies } from './families';
-import { DEFAULT_FEE_CONFIG } from './types';
+import { rungFor } from './fee-tiers';
+import type { FeeConfig } from '@/shared/settings';
+
+/** The ladder these cases use — the shape the authors' Stamm configured. */
+const LADDER: FeeConfig = { childCents: [8000, 6000, 0], staffCents: 0, juniorLeaderCents: 0 };
 import type { Relationship, RrParticipant } from './types';
 
 /** Synthetic throughout — no real participant belongs in a repository (ADR-011). */
@@ -37,7 +41,7 @@ function build(
 ): ExportRow[] {
     const families = groupFamilies(participants, relationships);
     const staffIds = new Set(staff);
-    const assignments = assignFees(participants, families, staffIds, DEFAULT_FEE_CONFIG);
+    const assignments = assignFees(participants, families, staffIds, new Set(), LADDER);
     return buildExportRows(
         participants,
         assignments,
@@ -83,16 +87,13 @@ describe('buildExportRows — the sheet formulas reproduce the computed fees', (
     function replaySheet(rows: ExportRow[]): Array<{ position: number | null; cents: number }> {
         const seenPerFamily = new Map<string, number>();
         return rows.map((row) => {
-            if (row.isStaff) return { position: null, cents: 0 };
+            if (row.isStaff) return { position: null, cents: LADDER.staffCents };
+            if (row.isJuniorLeader) {
+                return { position: null, cents: LADDER.juniorLeaderCents };
+            }
             const position = (seenPerFamily.get(row.familyKey) ?? 0) + 1;
             seenPerFamily.set(row.familyKey, position);
-            const cents =
-                position === 1
-                    ? DEFAULT_FEE_CONFIG.firstChildCents
-                    : position === 2
-                      ? DEFAULT_FEE_CONFIG.secondChildCents
-                      : 0;
-            return { position, cents };
+            return { position, cents: rungFor(position, LADDER.childCents) };
         });
     }
 

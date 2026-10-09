@@ -8,25 +8,35 @@ import Toast from './Toast.vue';
 import { formatTimestamp, useDashboard } from './useDashboard';
 import { COPY } from '@/shared/constants';
 import type { AccessPerson } from '@/shared/access/useAccessGate';
+import type { Settings } from '@/shared/settings';
 
 const props = defineProps<{
     person: AccessPerson;
-    gateGroupId: number;
-    teilstammIds?: number[];
+    settings: Settings;
 }>();
 
 const { state, load } = useDashboard();
 
 onMounted(() => {
-    load(props.gateGroupId, props.teilstammIds);
+    load(props.settings);
 });
+
+/**
+ * A small Stamm names the same group as Hauptstamm and as its only Teilstamm.
+ * Rendering both would put the identical card under its own hero, so the row
+ * collapses and the hero stands alone.
+ */
+const hideTeilstammRow = computed(
+    () =>
+        state.value.phase === 'ready' &&
+        state.value.root.children.length === 1 &&
+        state.value.root.children[0].groupId === state.value.root.groupId,
+);
 
 const stand = computed(() =>
     state.value.phase === 'ready' ? formatTimestamp(state.value.loadedAt) : null,
 );
-const showErrorToast = computed(
-    () => state.value.phase === 'ready' && state.value.hasErrors,
-);
+const showErrorToast = computed(() => state.value.phase === 'ready' && state.value.hasErrors);
 
 const appVersion = __APP_VERSION__;
 const appCommit = __APP_COMMIT__;
@@ -39,9 +49,7 @@ const appCommit = __APP_COMMIT__;
                 <div class="rr-dash__title-block">
                     <h1 class="rr-dash__title">{{ COPY.appTitle }}</h1>
                     <p class="rr-dash__subtitle">
-                        <template v-if="stand">
-                            {{ COPY.timestampPrefix }}{{ stand }}
-                        </template>
+                        <template v-if="stand"> {{ COPY.timestampPrefix }}{{ stand }} </template>
                         <template v-else>{{ COPY.loading }}</template>
                     </p>
                 </div>
@@ -49,7 +57,7 @@ const appCommit = __APP_COMMIT__;
                     type="button"
                     class="rr-dash__refresh"
                     :disabled="state.phase === 'loading'"
-                    @click="load(gateGroupId, teilstammIds)"
+                    @click="load(settings)"
                 >
                     ↻ <span class="rr-dash__refresh-label">{{ COPY.refresh }}</span>
                 </button>
@@ -59,17 +67,20 @@ const appCommit = __APP_COMMIT__;
 
             <template v-else-if="state.phase === 'ready'">
                 <HauptstammCard :node="state.root" />
-                <div class="rr-dash__divider" aria-hidden="true">│</div>
-                <div class="rr-dash__grid">
-                    <TeilstammCard
-                        v-for="ts in state.root.children"
-                        :key="ts.groupId"
-                        :node="ts"
-                    />
-                    <p v-if="!state.root.children.length" class="rr-dash__empty">
-                        Keine Teilstämme angelegt.
-                    </p>
-                </div>
+                <template v-if="!hideTeilstammRow">
+                    <div class="rr-dash__divider" aria-hidden="true">│</div>
+                    <div class="rr-dash__grid">
+                        <TeilstammCard
+                            v-for="ts in state.root.children"
+                            :key="ts.groupId"
+                            :node="ts"
+                            :always-shown-role-ids="settings.alwaysShownRoleIds"
+                        />
+                        <p v-if="!state.root.children.length" class="rr-dash__empty">
+                            Keine Teilstämme angelegt.
+                        </p>
+                    </div>
+                </template>
                 <DuplicatesPanel :root="state.root" />
             </template>
 
@@ -104,8 +115,7 @@ const appCommit = __APP_COMMIT__;
     background: var(--rr-bg-tertiary);
     color: var(--rr-text-primary);
     font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-        sans-serif;
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-size: 14px;
     min-height: 100vh;
 }
@@ -190,8 +200,7 @@ const appCommit = __APP_COMMIT__;
     font-size: 11px;
     color: var(--rr-text-secondary);
     opacity: 0.7;
-    font-family:
-        ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 /* Intermediate viewports — accept 2 cards per row with full team detail. */

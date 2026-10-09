@@ -8,6 +8,7 @@ import {
     sumBy,
 } from './counts';
 import { API_TIMEOUT_MS } from '@/shared/constants';
+import type { Settings } from '@/shared/settings';
 import type { OrgNode } from '@/shared/types';
 
 /**
@@ -52,14 +53,19 @@ function errorNode(groupId: number, fallbackName: string): OrgNode {
  * return an OrgNode with error='fetch-failed' instead of throwing — the
  * dashboard remains functional and the failed boxes render as "?".
  */
-async function safeLoadGroupNode(groupId: number, fallbackName = '?'): Promise<OrgNode> {
+async function safeLoadGroupNode(
+    groupId: number,
+    settings: Settings,
+    fallbackName = '?',
+): Promise<OrgNode> {
     try {
         const [group, members] = await Promise.all([
             withTimeout(getGroup(groupId)),
             withTimeout(getGroupMembers(groupId)),
         ]);
-        const leaders = leadersFromMembers(group, members);
-        const participants = participantsFromMembers(group, members);
+        const extra = new Set(settings.extraLeaderRoleIds);
+        const leaders = leadersFromMembers(group, members, extra);
+        const participants = participantsFromMembers(group, members, extra);
         return {
             groupId: group.id,
             name: group.name,
@@ -70,7 +76,7 @@ async function safeLoadGroupNode(groupId: number, fallbackName = '?'): Promise<O
             // levels overwrite these with deduped unions in loadOrganigram.
             leaderCount: leaders.length,
             memberCount: participants.length,
-            horizontCount: horizontCountFromMembers(members),
+            horizontCount: horizontCountFromMembers(members, settings.horizontFieldName),
             children: [],
         };
     } catch (e) {
@@ -103,39 +109,22 @@ async function safeGetChildren(groupId: number): Promise<GroupChild[] | null> {
  * sum itself remains usable on partially-failed loads). Leader NAMES on
  * each level still come from that level's own membership.
  */
-export async function loadOrganigram(
-    rootGroupId: number,
-    teilstammIds?: number[],
-): Promise<OrgNode> {
-    const [root, rootChildren] = await Promise.all([
-        safeLoadGroupNode(rootGroupId),
-        safeGetChildren(rootGroupId),
-    ]);
+export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
+    const rootGroupId = settings.gateGroupId;
+    if (rootGroupId === null) throw new Error('Keine Hauptstamm-Gruppe konfiguriert.');
 
-    if (rootChildren === null) {
-        // We couldn't find out who the Teilstämme are — render the root
-        // with whatever data we got and mark it errored so the dashboard
-        // shows the toast and (if the root load failed too) "?".
-        return {
-            ...root,
-            error: root.error ?? 'fetch-failed',
-            children: [],
-        };
-    }
+    const root = await safeLoadGroupNode(rootGroupId, settings);
 
-    // If the admin picked specific Teilstämme, walk only those. Undefined
-    // means "no explicit selection yet" → keep legacy behavior so existing
-    // installations don't break before they've been reconfigured.
-    const teilstammIdSet = teilstammIds ? new Set(teilstammIds) : null;
-    const selectedRootChildren = teilstammIdSet
-        ? rootChildren.filter((c) => teilstammIdSet.has(parseInt(c.domainIdentifier, 10)))
-        : rootChildren;
+    // The Teilstämme are configured directly, not derived from the
+    // Hauptstamm's children. That is what lets a small Stamm name the same
+    // group as Hauptstamm and as its only Teilstamm — a group is not its own
+    // child, so the old children-based lookup came back empty for them.
+    const teamTypeIds = new Set(settings.teamGroupTypeIds);
 
     const teilstaemme: OrgNode[] = await Promise.all(
-        selectedRootChildren.map(async (child) => {
-            const tsId = parseInt(child.domainIdentifier, 10);
+        settings.teilstammIds.map(async (tsId) => {
             const [ts, tsChildren] = await Promise.all([
-                safeLoadGroupNode(tsId, child.title),
+                safeLoadGroupNode(tsId, settings),
                 safeGetChildren(tsId),
             ]);
 
@@ -147,14 +136,21 @@ export async function loadOrganigram(
                 };
             }
 
-            // Teilstamm children may include operational/Maßnahme groups
-            // alongside the actual Kleingruppen-Teams. Only Kleingruppen
-            // (groupTypeId=1) render as team chips and feed into the counts.
-            const teamChildren = tsChildren.filter((c) => c.domainAttributes.groupTypeId === 1);
+            // A Teilstamm's children may include operational groups,
+            // Maßnahmen or Merkmale alongside the actual teams. Which types
+            // count is configuration — the admin ticks them off a list of
+            // what is actually there (docs/design/002-konfigurierbarkeit.md).
+            const teamChildren = tsChildren.filter((c) =>
+                teamTypeIds.has(c.domainAttributes.groupTypeId),
+            );
 
             const teams: OrgNode[] = await Promise.all(
                 teamChildren.map((teamChild) =>
-                    safeLoadGroupNode(parseInt(teamChild.domainIdentifier, 10), teamChild.title),
+                    safeLoadGroupNode(
+                        parseInt(teamChild.domainIdentifier, 10),
+                        settings,
+                        teamChild.title,
+                    ),
                 ),
             );
 

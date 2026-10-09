@@ -135,7 +135,10 @@ describe('isDashboardConfigured', () => {
 
 describe('areFeesConfigured', () => {
     it('needs at least one rung on the ladder', () => {
-        const settings = { ...EMPTY_SETTINGS, fees: { ...EMPTY_SETTINGS.fees, childCents: [8000] } };
+        const settings = {
+            ...EMPTY_SETTINGS,
+            fees: { ...EMPTY_SETTINGS.fees, childCents: [8000] },
+        };
 
         expect(areFeesConfigured(settings)).toBe(true);
         expect(areFeesConfigured(EMPTY_SETTINGS)).toBe(false);

@@ -4,20 +4,19 @@ import Admin from '@/admin/Admin.vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
 import Beitraege from '@/beitraege/Beitraege.vue';
 import Jahresmeldung from '@/jahresmeldung/Jahresmeldung.vue';
-import SetupHint from '@/beitraege/SetupHint.vue';
 import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
 import { useAdminSettings } from '@/admin/useAdminSettings';
 import { useAccessGate } from '@/shared/access/useAccessGate';
-import type { AccessStatus } from '@/shared/access/useAccessGate';
-import { membershipRule, roleRule } from '@/shared/access/rules';
+import { membershipRule } from '@/shared/access/rules';
+import { isDashboardConfigured } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/constants';
 
-// Routing: a single SPA serving both the dashboard and the admin form.
-// The admin form is reachable via ?admin=1; the dashboard is the default.
-// (Vue Router would be overkill for two routes with no history needs.)
+// Routing: a single SPA serving the dashboard and the admin form. The admin
+// form is reachable via ?admin=1; the dashboard is the default. (Vue Router
+// would be overkill for two routes with no history needs.)
 const isAdminRoute = computed(() => {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('admin') === '1';
@@ -25,7 +24,6 @@ const isAdminRoute = computed(() => {
 
 const { settings, load: loadSettings } = useAdminSettings();
 const { status: gateStatus, check: runGate } = useAccessGate();
-const { status: beitraegeStatus, check: runBeitraegeGate } = useAccessGate();
 const ready = ref(false);
 
 // Active tab (ADR-007). Kept in the URL so views can be linked and the
@@ -42,67 +40,27 @@ function selectTab(tab: TabId) {
     writeTabToUrl(tab);
 }
 
-// Access rule for both views (ADR-008). ?admin=1 used to return early here,
-// skipping loadSettings() and the gate entirely — anyone who knew the URL
-// reached the group picker and could overwrite the configuration. The admin
-// form is now gated like the dashboard; the only ungated path is the
-// first-run case below, where there is no configured group to check against.
-const organigramRule = computed(() => membershipRule(settings.value?.gateGroupId));
-
-// The Beitragsabrechnung needs a role, not just membership: its export carries
-// names, dates of birth and addresses for the whole Stamm, which the Teilstamm
-// leaders in the same group have no need for. Unconfigured roles yield a null
-// rule, and the tab stays unavailable (ADR-008).
-const beitraegeRule = computed(() =>
-    roleRule(settings.value?.gateGroupId, settings.value?.beitraegeRoleIds),
-);
-
-const beitraegeAllowed = computed(() => beitraegeStatus.value.phase === 'allowed');
-
 /**
- * `idle` means the gate never ran — no rule configured, or the outer gate
- * already refused. `config-missing` means the roles are unset. Both mean the
- * view is unavailable, and Gate.vue renders nothing for either, so they are
- * normalized to a plain denial rather than an empty page.
+ * One gate for the whole extension: membership in the configured Hauptstamm
+ * group. There is no per-tab role check any more — who may open the extension
+ * at all is the ChurchTools admin's call, through the custom module's own
+ * `view` permission (see the ADR). The membership gate stays as a second,
+ * cheap layer and because the group is the data root regardless.
  */
-const beitraegeGateStatus = computed<AccessStatus>(() => {
-    const phase = beitraegeStatus.value.phase;
-    return phase === 'idle' || phase === 'config-missing'
-        ? { phase: 'denied' }
-        : beitraegeStatus.value;
-});
+const organigramRule = computed(() => membershipRule(settings.value.gateGroupId));
 
-/**
- * The feature is deployed but released to nobody. Worth saying out loud,
- * because the tab bar hides itself at a single tab and the view would
- * otherwise be invisible with no hint that it exists.
- */
-const beitraegeUnconfigured = computed(
-    () => !settings.value?.beitraegeRoleIds || settings.value.beitraegeRoleIds.length === 0,
-);
+const configured = computed(() => isDashboardConfigured(settings.value));
 
-/**
- * The Jahresmeldung carries no rule of its own: whoever may see the dashboard
- * may see it (ADR-013). It is therefore always in the bar, which means the bar
- * itself is now always rendered — `TabBar` hides itself only below two tabs,
- * and that case no longer occurs here.
- */
-const availableTabs = computed(() => {
-    const tabs: { id: TabId; label: string }[] = [{ id: 'organigram', label: COPY.tabOrganigram }];
-    if (beitraegeAllowed.value) tabs.push({ id: 'beitraege', label: COPY.tabBeitraege });
-    tabs.push({ id: 'jahresmeldung', label: COPY.tabJahresmeldung });
-    return tabs;
-});
+const availableTabs = computed<{ id: TabId; label: string }[]>(() => [
+    { id: 'organigram', label: COPY.tabOrganigram },
+    { id: 'beitraege', label: COPY.tabBeitraege },
+    { id: 'jahresmeldung', label: COPY.tabJahresmeldung },
+]);
 
 onMounted(async () => {
     window.addEventListener('popstate', syncTabFromUrl);
     await loadSettings();
     await runGate(organigramRule.value);
-    // Only worth asking once the user is through the outer gate, and only
-    // when a rule exists — otherwise it is one wasted request per load.
-    if (gateStatus.value.phase === 'allowed' && beitraegeRule.value) {
-        await runBeitraegeGate(beitraegeRule.value);
-    }
     ready.value = true;
 });
 
@@ -110,15 +68,12 @@ onUnmounted(() => {
     window.removeEventListener('popstate', syncTabFromUrl);
 });
 
-// First-run: when nothing is configured yet, the App renders <Admin> directly
-// instead of pointing the user to ?admin=1. After a successful save, re-run
-// the gate so the dashboard appears without a manual reload.
+// First run: with nothing configured the App renders <Admin> directly instead
+// of pointing the user at ?admin=1. After a successful save, re-run the gate
+// so the dashboard appears without a manual reload.
 async function handleSaved() {
     await loadSettings();
     await runGate(organigramRule.value);
-    if (gateStatus.value.phase === 'allowed' && beitraegeRule.value) {
-        await runBeitraegeGate(beitraegeRule.value);
-    }
 }
 </script>
 
@@ -127,46 +82,25 @@ async function handleSaved() {
         <h1 class="rr-shell__title">{{ COPY.appTitle }}</h1>
         <p class="rr-shell__subtitle">{{ COPY.loading }}</p>
     </main>
+    <!--
+      Nothing configured yet, or an admin asked for the form. The first-run
+      case is deliberately ungated: there is no configured group to check
+      against, so requiring membership in it would lock everybody out.
+    -->
     <Admin
-        v-else-if="
-            gateStatus.phase === 'config-missing' ||
-            (isAdminRoute && gateStatus.phase === 'allowed')
-        "
-        :first-run="!isAdminRoute && gateStatus.phase === 'config-missing'"
+        v-else-if="!configured || (isAdminRoute && gateStatus.phase === 'allowed')"
+        :first-run="!isAdminRoute && !configured"
         @saved="handleSaved"
     />
-    <template
-        v-else-if="
-            gateStatus.phase === 'allowed' && settings && typeof settings.gateGroupId === 'number'
-        "
-    >
+    <template v-else-if="gateStatus.phase === 'allowed'">
         <TabBar :tabs="availableTabs" :active="activeTab" @select="selectTab" />
-        <SetupHint v-if="beitraegeUnconfigured && activeTab === 'organigram'" />
         <Dashboard
             v-if="activeTab === 'organigram'"
             :person="gateStatus.person"
-            :gate-group-id="settings.gateGroupId"
-            :teilstamm-ids="settings.teilstammIds"
+            :settings="settings"
         />
-        <Jahresmeldung
-            v-else-if="activeTab === 'jahresmeldung'"
-            :gate-group-id="settings.gateGroupId"
-            :teilstamm-ids="settings.teilstammIds"
-        />
-        <!--
-          A typed ?tab=beitraege is denied, not quietly redirected to the
-          organigram: the user asked for this view and deserves to be told
-          they may not have it (ADR-008). The tab is matched explicitly rather
-          than left as the fallthrough — with a third tab in the chain, a bare
-          `v-else-if="beitraegeAllowed"` would serve the Beitragsabrechnung to
-          anyone who asked for a view further down the list.
-        -->
-        <Beitraege
-            v-else-if="activeTab === 'beitraege' && beitraegeAllowed"
-            :gate-group-id="settings.gateGroupId"
-            :teilstamm-ids="settings.teilstammIds"
-        />
-        <Gate v-else :status="beitraegeGateStatus" :denied-message="COPY.beitraegeAccessDenied" />
+        <Jahresmeldung v-else-if="activeTab === 'jahresmeldung'" :settings="settings" />
+        <Beitraege v-else :settings="settings" />
     </template>
     <Gate v-else :status="gateStatus" />
 </template>

@@ -13,8 +13,10 @@ import { dataQualityFlags, summarizeDataQuality } from '@/shared/rr/data-quality
 import { nextDueDate } from '@/shared/rr/dates';
 import type { DataQuality } from '@/shared/rr/data-quality';
 import type { FeeTotals } from '@/shared/rr/fee-tiers';
-import { DEFAULT_FEE_CONFIG } from '@/shared/rr/types';
-import type { FeeAssignment, FeeConfig, Relationship, RrParticipant } from '@/shared/rr/types';
+import { ageBucket } from '@/shared/rr/dates';
+import { areFeesConfigured } from '@/shared/settings';
+import type { FeeConfig, Settings } from '@/shared/settings';
+import type { FeeAssignment, Relationship, RrParticipant } from '@/shared/rr/types';
 import { COPY } from '@/shared/constants';
 
 export type BeitraegeResult = {
@@ -78,11 +80,10 @@ export function useBeitraege() {
     const exportState = ref<ExportState>({ phase: 'idle' });
     let snapshot: ExportSnapshot | null = null;
 
-    async function load(
-        gateGroupId: number,
-        teilstammIds: number[],
-        config: FeeConfig = DEFAULT_FEE_CONFIG,
-    ): Promise<void> {
+    async function load(settings: Settings): Promise<void> {
+        const gateGroupId = settings.gateGroupId;
+        const teilstammIds = settings.teilstammIds;
+        const config = settings.fees;
         state.value = { phase: 'loading' };
         try {
             // No fallback to "every child of the Hauptstamm" on purpose. The
@@ -90,18 +91,18 @@ export function useBeitraege() {
             // instance that guess would pull in a Teilstamm the organigram
             // deliberately leaves out, adding 25 people to a total nobody
             // would notice was wrong.
-            if (teilstammIds.length === 0) {
-                state.value = {
-                    phase: 'error',
-                    message:
-                        'Es sind keine Teilstämme konfiguriert. Ohne diese Auswahl steht ' +
-                        'nicht fest, welche Teams zur Abrechnung gehören — bitte zuerst in ' +
-                        'der Konfiguration festlegen.',
-                };
+            if (gateGroupId === null || teilstammIds.length === 0) {
+                state.value = { phase: 'error', message: COPY.configMissing };
+                return;
+            }
+            // A ladder with no rungs is not "everything free", it is "nobody
+            // said". Rendering a total of 0,00 € would look like an answer.
+            if (!areFeesConfigured(settings)) {
+                state.value = { phase: 'error', message: COPY.feesNotConfigured };
                 return;
             }
 
-            const teams = await resolveTeams(teilstammIds);
+            const teams = await resolveTeams(teilstammIds, settings.teamGroupTypeIds);
             if (teams.length === 0) {
                 state.value = {
                     phase: 'error',
@@ -112,7 +113,7 @@ export function useBeitraege() {
                 return;
             }
 
-            const leaderRoleIds = await fetchLeaderRoleIds();
+            const leaderRoleIds = await fetchLeaderRoleIds(new Set(settings.extraLeaderRoleIds));
             const [{ participants, staffPersonIds }, groupLeaderIds] = await Promise.all([
                 fetchTeamMembers(teams, leaderRoleIds),
                 fetchStaffFromGroups([gateGroupId, ...teilstammIds], leaderRoleIds),
@@ -123,7 +124,29 @@ export function useBeitraege() {
             const relationships = await fetchRelationships(personIds);
 
             const families = groupFamilies(participants, relationships);
-            const assignments = assignFees(participants, families, staffPersonIds, config);
+
+            // A Juniorleiter is a leader under 18, so they are already in
+            // `staffPersonIds`; the age is what separates the two rates. Only
+            // people who are also participants can be billed at all, and those
+            // are the ones whose birthday we hold.
+            const today = new Date();
+            const juniorLeaderPersonIds = new Set(
+                participants
+                    .filter(
+                        (p) =>
+                            staffPersonIds.has(p.personId) &&
+                            ageBucket(p.birthday, today) === 'minor',
+                    )
+                    .map((p) => p.personId),
+            );
+
+            const assignments = assignFees(
+                participants,
+                families,
+                staffPersonIds,
+                juniorLeaderPersonIds,
+                config,
+            );
 
             // Leader status takes precedence over participant status, exactly
             // as `hierarchy.ts` resolves it for the organigram's tiles.
@@ -131,7 +154,7 @@ export function useBeitraege() {
                 staffPersonIds.has(p.personId),
             ).length;
 
-            const totals = summarize(assignments, families);
+            const totals = summarize(assignments, families, config.childCents.length);
             const quality = summarizeDataQuality(participants, relationships);
             const loadedAt = new Date();
 

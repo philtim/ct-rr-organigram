@@ -2,19 +2,19 @@
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
-import { ALWAYS_SHOWN_LEADER_ROLES, COPY } from '@/shared/constants';
+import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { leaderRoleRows } from './counts';
 
-const props = defineProps<{ node: OrgNode }>();
+const props = defineProps<{ node: OrgNode; alwaysShownRoleIds: number[] }>();
 
 const isError = computed(() => Boolean(props.node.error));
 // One row per leadership role, in the group type's own order. Stammleiter and
-// Stammwart stay visible when vacant (see ALWAYS_SHOWN_LEADER_ROLES) so an
+// Stammwart stay visible when vacant (Settings.alwaysShownRoleIds) so an
 // open position is readable as such; an unfilled Stammhelfer is simply absent.
 const roleGroups = computed(() =>
-    leaderRoleRows(props.node.leaderRoles, props.node.leaders, (name) =>
-        ALWAYS_SHOWN_LEADER_ROLES.has(name.toLowerCase()),
+    leaderRoleRows(props.node.leaderRoles, props.node.leaders, (roleId) =>
+        props.alwaysShownRoleIds.includes(roleId),
     ),
 );
 // The compact mobile row has no space for role labels, so names go flat there.

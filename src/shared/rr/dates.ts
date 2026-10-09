@@ -37,3 +37,31 @@ export function ageAt(birthday: string | null, dueDate: Date): number | null {
     if (monthDiff < 0 || (monthDiff === 0 && dueDate.getUTCDate() < born.getUTCDate())) age -= 1;
     return age >= 0 ? age : null;
 }
+
+/**
+ * Which side of 18 somebody is on, on a given day.
+ *
+ * Separate from `ageAt` above, which answers "how many completed years" in
+ * UTC for the export. This one compares **calendar dates**: the birthday as
+ * written, against the reader's own today. No timezone can move somebody's
+ * 18th birthday by a day, which matters because the answer decides whether
+ * they are reported to the Bund as a Juniorleiter or as a Mitarbeiter.
+ *
+ * Anything unparseable is `unknown`, never `adult` — a silent misfiling into
+ * Mitarbeiter is exactly the error the Jahresmeldung exists to surface.
+ */
+export function ageBucket(
+    birthday: string | null | undefined,
+    today: Date,
+): 'adult' | 'minor' | 'unknown' {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthday ?? '');
+    if (!match) return 'unknown';
+
+    const [, year, month, day] = match.map(Number);
+    let age = today.getFullYear() - year;
+    const hadBirthday =
+        today.getMonth() + 1 > month || (today.getMonth() + 1 === month && today.getDate() >= day);
+    if (!hadBirthday) age -= 1;
+
+    return age >= 18 ? 'adult' : 'minor';
+}

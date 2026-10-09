@@ -1,20 +1,21 @@
 import { ct } from '@/shared/api';
-import { LEADER_ROLE_NAMES } from '@/shared/constants';
 
 /**
- * One definition of "leader", shared by both tabs.
+ * One definition of "leader", shared by all three tabs.
  *
- * This used to live in `src/dashboard/counts.ts` and the Beitragsabrechnung
- * had its own, cruder rule: anything that is not `groupTypeRoleId === 8`.
- * The two agreed by luck — only Teilnehmer, Leiter, Co-Leiter and Mitarbeiter
- * are in use on the live instance. A Kleingruppe also defines **Coach** and
- * **Interessent**, both of which the organigram counts as members while the
- * other rule would have silently filed them under Mitarbeiter and exempted
- * them from the fee. Nobody holds those roles today, which is exactly why it
- * would have gone unnoticed until it did not.
+ * This used to carry a hardcoded list of role *names* — Mitarbeiter,
+ * Teamhelfer, Organisator — because those are `participant` roles that the
+ * authors' Stamm treats as MAs. That list described one installation and
+ * would have made every other Stamm count wrong, silently, all the way into
+ * its Jahresmeldung. The names are gone; the admin ticks role ids instead
+ * (`Settings.extraLeaderRoleIds`).
  *
- * ADR-004's trigger for `shared/`: a second feature needs it.
+ * What ChurchTools itself flags as leadership still counts unconditionally.
+ * That half stays automatic on purpose: a role added to the group type later
+ * is counted the day it appears, rather than going missing until somebody
+ * notices the figures are low.
  */
+
 export type RoleDefinition = {
     id: number;
     groupTypeId?: number;
@@ -24,11 +25,25 @@ export type RoleDefinition = {
 };
 
 /**
- * The shape both predicates accept — whatever carries a role's name and
- * flags, whether it came from a group's `roles` include or from
- * `GET /group/roles`.
+ * The shape both predicates accept — whatever carries a role's id, name and
+ * flags, whether it came from a group's `roles` include (`groupTypeRoleId`)
+ * or from `GET /group/roles` (`id`). The two are the same number space:
+ * `groupTypeRoleId` is unique installation-wide.
  */
-export type RoleLike = { name?: string; type?: string; isLeader?: boolean };
+export type RoleLike = {
+    groupTypeRoleId?: number;
+    id?: number;
+    name?: string;
+    type?: string;
+    isLeader?: boolean;
+};
+
+/** The role's id, from whichever field the endpoint used. */
+export function roleIdOf(role: RoleLike): number | null {
+    if (typeof role.groupTypeRoleId === 'number') return role.groupTypeRoleId;
+    if (typeof role.id === 'number') return role.id;
+    return null;
+}
 
 /**
  * True for roles ChurchTools itself calls leadership. `type` is the current
@@ -40,13 +55,13 @@ export function isLeadershipRole(role: RoleLike): boolean {
 }
 
 /**
- * A role counts as leader iff ChurchTools flags it, or its name is in the
- * broadened set — Mitarbeiter, Teamhelfer and Organisator are `participant`
- * roles that the Stamm treats as MAs.
+ * A role counts as leader iff ChurchTools flags it, or the admin added its id
+ * to the configured extras.
  */
-export function isLeaderRole(role: RoleLike): boolean {
+export function isLeaderRole(role: RoleLike, extraLeaderRoleIds: ReadonlySet<number>): boolean {
     if (isLeadershipRole(role)) return true;
-    return LEADER_ROLE_NAMES.has((role.name ?? '').trim().toLowerCase());
+    const id = roleIdOf(role);
+    return id !== null && extraLeaderRoleIds.has(id);
 }
 
 /**
@@ -55,11 +70,13 @@ export function isLeaderRole(role: RoleLike): boolean {
  * collisions on live), so a flat set is enough and callers do not need each
  * group's own role list.
  */
-export async function fetchLeaderRoleIds(): Promise<Set<number>> {
+export async function fetchLeaderRoleIds(
+    extraLeaderRoleIds: ReadonlySet<number>,
+): Promise<Set<number>> {
     const roles = await ct.get<RoleDefinition[]>('/group/roles');
     const ids = new Set<number>();
     for (const role of roles ?? []) {
-        if (typeof role.id === 'number' && isLeaderRole(role)) ids.add(role.id);
+        if (typeof role.id === 'number' && isLeaderRole(role, extraLeaderRoleIds)) ids.add(role.id);
     }
     return ids;
 }

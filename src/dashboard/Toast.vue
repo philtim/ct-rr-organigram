@@ -14,12 +14,7 @@ watch(
 </script>
 
 <template>
-    <div
-        v-if="visible && !dismissed"
-        class="rr-toast"
-        role="status"
-        aria-live="polite"
-    >
+    <div v-if="visible && !dismissed" class="rr-toast" role="status" aria-live="polite">
         <span class="rr-toast__message">{{ message }}</span>
         <button
             type="button"

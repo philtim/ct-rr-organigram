@@ -54,41 +54,6 @@ export async function checkMembership(
     }
 }
 
-export type RoleResult =
-    | { status: 'match'; roleId: number }
-    | { status: 'no-match' }
-    | { status: 'error'; httpStatus?: number };
-
-/**
- * Role check in a single request — the list endpoint filters server-side:
- *   GET /api/groups/{groupId}/members
- *       ?person_id[]={personId}&role_ids[]=…&group_member_statuses[]=active
- * A non-empty result means the person holds one of the roles.
- *
- * An empty `roleIds` would drop the filter and match any membership, so it
- * is treated as "no role can match" rather than silently widening access.
- */
-export async function checkRole(
-    groupId: number,
-    personId: number,
-    roleIds: number[],
-): Promise<RoleResult> {
-    if (roleIds.length === 0) return { status: 'no-match' };
-
-    const params = new URLSearchParams();
-    params.append('person_id[]', String(personId));
-    for (const roleId of roleIds) params.append('role_ids[]', String(roleId));
-    params.append('group_member_statuses[]', 'active');
-
-    try {
-        const rows = await ct.get<GroupMember[]>(`/groups/${groupId}/members?${params}`);
-        const match = rows?.[0];
-        return match ? { status: 'match', roleId: match.groupTypeRoleId } : { status: 'no-match' };
-    } catch (e: unknown) {
-        return { status: 'error', httpStatus: extractStatus(e) };
-    }
-}
-
 function extractStatus(e: unknown): number | undefined {
     if (typeof e === 'object' && e !== null) {
         const maybe = e as { response?: { status?: number }; status?: number };
