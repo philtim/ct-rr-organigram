@@ -32,6 +32,62 @@ export function getGroupFrontendUrl(groupId: number): string {
 }
 
 /**
+ * Retry a request that came back HTTP 429, with increasing delays.
+ *
+ * A tab that asks about every team and every person individually makes some
+ * hundreds of requests. The live instance answers them, but rate-limits a
+ * second run in quick succession — observed during verification of the
+ * Beitragsabrechnung, not theorised. Without this, a reload shows "could not
+ * be loaded" and the user has no idea that waiting a moment is the fix.
+ *
+ * Only 429 is retried. Every other failure is a real failure and is raised
+ * straight away rather than hidden behind three slow attempts.
+ */
+export async function withRetryOn429<T>(call: () => Promise<T>, attempts = 3): Promise<T> {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            return await call();
+        } catch (e) {
+            if (attempt >= attempts || statusOf(e) !== 429) throw e;
+            await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+        }
+    }
+}
+
+function statusOf(e: unknown): number | undefined {
+    if (typeof e === 'object' && e !== null) {
+        const maybe = e as { response?: { status?: number }; status?: number };
+        return maybe.response?.status ?? maybe.status;
+    }
+    return undefined;
+}
+
+/**
+ * Bounded-concurrency map. Hundreds of requests fired at once would be
+ * throttled by the browser and unkind to the instance; a handful in flight is
+ * plenty.
+ */
+export async function mapWithConcurrency<T, R>(
+    items: T[],
+    limit: number,
+    fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let next = 0;
+
+    const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        for (;;) {
+            const index = next++;
+            if (index >= items.length) return;
+            results[index] = await fn(items[index]);
+        }
+    });
+
+    await Promise.all(workers);
+    return results;
+}
+
+/**
  * Single shared error type so the toast component can display
  * consistent messages regardless of which feature triggered it.
  */

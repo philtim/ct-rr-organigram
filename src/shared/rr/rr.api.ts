@@ -1,4 +1,4 @@
-import { ct } from '@/shared/api';
+import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import type { GroupMember } from '@/shared/types';
 import type { Relationship, RrParticipant } from './types';
 
@@ -228,7 +228,7 @@ function toParticipant(personId: number, member: GroupMember, team: TeamRef): Rr
  * `personFields` is typed as an array but the live API answers with a plain
  * object (`{birthday, street, …}`). Accept either rather than depend on which.
  */
-function personFieldsOf(member: GroupMember): Record<string, unknown> {
+export function personFieldsOf(member: GroupMember): Record<string, unknown> {
     const raw = member.personFields as unknown;
     if (Array.isArray(raw)) return Object.assign({}, ...raw) as Record<string, unknown>;
     if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
@@ -312,59 +312,4 @@ export async function fetchRelationships(personIds: number[]): Promise<Relations
         }
     }
     return relationships;
-}
-
-/**
- * Retry a request that came back HTTP 429, with increasing delays.
- *
- * Opening this tab asks about every participant individually, which is some
- * 300 requests. The live instance answers them, but rate-limits a second run
- * in quick succession — observed during verification, not theorised. Without
- * this, a reload would show "could not be loaded" and the user would have no
- * idea that waiting a moment is the fix.
- *
- * Only 429 is retried. Every other failure is a real failure and is raised
- * straight away rather than hidden behind three slow attempts.
- */
-async function withRetryOn429<T>(call: () => Promise<T>, attempts = 3): Promise<T> {
-    for (let attempt = 1; ; attempt++) {
-        try {
-            return await call();
-        } catch (e) {
-            if (attempt >= attempts || statusOf(e) !== 429) throw e;
-            await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
-        }
-    }
-}
-
-function statusOf(e: unknown): number | undefined {
-    if (typeof e === 'object' && e !== null) {
-        const maybe = e as { response?: { status?: number }; status?: number };
-        return maybe.response?.status ?? maybe.status;
-    }
-    return undefined;
-}
-
-/**
- * Bounded-concurrency map. 300-odd requests fired at once would be throttled
- * by the browser and unkind to the instance; a handful in flight is plenty.
- */
-async function mapWithConcurrency<T, R>(
-    items: T[],
-    limit: number,
-    fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-    const results: R[] = new Array(items.length);
-    let next = 0;
-
-    const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-        for (;;) {
-            const index = next++;
-            if (index >= items.length) return;
-            results[index] = await fn(items[index]);
-        }
-    });
-
-    await Promise.all(workers);
-    return results;
 }
