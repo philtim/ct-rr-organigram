@@ -5,7 +5,6 @@
 
 ### Features
 
-* **jahresmeldung:** count the Bund's Mitgliederzahlen ([14a824a](https://github.com/philtim/ct-rr-organigram/commit/14a824af31e06e171a367035dc80ff31192a4232))
 * **jahresmeldung:** count the Bund's Mitgliederzahlen ([e1476e3](https://github.com/philtim/ct-rr-organigram/commit/e1476e3a5b0f7a4411898f4bd2120e3279a13cc3))
 
 
