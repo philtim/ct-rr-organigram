@@ -28,6 +28,8 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [007](007-multiple-tabs-one-module.md) | Multiple tabs in one extension, not a second custom module | Accepted |
 | [008](008-declarative-access-rules.md) | Access control: declarative access rules per view | Accepted |
 | [009](009-testing-strategy-vitest.md) | Testing strategy: Vitest for pure logic | Accepted |
+| [010](010-xlsx-export.md) | Client-side .xlsx export with `write-excel-file` | Accepted |
+| [011](011-personal-data.md) | Personal data: aggregates on screen, detail only in the export | Accepted |
 
 ## When to write a new ADR
 
