@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.0](https://github.com/philtim/ct-rr-organigram/compare/v1.8.0...v1.9.0) (2026-10-09)
+
+
+### Features
+
+* **beitraege:** add the xlsx export ([a4b6c99](https://github.com/philtim/ct-rr-organigram/commit/a4b6c993ccc7de04a55a1e6dadb6b30119ce6bd2))
+* **rr:** build the export rows from the fee assignments ([d59226a](https://github.com/philtim/ct-rr-organigram/commit/d59226a511e394dc638a9f1997bc2e608b6c7788))
+* **rr:** carry the Teilstamm name through team resolution ([361cf7f](https://github.com/philtim/ct-rr-organigram/commit/361cf7f301f5b372fa54334c3ac77dc881c0a30d))
+
 ## [1.8.0](https://github.com/philtim/ct-rr-organigram/compare/v1.7.0...v1.8.0) (2026-10-08)
 
 
