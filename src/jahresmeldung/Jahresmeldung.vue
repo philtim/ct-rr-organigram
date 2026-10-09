@@ -7,16 +7,14 @@ import { useJahresmeldung } from './useJahresmeldung';
 import Toast from '@/dashboard/Toast.vue';
 import { formatTimestamp } from '@/dashboard/useDashboard';
 import { COPY } from '@/shared/constants';
+import type { Settings } from '@/shared/settings';
 
-const props = defineProps<{
-    gateGroupId: number;
-    teilstammIds?: number[];
-}>();
+const props = defineProps<{ settings: Settings }>();
 
 const { state, load } = useJahresmeldung();
 
 function reload() {
-    load(props.gateGroupId, props.teilstammIds ?? []);
+    load(props.settings);
 }
 
 onMounted(reload);

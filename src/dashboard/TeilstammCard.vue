@@ -2,19 +2,31 @@
 import { computed } from 'vue';
 import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
-import { ALWAYS_SHOWN_LEADER_ROLES, COPY } from '@/shared/constants';
+import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { leaderRoleRows } from './counts';
 
-const props = defineProps<{ node: OrgNode }>();
+const props = defineProps<{
+    node: OrgNode;
+    alwaysShownRoleIds: number[];
+    /**
+     * A small Stamm names the same group as Hauptstamm and as its only
+     * Teilstamm. The hero card above already carries the name, the leaders
+     * and the figures, so this card drops to its teams — which live nowhere
+     * else and would otherwise simply not be shown.
+     */
+    teamsOnly?: boolean;
+    /** The configured member field, or '' when the Stamm keeps none. */
+    memberFieldName: string;
+}>();
 
 const isError = computed(() => Boolean(props.node.error));
 // One row per leadership role, in the group type's own order. Stammleiter and
-// Stammwart stay visible when vacant (see ALWAYS_SHOWN_LEADER_ROLES) so an
+// Stammwart stay visible when vacant (Settings.alwaysShownRoleIds) so an
 // open position is readable as such; an unfilled Stammhelfer is simply absent.
 const roleGroups = computed(() =>
-    leaderRoleRows(props.node.leaderRoles, props.node.leaders, (name) =>
-        ALWAYS_SHOWN_LEADER_ROLES.has(name.toLowerCase()),
+    leaderRoleRows(props.node.leaderRoles, props.node.leaders, (roleId) =>
+        props.alwaysShownRoleIds.includes(roleId),
     ),
 );
 // The compact mobile row has no space for role labels, so names go flat there.
@@ -33,13 +45,15 @@ const summary = computed(() => {
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Written-out counts for the mobile compact view — Variante-C style,
 // consistent with TeamChip: divider above, Leiter + Teilnehmer on one
-// line, Horizont on its own line (only when > 0).
+// line, the configured member field on its own line when there is one.
 const compactCounts = computed(() => {
     if (isError.value) return '? Leiter · ? Teilnehmer';
     return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
-const compactHorizont = computed(() =>
-    isError.value ? '?× Horizont' : `${props.node.horizontCount}× Horizont`,
+const compactField = computed(() =>
+    props.memberFieldName
+        ? `${isError.value ? '?' : props.node.horizontCount}× ${props.memberFieldName}`
+        : null,
 );
 </script>
 
@@ -51,22 +65,24 @@ const compactHorizont = computed(() =>
             :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
         >
             <!-- Compact mobile row (hidden on tablet+) -->
-            <div class="ts-card__compact-row">
+            <div v-if="!props.teamsOnly" class="ts-card__compact-row">
                 <span class="ts-card__compact-name">{{ node.name }}</span>
             </div>
-            <p class="ts-card__compact-summary">{{ summary }}</p>
-            <div class="ts-card__compact-meta">
+            <p v-if="!props.teamsOnly" class="ts-card__compact-summary">{{ summary }}</p>
+            <div v-if="!props.teamsOnly" class="ts-card__compact-meta">
                 <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
-                <span class="ts-card__compact-meta-line">{{ compactHorizont }}</span>
+                <span v-if="compactField" class="ts-card__compact-meta-line">
+                    {{ compactField }}
+                </span>
             </div>
 
             <!-- Full layout (hidden on mobile) -->
-            <header class="ts-card__head">
+            <header v-if="!props.teamsOnly" class="ts-card__head">
                 <p class="ts-card__subtitle">TEILSTAMM</p>
                 <h3 class="ts-card__name">{{ node.name }}</h3>
             </header>
 
-            <div class="ts-card__leiter-list">
+            <div v-if="!props.teamsOnly" class="ts-card__leiter-list">
                 <template v-if="isError">
                     <span class="ts-card__label">{{ COPY.leiterStat }}</span>
                     <span class="ts-card__leiter-name">?</span>
@@ -87,7 +103,7 @@ const compactHorizont = computed(() =>
                 </template>
             </div>
 
-            <div class="ts-card__stat-row">
+            <div v-if="!props.teamsOnly" class="ts-card__stat-row">
                 <div class="ts-card__stat">
                     <p class="ts-card__stat-label">{{ COPY.teamleiterStat }}</p>
                     <p class="ts-card__stat-value">
@@ -108,9 +124,9 @@ const compactHorizont = computed(() =>
                 </div>
             </div>
 
-            <div class="ts-card__horizont-row">
+            <div v-if="props.memberFieldName" class="ts-card__horizont-row">
                 <div class="ts-card__stat">
-                    <p class="ts-card__stat-label">{{ COPY.horizontStat }}</p>
+                    <p class="ts-card__stat-label">{{ props.memberFieldName }}</p>
                     <p class="ts-card__stat-value">
                         {{ isError ? '?' : node.horizontCount }}
                     </p>
@@ -122,7 +138,12 @@ const compactHorizont = computed(() =>
             <p class="ts-card__subtitle">TEAMS</p>
             <p v-if="isError" class="ts-card__empty">Teams konnten nicht geladen werden.</p>
             <template v-else>
-                <TeamChip v-for="team in node.children" :key="team.groupId" :node="team" />
+                <TeamChip
+                    v-for="team in node.children"
+                    :key="team.groupId"
+                    :node="team"
+                    :member-field-name="props.memberFieldName"
+                />
                 <p v-if="!node.children.length" class="ts-card__empty">Keine Teams.</p>
             </template>
         </section>

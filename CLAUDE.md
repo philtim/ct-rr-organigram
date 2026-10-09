@@ -24,6 +24,17 @@ When the spec text and a screen disagree, the screen wins.
 - All CSS selectors live under `.rr-dashboard-root` (US-8) — no exceptions
 - No `localStorage` / `sessionStorage` — use ChurchTools KV-Store
 - API calls go through `@churchtools/churchtools-client`, not raw fetch
+- **Nothing installation-specific in the source.** This extension is meant to
+  run unchanged at any Royal Rangers Stamm using ChurchTools. Group ids, group
+  *type* ids, role names or ids, member field names, fee amounts, Teilstamm
+  names — all of it is configuration in the KV-Store, chosen by the admin. A
+  constant that describes *this* Stamm is a bug, including when it is only a
+  default. See `docs/design/002-konfigurierbarkeit.md`.
+- **A missing configuration shows the configuration hint, never zeros.** The
+  expensive failure here is not a crash, it is a dashboard that renders a
+  plausible-looking table for a Stamm it could not read. Required settings
+  absent → the hint; optional settings absent → the feature is off, which is a
+  statement, not a gap.
 
 ## Implementation order (from HANDOVER.md)
 

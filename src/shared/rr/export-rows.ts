@@ -26,6 +26,8 @@ export type ExportRow = {
     teams: string;
     familyKey: string;
     isStaff: boolean;
+    /** A leader under 18 — their own rate, and no sibling position. */
+    isJuniorLeader: boolean;
     /** Empty unless ChurchTools is missing data that affects the assignment. */
     reviewNote: string;
     /**
@@ -101,6 +103,7 @@ function toRow(
         teams: participant.teamNames.join(', '),
         familyKey: assignment.familyKey,
         isStaff: assignment.tier === 'staff',
+        isJuniorLeader: assignment.tier === 'juniorLeader',
         reviewNote: reviewNote(flags),
         payingPosition: assignment.payingPosition,
         amountCents: assignment.amountCents,

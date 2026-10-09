@@ -15,33 +15,18 @@ export type {
     Person,
 } from './ct-types';
 
-/** Persisted shape of `settings` KV entry (US-2). */
-export type Settings = {
-    gateGroupId: number;
-    /**
-     * Group-IDs of the actual Teilstämme. Many Hauptstamm children are
-     * operational/Maßnahme groups that should not render as Teilstamm cards;
-     * the admin picks the real ones explicitly. Undefined = legacy behavior
-     * (render all children) so existing installations keep working.
-     */
-    teilstammIds?: number[];
-    /**
-     * `groupTypeRoleId`s within the Hauptstamm group that may open the
-     * Beitragsabrechnung tab (ADR-008 role rule). Undefined or empty means
-     * the tab is available to nobody — fail closed, since its export carries
-     * names, dates of birth and addresses.
-     */
-    beitraegeRoleIds?: number[];
-};
-
 /** A leadership role as the group type defines it. */
 export type LeaderRole = {
+    /** `groupTypeRoleId` — what `Settings.alwaysShownRoleIds` refers to. */
+    id: number;
     name: string;
     sortKey: number;
 };
 
 export type Leader = {
     personId: number;
+    /** `groupTypeRoleId` of the role this person holds in this group. */
+    roleId: number;
     fullName: string;
     initials: string;
     /** Profile picture URL from member.person.imageUrl, or null if the person has none. */

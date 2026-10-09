@@ -26,6 +26,7 @@ const ROW: ExportRow = {
     teams: 'Team A',
     familyKey: 'F001',
     isStaff: false,
+    isJuniorLeader: false,
     reviewNote: '',
     payingPosition: 1,
     amountCents: 8000,
@@ -37,15 +38,15 @@ const META: ExportMeta = {
     dueDate: new Date(Date.UTC(2026, 11, 1)),
     stammNames: ['RR Musterstamm-MA'],
     teamCount: 4,
-    config: { firstChildCents: 8000, secondChildCents: 6000 },
+    config: { childCents: [8000, 6000, 0], staffCents: 0, juniorLeaderCents: 0 },
     totals: {
         participants: 3,
         liable: 2,
         exempt: 1,
         exemptStaff: 1,
-        exemptThirdChild: 0,
-        firstChildren: 1,
-        secondChildren: 1,
+        exemptJuniorLeader: 0,
+        exemptLadder: 0,
+        perRung: [1, 1, 0],
         familiesWithThreeOrMore: 0,
         totalCents: 14000,
     },
@@ -115,9 +116,13 @@ describe('buildSheets — formula ranges cover every data row', () => {
         const cells = cellsOf(participants, 1);
 
         expect(cells[10]?.value).toBe('COUNTIF($J$2:$J$8,$J2)');
-        expect(cells[12]?.value).toBe('IF($L2="ja","",COUNTIFS($J$2:$J2,$J2,$L$2:$L2,"nein"))');
+        expect(cells[12]?.value).toBe('IF($L2<>"nein","",COUNTIFS($J$2:$J2,$J2,$L$2:$L2,"nein"))');
+        // The rung is looked up by the position the sheet derives, with MIN
+        // making the last rung apply to every further child — the same rule
+        // the extension applies, written once more in Excel.
         expect(cells[14]?.value).toBe(
-            'IF($N2="beitragsfrei",0,IF($M2=1,Zusammenfassung!$B$4,Zusammenfassung!$B$5))',
+            'IF($L2="MA",Zusammenfassung!$B$7,IF($L2="JL",Zusammenfassung!$B$8,' +
+                'INDEX(Zusammenfassung!$B$4:$B$6,MIN($M2,3))))',
         );
 
         const last = cellsOf(participants, 7);
@@ -128,7 +133,7 @@ describe('buildSheets — formula ranges cover every data row', () => {
         const [, summary] = buildSheets(rows(7), META);
         const participantCount = cellsOf(
             summary,
-            rowIndexOf(summary, 'Aktive RR Teilnehmer (gelistet)'),
+            rowIndexOf(summary, 'Aktive Teilnehmer (gelistet)'),
         );
 
         expect(participantCount[1]?.value).toBe('COUNTA(Teilnehmer!$A$2:$A$8)');
@@ -142,10 +147,10 @@ describe('buildSheets — formula ranges cover every data row', () => {
  * to confirm the file is sound.
  */
 describe('buildSheets — the control block points at the right rows', () => {
-    it('compares the grand total against the sum of the two rates', () => {
+    it('compares the grand total against the sum of the ladder lines', () => {
         const [, summary] = buildSheets(rows(4), META);
         const total = rowIndexOf(summary, 'Gesamtbetrag (€)') + 1;
-        const tiers = rowIndexOf(summary, 'Summe der beiden Staffeln') + 1;
+        const tiers = rowIndexOf(summary, 'Summe der Satz-Zeilen') + 1;
         const deviation = cellsOf(summary, rowIndexOf(summary, 'Abweichung zum Gesamtbetrag'));
 
         expect(deviation[2]?.value).toBe(`C${total}-C${tiers}`);
@@ -179,8 +184,62 @@ describe('buildSheets — the control block points at the right rows', () => {
  * gives about editing, so it must not appear anywhere a formula would be
  * overwritten.
  */
+/**
+ * The two shapes the first version got wrong, both invisible to a reader: a
+ * ladder with a single rung, and a Stamm that charges its Mitarbeiter or
+ * Juniorleiter something.
+ */
+describe('buildSheets — ladders the authors do not use', () => {
+    it('treats a single rung as the one that applies to every child', () => {
+        // With one rung, MIN() sends the second and third child to it as
+        // well. Counting only M=1 made the control row report a difference
+        // on a perfectly correct file.
+        const meta = {
+            ...META,
+            config: { childCents: [8000], staffCents: 0, juniorLeaderCents: 0 },
+        };
+        const [, summary] = buildSheets(rows(4), meta);
+        const line = rowIndexOf(summary, 'Kinder ab Satz 1. Kind');
+
+        // ">=1", not "=1": the label and the criterion have to agree that
+        // this rung is the one every further child lands on.
+        expect(cellsOf(summary, line)[1]?.value).toBe(
+            'COUNTIFS(Teilnehmer!$N$2:$N$5,"beitragspflichtig",Teilnehmer!$M$2:$M$5,">=1")',
+        );
+    });
+
+    it('counts Mitarbeiter and Juniorleiter who pay into the control sum', () => {
+        const meta = {
+            ...META,
+            config: { childCents: [8000, 0], staffCents: 2000, juniorLeaderCents: 1000 },
+        };
+        const [, summary] = buildSheets(rows(4), meta);
+
+        const staffLine = rowIndexOf(summary, 'Mitarbeiter mit eigenem Satz');
+        const juniorLine = rowIndexOf(summary, 'Juniorleiter mit eigenem Satz');
+        expect(cellsOf(summary, staffLine)[2]?.value).toBe(`B${staffLine + 1}*$B$6`);
+        expect(cellsOf(summary, juniorLine)[2]?.value).toBe(`B${juniorLine + 1}*$B$7`);
+
+        // The control row must add up every line that carries money, or it
+        // reports a phantom difference whenever an own rate is non-zero.
+        const control = cellsOf(summary, rowIndexOf(summary, 'Summe der Satz-Zeilen'));
+        expect(control[2]?.value).toContain(`C${staffLine + 1}`);
+        expect(control[2]?.value).toContain(`C${juniorLine + 1}`);
+    });
+
+    it('calls a row beitragsfrei only when it pays nothing', () => {
+        const [participants] = buildSheets(rows(2), META);
+        const reason = (cellsOf(participants, 1)[15] as { value?: string })?.value ?? '';
+
+        // Guarded by the amount, not by the MA/JL marker: a Stamm with a
+        // non-zero staff rate would otherwise see a paying row labelled
+        // "Mitarbeiter – beitragsfrei" and counted among the exemptions.
+        expect(reason).toMatch(/^IF\(\$O2>0,""/);
+    });
+});
+
 describe('buildSheets — yellow marks only what may be edited', () => {
-    it('fills the Familien-ID column and the two rate cells, nothing else', () => {
+    it('fills the Familien-ID column and the rate cells, nothing else', () => {
         const sheets = buildSheets(rows(4), META);
         const yellow: string[] = [];
 
@@ -199,8 +258,12 @@ describe('buildSheets — yellow marks only what may be edited', () => {
             'Teilnehmer!9:2',
             'Teilnehmer!9:3',
             'Teilnehmer!9:4',
+            // Three rungs, then the Mitarbeiter and Juniorleiter rates.
             'Zusammenfassung!1:3',
             'Zusammenfassung!1:4',
+            'Zusammenfassung!1:5',
+            'Zusammenfassung!1:6',
+            'Zusammenfassung!1:7',
         ]);
     });
 });

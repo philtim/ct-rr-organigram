@@ -1,9 +1,6 @@
-import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ct, fetchAllMembers, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import type { GroupMember } from '@/shared/types';
 import type { Relationship, RrParticipant } from './types';
-
-/** Kleingruppe — the group type the actual RR teams use. */
-const KLEINGRUPPE_TYPE_ID = 1;
 
 /** Person fields the export needs. Requested inline so no /persons calls follow. */
 const PERSON_FIELDS = ['birthday', 'street', 'zip', 'city'] as const;
@@ -32,7 +29,11 @@ type GroupNameRow = { id?: number; name?: string };
  * Own call rather than reusing the dashboard's `getGroupChildren`: shared code
  * importing from a feature folder inverts ADR-004's direction.
  */
-export async function resolveTeams(teilstammIds: number[]): Promise<TeamRef[]> {
+export async function resolveTeams(
+    teilstammIds: number[],
+    teamGroupTypeIds: number[],
+): Promise<TeamRef[]> {
+    const teamTypes = new Set(teamGroupTypeIds);
     const [stammNames, perTeilstamm] = await Promise.all([
         fetchGroupNames(teilstammIds),
         mapWithConcurrency(teilstammIds, 4, async (teilstammId) => {
@@ -41,8 +42,8 @@ export async function resolveTeams(teilstammIds: number[]): Promise<TeamRef[]> {
             );
             return {
                 teilstammId,
-                teams: (children ?? []).filter(
-                    (child) => child.domainAttributes?.groupTypeId === KLEINGRUPPE_TYPE_ID,
+                teams: (children ?? []).filter((child) =>
+                    teamTypes.has(child.domainAttributes?.groupTypeId ?? -1),
                 ),
             };
         }),
@@ -129,9 +130,7 @@ export async function fetchTeamMembers(
 
     const pages = await mapWithConcurrency(teams, 6, async (team) => ({
         team,
-        members: await withRetryOn429(() =>
-            ct.get<GroupMember[]>(`/groups/${team.groupId}/members?${memberQuery()}`),
-        ),
+        members: await fetchAllMembers<GroupMember>(team.groupId, memberQuery()),
     }));
 
     for (const { team, members } of pages) {
@@ -189,11 +188,7 @@ export async function fetchStaffFromGroups(
 ): Promise<Set<number>> {
     const ids = new Set<number>();
     const pages = await mapWithConcurrency(groupIds, 4, (groupId) =>
-        withRetryOn429(() =>
-            ct.get<GroupMember[]>(
-                `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
-            ),
-        ),
+        fetchAllMembers<GroupMember>(groupId, 'group_member_statuses[]=active&limit=200'),
     );
     for (const members of pages) {
         for (const member of members ?? []) {

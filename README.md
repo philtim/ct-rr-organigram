@@ -1,15 +1,38 @@
 # ct-rr-organigram
 
-A ChurchTools extension that visualizes the Royal Rangers staff and leadership structure as a three-level organigram (Hauptstamm → Teilstämme → Teams). See `docs/PRD.md` for the full specification and `docs/screens/` for the visual reference.
+A ChurchTools extension for a Royal Rangers Stamm, with three views:
+
+- **Organigramm** — the staff and leadership structure as a three-level chart (Stamm → Teilstämme → Teams).
+- **Jahresmeldung** — the membership figures for the annual report to the Bundesverband, laid out like the form in the Bund's portal.
+- **Beitragsabrechnung** — the membership fees per family, with an .xlsx export for the church office.
+
+See `docs/PRD.md` for the original specification, `docs/design/` for the design specs and `docs/screens/` for the visual reference.
 
 ## For end users (admins installing the extension)
 
 1. Download the latest `*.zip` from the [Releases](https://github.com/philtim/ct-rr-organigram/releases) page.
 2. In ChurchTools, go to **Admin → Extensions**, upload the ZIP, and enable the extension.
-3. Open **Admin → Extensions → Extension Settings → RR Mitarbeiter-Dashboard** and pick the Hauptstamm group from the list. The selection is stored in the extension's KV-Store.
-4. Members of that group will now see the dashboard in the main menu under **RR Mitarbeiter-Dashboard**.
+3. Decide who may open it: the extension registers its own ChurchTools permission (`rr-dashboard → view`), assigned like any other module's.
+4. Open the extension and work through the configuration screen (also reachable at `?admin=1`).
+5. The extension appears in the main menu for everyone who may view it and is a member of the configured Stamm group.
 
-The extension reads its hierarchy at runtime, so no group names or IDs are baked into the build — the same ZIP works on any installation.
+### Configuration
+
+**Nothing about a particular Stamm is baked into the build.** The same ZIP runs anywhere; everything installation-specific is configured once, and the screen offers what is actually in your instance rather than a default from somebody else's.
+
+| Setting               | What it decides                                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stamm-Gruppe          | The access gate, the hero card, and one source of "Mitarbeiter ohne Team"                                                                             |
+| Teilstämme            | Which groups become the second level. Usually the Stamm group's children; a small Stamm names the Stamm group itself and gets one level               |
+| Team-Gruppentypen     | Which child groups of a Teilstamm count as teams. Picked from the types actually found there, with counts                                             |
+| Leiter-Rollen         | What ChurchTools calls leadership always counts; tick any participant roles your Stamm also treats as Mitarbeiter. Each shows how many people hold it |
+| Unbesetzte Positionen | Which leadership roles stay visible on a card when vacant                                                                                             |
+| Mitgliederfeld        | The member field behind the extra count on each card, e.g. a magazine order. Leave empty and the tile disappears                                      |
+| Beitragsstaffel       | One rate per sibling position; the last applies to every further child. Plus own rates for Mitarbeiter and Juniorleiter                               |
+
+A preview line reports what the current selection covers — so many Teilstämme, teams and people — before you save. Until the required settings are present, every view shows the configuration hint rather than a table of zeros.
+
+Two rules the extension does not make configurable: a _Juniorleiter_ is a leader under 18, which is the Bundesverband's definition rather than a Stamm's, and all three views are open to everyone who passes the gate — who that is belongs in ChurchTools' own rights management. See [ADR-014](docs/adr/014-configuration-over-constants.md).
 
 ## For developers
 

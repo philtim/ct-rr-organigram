@@ -88,6 +88,39 @@ export async function mapWithConcurrency<T, R>(
 }
 
 /**
+ * Every page of a group's member list.
+ *
+ * `limit=200` is the endpoint's cap, not the size of a group. Reading one
+ * page silently truncates anything larger, and the figures built from it —
+ * the organigram's tiles, the Beitragsabrechnung, the Jahresmeldung that goes
+ * to the Bundesverband — come out too low with nothing to show for it. That
+ * is the one failure mode this project treats as worse than an error.
+ *
+ * Throws when a page fails, so callers decide; they already mark the node or
+ * the row as incomplete. It throws at the page cap too, rather than returning
+ * a short list: 100 pages is 20,000 members and nobody should reach it, but
+ * truncating in silence is the failure this function exists to remove.
+ */
+const MEMBER_PAGE_LIMIT = 200;
+const MAX_MEMBER_PAGES = 100;
+
+export async function fetchAllMembers<T>(groupId: number, query: string): Promise<T[]> {
+    const rows: T[] = [];
+    for (let page = 1; page <= MAX_MEMBER_PAGES; page++) {
+        const batch = await withRetryOn429(() =>
+            ct.get<T[]>(`/groups/${groupId}/members?${query}&page=${page}`),
+        );
+        if (!batch || batch.length === 0) return rows;
+        rows.push(...batch);
+        if (batch.length < MEMBER_PAGE_LIMIT) return rows;
+    }
+    throw new Error(
+        `Gruppe ${groupId} hat mehr als ${MAX_MEMBER_PAGES * MEMBER_PAGE_LIMIT} aktive ` +
+            'Mitglieder — die Liste wäre unvollständig.',
+    );
+}
+
+/**
  * Single shared error type so the toast component can display
  * consistent messages regardless of which feature triggered it.
  */

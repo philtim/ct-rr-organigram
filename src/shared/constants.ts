@@ -11,36 +11,19 @@ export const KV_GATE_GROUP_ID_FIELD = 'gateGroupId';
 /** Hard timeout per outbound API call (US-5 non-functional req). */
 export const API_TIMEOUT_MS = 30_000;
 
-/**
- * Role names (lowercased) that count as "Leiter" in the stat tiles,
- * beyond ChurchTools' built-in `role.isLeader === true` flag. Matches
- * the auto-membership rule of the "RR Mitarbeiter" group on the live
- * instance, which considers everyone with a Mitarbeiter/Teamhelfer/
- * Organisator role on any RR group an MA — even when the role itself
- * has isLeader=false.
- */
-export const LEADER_ROLE_NAMES: ReadonlySet<string> = new Set([
-    'leiter',
-    'co-leiter',
-    'coleiter',
-    'mitarbeiter',
-    'teamhelfer',
-    'organisator',
-]);
-
-/**
- * Leadership roles that stay visible on a Teilstamm card even when nobody
- * holds them — a vacant Stammwart is worth seeing, a missing Stammhelfer is
- * not. ChurchTools has no flag that tells a vacancy apart from an optional
- * position, so this list is deliberately hardcoded (decision 2026-10-02).
- * Compare lowercased; this is the single place to adapt for another
- * installation's role names.
- */
-export const ALWAYS_SHOWN_LEADER_ROLES: ReadonlySet<string> = new Set(['stammleiter', 'stammwart']);
-
 /** UI copy. */
 export const COPY = {
     appTitle: 'RR Mitarbeiter-Dashboard',
+    configUnreadable:
+        'Die Konfiguration konnte nicht gelesen werden. Das heißt nicht, dass keine ' +
+        'vorhanden ist — bitte die Seite neu laden. Hält das an, fehlen vermutlich die ' +
+        'Rechte auf das Modul.',
+    configMissing:
+        'Diese Ansicht ist noch nicht konfiguriert. Unter Admin → Extensions müssen ' +
+        'Hauptstamm-Gruppe, Teilstämme und die Gruppentypen der Teams festgelegt werden.',
+    feesNotConfigured:
+        'Für die Beitragsabrechnung sind noch keine Beitragssätze hinterlegt. Die Staffel ' +
+        'wird unter Admin → Extensions festgelegt.',
     refresh: 'Aktualisieren',
     timestampPrefix: 'Stand: ',
     accessDenied: 'Du hast keinen Zugriff auf das RR Mitarbeiter-Dashboard.',
@@ -53,20 +36,12 @@ export const COPY = {
     leiterStat: 'Leiter',
     mitgliederStat: 'Teilnehmer',
     gesamtStat: 'Gesamt',
-    horizontStat: 'Benötigte Horizonte',
     /** Shown in place of a name when a leadership position is unfilled. */
     vacantRole: 'nicht besetzt',
     // Tabs (ADR-007).
     tabOrganigram: 'Organigramm',
     tabBeitraege: 'Beitragsabrechnung',
     beitraegeTitle: 'RR Beitragsabrechnung',
-    beitraegeAccessDenied:
-        'Die Beitragsabrechnung ist der Hauptstammleitung vorbehalten. Falls du Zugriff ' +
-        'brauchst, wende dich an den Stammleiter.',
-    beitraegeSetupHint:
-        'Die Beitragsabrechnung ist noch für keine Rolle freigegeben und bleibt deshalb ' +
-        'für alle verborgen.',
-    beitraegeSetupHintLink: 'Jetzt konfigurieren',
     beitraegeLoadError: 'Die Beitragsdaten konnten nicht geladen werden.',
     beitraegeAggregatesOnly:
         'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
@@ -85,7 +60,8 @@ export const COPY = {
     feesLiable: 'beitragspflichtig',
     feesExempt: 'beitragsfrei',
     feesExemptStaff: 'davon Mitarbeiter',
-    feesExemptThirdChild: 'davon ab 3. Kind',
+    feesExemptLadder: 'davon beitragsfreie Kinder',
+    feesExemptJuniorLeader: 'davon Juniorleiter',
     feesFamiliesTitle: 'Familien',
     feesFamilies: 'Familien gesamt',
     feesFamiliesThreePlus: 'mit 3+ RR-Kindern',
@@ -164,8 +140,9 @@ export const COPY = {
         {
             term: 'Mitarbeiter',
             text:
-                'Leiter ab 18 Jahren. Als Leitungsrolle gelten Leiter, Co-Leiter, ' +
-                'Mitarbeiter, Teamhelfer und Organisator.',
+                'Leiter ab 18 Jahren. Als Leitungsrolle gilt, was ChurchTools selbst als ' +
+                'Leitung führt, dazu die Rollen, die unter Admin → Extensions zusätzlich ' +
+                'angehakt sind.',
         },
         {
             term: 'Mehrfach',

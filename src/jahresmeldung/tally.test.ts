@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     COLUMNS,
     OHNE_TEAM_ROW,
-    ageAt,
+    ageBucket,
     genderOf,
     rowGesamt,
     rowLeiter,
@@ -370,34 +370,45 @@ describe('genderOf', () => {
     });
 });
 
-describe('ageAt', () => {
-    const today = new Date(2026, 9, 9); // 2026-10-09
+describe('ageBucket', () => {
+    // UTC midnight, like `todayUtc` and `nextDueDate` produce — a local-time
+    // Date here would place the comparison a day off west of UTC.
+    const today = new Date(Date.UTC(2026, 9, 9)); // 2026-10-09
 
     it('counts somebody 18 or older as an adult', () => {
-        expect(ageAt('2008-10-09', today)).toBe('adult');
-        expect(ageAt('1970-01-01', today)).toBe('adult');
+        expect(ageBucket('2008-10-09', today)).toBe('adult');
+        expect(ageBucket('1970-01-01', today)).toBe('adult');
     });
 
     it('counts somebody under 18 as a minor', () => {
-        expect(ageAt('2009-01-01', today)).toBe('minor');
+        expect(ageBucket('2009-01-01', today)).toBe('minor');
     });
 
     it('does not promote somebody whose birthday is later this year', () => {
         // Turns 18 on 2026-10-10 — still a Juniorleiter today.
-        expect(ageAt('2008-10-10', today)).toBe('minor');
+        expect(ageBucket('2008-10-10', today)).toBe('minor');
     });
 
     it('promotes somebody exactly on their 18th birthday', () => {
-        expect(ageAt('2008-10-09', today)).toBe('adult');
+        expect(ageBucket('2008-10-09', today)).toBe('adult');
     });
 
     it('accepts the full ISO timestamp ChurchTools may send', () => {
-        expect(ageAt('2009-01-01T00:00:00Z', today)).toBe('minor');
+        expect(ageBucket('2009-01-01T00:00:00Z', today)).toBe('minor');
+    });
+
+    it('does not move a birthday across a timezone boundary', () => {
+        // The 18th birthday is the due date itself. Read in local time west
+        // of UTC the reference would fall back a day and the person would
+        // still be billed, and reported, as a minor.
+        const dueDate = new Date(Date.UTC(2026, 11, 1));
+        expect(ageBucket('2008-12-01', dueDate)).toBe('adult');
+        expect(ageBucket('2008-12-02', dueDate)).toBe('minor');
     });
 
     it('says unknown rather than guessing adult', () => {
         for (const value of [null, undefined, '', 'nope']) {
-            expect(ageAt(value, today)).toBe('unknown');
+            expect(ageBucket(value, today)).toBe('unknown');
         }
     });
 });

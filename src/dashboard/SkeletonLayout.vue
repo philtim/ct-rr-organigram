@@ -36,11 +36,7 @@ const TEAM_PLACEHOLDERS = 3;
         <div class="rr-dash__divider" aria-hidden="true">│</div>
 
         <div class="rr-dash__grid">
-            <article
-                v-for="i in TEILSTAMM_COUNT"
-                :key="i"
-                class="sk-card"
-            >
+            <article v-for="i in TEILSTAMM_COUNT" :key="i" class="sk-card">
                 <div>
                     <div class="sk sk--ts-subtitle"></div>
                     <div class="sk sk--ts-name"></div>
@@ -62,11 +58,7 @@ const TEAM_PLACEHOLDERS = 3;
                 </div>
                 <div class="sk-card__teams">
                     <div class="sk sk--ts-subtitle sk--ts-subtitle-tight"></div>
-                    <div
-                        v-for="t in TEAM_PLACEHOLDERS"
-                        :key="t"
-                        class="sk-card__team"
-                    >
+                    <div v-for="t in TEAM_PLACEHOLDERS" :key="t" class="sk-card__team">
                         <div class="sk sk--chip-name"></div>
                         <div class="sk sk--chip-leiter"></div>
                     </div>

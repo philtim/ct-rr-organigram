@@ -5,22 +5,24 @@ import type { Group, GroupMember, Leader, LeaderRole, Participant } from '@/shar
 type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
 
 /**
- * Filter members to those whose role counts as a "leader" for the
- * Leiter stat tile. A role counts when ChurchTools flags it isLeader=true
- * OR its (lowercased) name matches one of the broadened role names
- * (Mitarbeiter / Teamhelfer / Organisator) — needed to align the count
- * with the "RR Mitarbeiter" auto-group on the live instance, whose rule
- * treats those non-isLeader roles as MAs.
+ * Filter members to those whose role counts as a "leader" for the Leiter stat
+ * tile. A role counts when ChurchTools flags it as leadership, or when the
+ * admin added its id to `Settings.extraLeaderRoleIds` — see `shared/roles.ts`
+ * for why the second half is configuration rather than a list of names.
  *
- * Each returned Leader carries its role name and sort key, so the cards
- * can group by the role ChurchTools actually defines — Stammleiter,
- * Hauptstammwart, … — instead of squeezing everything into fixed buckets.
+ * Each returned Leader carries its role name and sort key, so the cards can
+ * group by the role ChurchTools actually defines instead of squeezing
+ * everything into fixed buckets.
  */
-export function leadersFromMembers(group: Group, members: GroupMember[]): Leader[] {
+export function leadersFromMembers(
+    group: Group,
+    members: GroupMember[],
+    extraLeaderRoleIds: ReadonlySet<number>,
+): Leader[] {
     const roles = group.roles ?? [];
     const infoByRoleId = new Map<number, RoleInfo>();
     for (const r of roles) {
-        if (isLeaderRole(r)) {
+        if (isLeaderRole(r, extraLeaderRoleIds)) {
             infoByRoleId.set(r.groupTypeRoleId, {
                 name: (r.name ?? '').trim(),
                 sortKey: r.sortKey ?? 0,
@@ -38,6 +40,7 @@ export function leadersFromMembers(group: Group, members: GroupMember[]): Leader
                 fullName: m.person?.title ?? '',
                 initials: deriveInitials(m),
                 imageUrl: imageUrlOf(m),
+                roleId: m.groupTypeRoleId,
                 roleName: info.name,
                 roleSortKey: info.sortKey,
                 isPillRole: info.isPillRole,
@@ -52,20 +55,23 @@ function imageUrlOf(m: GroupMember): string | null {
 }
 
 /**
- * Return non-leader members with their personId and name — the rank-
- * and-file participants. "Leader" here uses the same broadened filter
- * as `leadersFromMembers`, so a Mitarbeiter/Teamhelfer/Organisator is
- * not double-classified into participants.
+ * Return non-leader members with their personId and name — the rank-and-file
+ * participants. "Leader" here uses the same rule as `leadersFromMembers`, so
+ * a configured extra leader role is not double-classified into participants.
  *
  * Note: a person can still appear here for group A and as a leader for
  * group B in the same load — the per-Teilstamm and Hauptstamm
  * aggregations in `hierarchy.ts` resolve that by giving leader status
  * precedence over participant status across the tree.
  */
-export function participantsFromMembers(group: Group, members: GroupMember[]): Participant[] {
+export function participantsFromMembers(
+    group: Group,
+    members: GroupMember[],
+    extraLeaderRoleIds: ReadonlySet<number>,
+): Participant[] {
     const roles = group.roles ?? [];
     const leaderRoleIds = new Set(
-        roles.filter((r) => isLeaderRole(r)).map((r) => r.groupTypeRoleId),
+        roles.filter((r) => isLeaderRole(r, extraLeaderRoleIds)).map((r) => r.groupTypeRoleId),
     );
     return members
         .filter((m) => !leaderRoleIds.has(m.groupTypeRoleId))
@@ -108,7 +114,9 @@ export function sumBy<T>(items: T[], field: (item: T) => number): number {
  * type declares `fields` as an object, so parse defensively and treat
  * anything that isn't the recon-confirmed array shape as "no field".
  */
-export function horizontCountFromMembers(members: GroupMember[]): number {
+export function horizontCountFromMembers(members: GroupMember[], fieldName: string): number {
+    const wanted = fieldName.trim().toLowerCase();
+    if (!wanted) return 0;
     let count = 0;
     for (const m of members) {
         const fields = (m as { fields?: unknown }).fields;
@@ -117,7 +125,7 @@ export function horizontCountFromMembers(members: GroupMember[]): number {
             const entry = f as { name?: unknown; value?: unknown };
             if (
                 typeof entry.name === 'string' &&
-                entry.name.trim().toLowerCase() === 'horizont' &&
+                entry.name.trim().toLowerCase() === wanted &&
                 (entry.value === '1' || entry.value === 1 || entry.value === true)
             ) {
                 count += 1;
@@ -139,7 +147,7 @@ export function horizontCountFromMembers(members: GroupMember[]): number {
 export function leaderRoleRows(
     roles: LeaderRole[],
     leaders: Leader[],
-    alwaysShow: (roleName: string) => boolean = () => false,
+    alwaysShow: (roleId: number) => boolean = () => false,
 ): Array<{ role: string; leaders: Leader[] }> {
     const byRole = new Map<string, Leader[]>();
     for (const l of leaders) {
@@ -154,7 +162,7 @@ export function leaderRoleRows(
     for (const r of [...roles].sort((a, b) => a.sortKey - b.sortKey)) {
         seen.add(r.name);
         const held = byRole.get(r.name) ?? [];
-        if (held.length || alwaysShow(r.name)) rows.push({ role: r.name, leaders: held });
+        if (held.length || alwaysShow(r.id)) rows.push({ role: r.name, leaders: held });
     }
     // Roles held by someone but missing from the group's role list (hidden or
     // deactivated after the fact) must not vanish — append them by sort key.
@@ -169,6 +177,10 @@ export function leaderRoleRows(
 export function leaderRolesOf(group: Group): LeaderRole[] {
     return (group.roles ?? [])
         .filter((r) => isLeadershipRole(r) && r.isHidden !== true && r.isActive !== false)
-        .map((r) => ({ name: (r.name ?? '').trim(), sortKey: r.sortKey ?? 0 }))
+        .map((r) => ({
+            id: r.groupTypeRoleId,
+            name: (r.name ?? '').trim(),
+            sortKey: r.sortKey ?? 0,
+        }))
         .sort((a, b) => a.sortKey - b.sortKey);
 }

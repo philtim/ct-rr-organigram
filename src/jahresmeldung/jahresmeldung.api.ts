@@ -1,12 +1,10 @@
-import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ct, fetchAllMembers, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import { personFieldsOf } from '@/shared/rr/rr.api';
 import { fetchLeaderRoleIds } from '@/shared/roles';
-import { ageAt, genderOf } from './tally';
+import { ageBucket, genderOf, todayUtc } from './tally';
 import type { RowDef, ScopedPerson } from './tally';
+import type { Settings } from '@/shared/settings';
 import type { GroupMember } from '@/shared/types';
-
-/** Kleingruppe — the group type the actual RR teams use, on demo and on live. */
-const KLEINGRUPPE_TYPE_ID = 1;
 
 /**
  * The only two person fields this view reads, and both are reduced to an enum
@@ -43,6 +41,17 @@ async function getChildren(groupId: number): Promise<GroupChildRow[]> {
     );
 }
 
+/** A group's display name, for the row label. Null when it cannot be read. */
+async function getGroupTitle(groupId: number): Promise<string | null> {
+    try {
+        const group = await withRetryOn429(() => ct.get<{ name?: string }>(`/groups/${groupId}`));
+        return group?.name ?? null;
+    } catch (e) {
+        console.error(`[rr-dashboard] Jahresmeldung: group ${groupId} name unavailable:`, e);
+        return null;
+    }
+}
+
 function memberQuery(): string {
     const params = new URLSearchParams();
     // The same filter both other tabs apply, so no view counts a person the
@@ -54,11 +63,7 @@ function memberQuery(): string {
 }
 
 async function getMembers(groupId: number): Promise<GroupMember[]> {
-    return (
-        (await withRetryOn429(() =>
-            ct.get<GroupMember[]>(`/groups/${groupId}/members?${memberQuery()}`),
-        )) ?? []
-    );
+    return await fetchAllMembers<GroupMember>(groupId, memberQuery());
 }
 
 /** A soft fetch: a failure costs one group's members, not the whole table. */
@@ -121,7 +126,7 @@ class PersonAccumulator {
                     gender,
                     genderGap,
                     isLeader: false,
-                    age: ageAt(fields.birthday as string | null | undefined, this.today),
+                    age: ageBucket(fields.birthday as string | null | undefined, this.today),
                     teamTeilstammIds: [],
                     leaderTeilstammIds: [],
                 };
@@ -158,22 +163,21 @@ class PersonAccumulator {
  * a missing answer is cheaper than a plausible wrong one.
  */
 export async function loadJahresmeldung(
-    gateGroupId: number,
-    teilstammIds: number[],
-    today: Date = new Date(),
+    settings: Settings,
+    today: Date = todayUtc(),
 ): Promise<ScopeLoad> {
-    const [hauptstammChildren, leaderRoleIds] = await Promise.all([
-        getChildren(gateGroupId),
-        fetchLeaderRoleIds(),
-    ]);
+    const gateGroupId = settings.gateGroupId;
+    if (gateGroupId === null) throw new Error('Keine Hauptstamm-Gruppe konfiguriert.');
 
-    // Order and labels come from ChurchTools, filtered to the admin's picks —
-    // so a sixth Teilstamm (live has a Wegbereiterstamm) appears by itself and
-    // no group name is hardcoded (PRD v0.4).
-    const selected = new Set(teilstammIds);
-    const teilstaemme = hauptstammChildren
-        .map((child) => ({ id: Number(child.domainIdentifier), label: child.title }))
-        .filter((ts) => Number.isFinite(ts.id) && selected.has(ts.id));
+    const teamTypes = new Set(settings.teamGroupTypeIds);
+    const leaderRoleIds = await fetchLeaderRoleIds(new Set(settings.extraLeaderRoleIds));
+
+    // The Teilstämme are configured directly; their labels come from
+    // ChurchTools, in the configured order. No group name is hardcoded.
+    const teilstaemme = await mapWithConcurrency(settings.teilstammIds, 4, async (id) => ({
+        id,
+        label: (await getGroupTitle(id)) ?? String(id),
+    }));
 
     const accumulator = new PersonAccumulator(leaderRoleIds, today);
     let ohneTeamIncomplete = false;
@@ -201,7 +205,7 @@ export async function loadJahresmeldung(
             children === null
                 ? []
                 : children
-                      .filter((c) => c.domainAttributes?.groupTypeId === KLEINGRUPPE_TYPE_ID)
+                      .filter((c) => teamTypes.has(c.domainAttributes?.groupTypeId ?? -1))
                       .map((c) => Number(c.domainIdentifier))
                       .filter((id) => Number.isFinite(id));
         if (children === null) incomplete = true;

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { assignFees, summarize } from './fee-tiers';
-import { DEFAULT_FEE_CONFIG } from './types';
-import type { Family, FeeConfig, RrParticipant } from './types';
+import { assignFees, rungFor, summarize } from './fee-tiers';
+import type { FeeConfig } from '@/shared/settings';
+import type { Family, RrParticipant } from './types';
+
+/**
+ * The ladder these cases use. Not a default from the source — there are none
+ * any more — but the shape the authors' own Stamm configured: 80 € / 60 € /
+ * free from the third onwards, nothing for staff.
+ */
+const LADDER: FeeConfig = { childCents: [8000, 6000, 0], staffCents: 0, juniorLeaderCents: 0 };
 
 /** Synthetic people; only ids, birthdays and the staff set matter here. */
 function child(personId: number, birthday: string): RrParticipant {
@@ -27,10 +34,11 @@ function euros(
     people: RrParticipant[],
     families: Family[],
     staff: number[] = [],
-    config: FeeConfig = DEFAULT_FEE_CONFIG,
+    config: FeeConfig = LADDER,
+    juniors: number[] = [],
 ): Record<number, number> {
     const out: Record<number, number> = {};
-    for (const a of assignFees(people, families, new Set(staff), config)) {
+    for (const a of assignFees(people, families, new Set(staff), new Set(juniors), config)) {
         out[a.personId] = a.amountCents / 100;
     }
     return out;
@@ -126,7 +134,8 @@ describe('assignFees — Mitarbeiter', () => {
             people,
             [family('F001', [1, 2])],
             new Set([1]),
-            DEFAULT_FEE_CONFIG,
+            new Set(),
+            LADDER,
         );
         expect(result.find((a) => a.personId === 1)).toMatchObject({
             tier: 'staff',
@@ -134,7 +143,7 @@ describe('assignFees — Mitarbeiter', () => {
             amountCents: 0,
         });
         expect(result.find((a) => a.personId === 2)).toMatchObject({
-            tier: 'child1',
+            tier: 'child',
             payingPosition: 1,
             amountCents: 8000,
         });
@@ -147,28 +156,118 @@ describe('assignFees — Mitarbeiter', () => {
     });
 });
 
-describe('assignFees — configurable rates', () => {
+describe('assignFees — the configured ladder', () => {
+    const ladder = (childCents: number[]): FeeConfig => ({
+        childCents,
+        staffCents: 0,
+        juniorLeaderCents: 0,
+    });
+
     it('uses the configured amounts', () => {
         const people = [child(1, '2010-01-01'), child(2, '2012-01-01'), child(3, '2014-01-01')];
-        const raised: FeeConfig = { firstChildCents: 9000, secondChildCents: 7000 };
-        expect(euros(people, [family('F001', [1, 2, 3])], [], raised)).toEqual({
+        expect(euros(people, [family('F001', [1, 2, 3])], [], ladder([9000, 7000, 0]))).toEqual({
             1: 90,
             2: 70,
             3: 0,
         });
     });
 
-    it('supports a flat rate for both children', () => {
-        const people = [child(1, '2010-01-01'), child(2, '2012-01-01')];
-        const flat: FeeConfig = { firstChildCents: 7500, secondChildCents: 7500 };
-        expect(euros(people, [family('F001', [1, 2])], [], flat)).toEqual({ 1: 75, 2: 75 });
+    it('supports a flat rate for every child', () => {
+        const people = [child(1, '2010-01-01'), child(2, '2012-01-01'), child(3, '2014-01-01')];
+        expect(euros(people, [family('F001', [1, 2, 3])], [], ladder([7500]))).toEqual({
+            1: 75,
+            2: 75,
+            3: 75,
+        });
+    });
+
+    it('applies the last rung to every further child', () => {
+        // Four children, three rungs: the fourth repeats the third.
+        const people = [1, 2, 3, 4].map((n) => child(n, `201${n}-01-01`));
+        expect(
+            euros(people, [family('F001', [1, 2, 3, 4])], [], ladder([8000, 6000, 3000])),
+        ).toEqual({ 1: 80, 2: 60, 3: 30, 4: 30 });
+    });
+
+    it('charges a longer ladder down to its end', () => {
+        const people = [1, 2, 3, 4].map((n) => child(n, `201${n}-01-01`));
+        expect(
+            euros(people, [family('F001', [1, 2, 3, 4])], [], ladder([8000, 6000, 4000, 0])),
+        ).toEqual({ 1: 80, 2: 60, 3: 40, 4: 0 });
     });
 
     it('handles odd amounts without floating-point drift', () => {
         const people = [child(1, '2010-01-01'), child(2, '2012-01-01')];
-        const odd: FeeConfig = { firstChildCents: 8333, secondChildCents: 1667 };
-        const result = assignFees(people, [family('F001', [1, 2])], new Set(), odd);
+        const result = assignFees(
+            people,
+            [family('F001', [1, 2])],
+            new Set(),
+            new Set(),
+            ladder([8333, 1667]),
+        );
         expect(result.reduce((sum, a) => sum + a.amountCents, 0)).toBe(10000);
+    });
+});
+
+describe('assignFees — Juniorleiter', () => {
+    const withRates = (staffCents: number, juniorLeaderCents: number): FeeConfig => ({
+        childCents: [8000, 6000, 0],
+        staffCents,
+        juniorLeaderCents,
+    });
+
+    it('charges the Juniorleiter rate, not the staff rate', () => {
+        // A Juniorleiter holds a leading role, so they are in the staff set
+        // too. If staff were tested first the Juniorleiter rate could never
+        // apply to anybody.
+        const people = [child(1, '2010-01-01'), child(2, '2012-01-01')];
+        expect(euros(people, [family('F001', [1, 2])], [1], withRates(0, 2500), [1])).toEqual({
+            1: 25,
+            2: 80,
+        });
+    });
+
+    it('takes them out of the sibling count, like a Mitarbeiter', () => {
+        const people = [child(1, '2010-01-01'), child(2, '2012-01-01'), child(3, '2014-01-01')];
+        // Eldest is a Juniorleiter → the second child is the first paying one.
+        expect(euros(people, [family('F001', [1, 2, 3])], [1], withRates(0, 0), [1])).toEqual({
+            1: 0,
+            2: 80,
+            3: 60,
+        });
+    });
+
+    it('marks them with their own tier and no paying position', () => {
+        const result = assignFees(
+            [child(1, '2010-01-01')],
+            [family('F001', [1])],
+            new Set([1]),
+            new Set([1]),
+            withRates(0, 1500),
+        );
+        expect(result[0]).toMatchObject({
+            tier: 'juniorLeader',
+            payingPosition: null,
+            amountCents: 1500,
+        });
+    });
+});
+
+describe('rungFor', () => {
+    it('reads the rung at the position', () => {
+        expect(rungFor(1, [8000, 6000, 0])).toBe(8000);
+        expect(rungFor(2, [8000, 6000, 0])).toBe(6000);
+    });
+
+    it('repeats the last rung past the end of the ladder', () => {
+        expect(rungFor(7, [8000, 6000, 0])).toBe(0);
+        expect(rungFor(7, [8000])).toBe(8000);
+    });
+
+    it('charges nothing when no ladder is configured', () => {
+        // Unreachable in the app — the view refuses to render an unconfigured
+        // Beitragsabrechnung — but a silent crash here would be worse.
+        expect(rungFor(1, [])).toBe(0);
     });
 });
 
@@ -184,23 +283,23 @@ describe('summarize', () => {
             child(5, '2013-01-01'),
         ];
         const families = [family('F001', [1, 2, 3, 4]), family('F002', [5])];
-        const assignments = assignFees(people, families, new Set([1]), DEFAULT_FEE_CONFIG);
+        const assignments = assignFees(people, families, new Set([1]), new Set(), LADDER);
 
-        expect(summarize(assignments, families)).toEqual({
+        expect(summarize(assignments, families, LADDER.childCents.length)).toEqual({
             participants: 5,
             liable: 3,
             exempt: 2,
             exemptStaff: 1,
-            exemptThirdChild: 1,
-            firstChildren: 2,
-            secondChildren: 1,
+            exemptJuniorLeader: 0,
+            exemptLadder: 1,
+            perRung: [2, 1, 1],
             familiesWithThreeOrMore: 1,
             totalCents: 22000,
         });
     });
 
     it('reports zeroes for an empty list', () => {
-        expect(summarize([], [])).toMatchObject({
+        expect(summarize([], [], 3)).toMatchObject({
             participants: 0,
             liable: 0,
             exempt: 0,
@@ -215,8 +314,8 @@ describe('summarize', () => {
             family('F002', [4, 5]),
             family('F003', [6, 7]),
         ];
-        const assignments = assignFees(people, families, new Set([2, 6]), DEFAULT_FEE_CONFIG);
+        const assignments = assignFees(people, families, new Set([2, 6]), new Set(), LADDER);
         const summed = assignments.reduce((sum, a) => sum + a.amountCents, 0);
-        expect(summarize(assignments, families).totalCents).toBe(summed);
+        expect(summarize(assignments, families, LADDER.childCents.length).totalCents).toBe(summed);
     });
 });

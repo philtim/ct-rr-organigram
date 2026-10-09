@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { hasAnyError, loadOrganigram } from './hierarchy';
+import type { Settings } from '@/shared/settings';
 import type { OrgNode } from '@/shared/types';
 
 export type DashboardState =
@@ -11,10 +12,10 @@ export type DashboardState =
 export function useDashboard() {
     const state = ref<DashboardState>({ phase: 'idle' });
 
-    async function load(gateGroupId: number, teilstammIds?: number[]): Promise<void> {
+    async function load(settings: Settings): Promise<void> {
         state.value = { phase: 'loading' };
         try {
-            const root = await loadOrganigram(gateGroupId, teilstammIds);
+            const root = await loadOrganigram(settings);
             state.value = {
                 phase: 'ready',
                 root,

@@ -3,6 +3,7 @@ import { loadJahresmeldung } from './jahresmeldung.api';
 import { tally } from './tally';
 import type { Tally } from './tally';
 import { COPY } from '@/shared/constants';
+import type { Settings } from '@/shared/settings';
 
 export type JahresmeldungResult = {
     tally: Tally;
@@ -28,7 +29,7 @@ export type JahresmeldungState =
 export function useJahresmeldung() {
     const state = ref<JahresmeldungState>({ phase: 'idle' });
 
-    async function load(gateGroupId: number, teilstammIds: number[]): Promise<void> {
+    async function load(settings: Settings): Promise<void> {
         state.value = { phase: 'loading' };
         try {
             // No fallback to "every child of the Hauptstamm", for the reason
@@ -36,15 +37,13 @@ export function useJahresmeldung() {
             // guess, a sum cannot. Unfiltered, the children include Merkmal
             // and Maßnahme groups that would each become a row and count
             // their members a second time.
-            if (teilstammIds.length === 0) {
+            if (settings.gateGroupId === null || settings.teilstammIds.length === 0) {
                 state.value = { phase: 'error', message: COPY.jahresmeldungNoTeilstaemme };
                 return;
             }
 
-            const { people, rows, ohneTeamIncomplete, teamCount } = await loadJahresmeldung(
-                gateGroupId,
-                teilstammIds,
-            );
+            const { people, rows, ohneTeamIncomplete, teamCount } =
+                await loadJahresmeldung(settings);
 
             state.value = {
                 phase: 'ready',

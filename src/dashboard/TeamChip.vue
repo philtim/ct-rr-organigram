@@ -3,22 +3,34 @@ import type { OrgNode } from '@/shared/types';
 import { computed } from 'vue';
 import { getGroupFrontendUrl } from '@/shared/api';
 
-const props = defineProps<{ node: OrgNode }>();
+const props = defineProps<{
+    node: OrgNode;
+    /** The configured member field, or '' when the Stamm keeps none. */
+    memberFieldName: string;
+}>();
 
 const isError = computed(() => Boolean(props.node.error));
 const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Variante C counts, written out below the leader names and separated
-// from them by a divider. Leiter + Teilnehmer share one line; Horizont
-// gets its own line and is always shown — an explicit "0× Horizont"
+// from them by a divider. Leiter + Teilnehmer share one line; the member-field
+// count gets its own line and is shown whenever a field is configured — an
+// explicit "0× <Feld>"
 // tells the Stammleitung the team really ordered nothing (as opposed
 // to data still missing, which renders as "?").
 const countsText = computed(() => {
     if (isError.value) return '? Leiter · ? Teilnehmer';
     return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
 });
-const horizontText = computed(() =>
-    isError.value ? '?× Horizont' : `${props.node.horizontCount}× Horizont`,
+/**
+ * Named after the configured member field, and absent when there is none —
+ * a Stamm that keeps no such list would otherwise read a hardcoded "0×
+ * Horizont" as an answer about something it does not do.
+ */
+const fieldText = computed(() =>
+    props.memberFieldName
+        ? `${isError.value ? '?' : props.node.horizontCount}× ${props.memberFieldName}`
+        : null,
 );
 </script>
 
@@ -35,7 +47,7 @@ const horizontText = computed(() =>
         <span v-else-if="leaderNames" class="team-chip__leiter">{{ leaderNames }}</span>
         <div class="team-chip__meta">
             <span class="team-chip__meta-line">{{ countsText }}</span>
-            <span class="team-chip__meta-line">{{ horizontText }}</span>
+            <span v-if="fieldText" class="team-chip__meta-line">{{ fieldText }}</span>
         </div>
     </a>
 </template>

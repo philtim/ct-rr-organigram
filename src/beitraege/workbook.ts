@@ -3,7 +3,7 @@ import type { ExportRow } from '@/shared/rr/export-rows';
 import { parseIsoDate } from '@/shared/rr/dates';
 import type { DataQuality } from '@/shared/rr/data-quality';
 import type { FeeTotals } from '@/shared/rr/fee-tiers';
-import type { FeeConfig } from '@/shared/rr/types';
+import type { FeeConfig } from '@/shared/settings';
 
 type FileContent = File | Blob | ArrayBuffer;
 export type ExportSheet = Sheet<FileContent>;
@@ -38,8 +38,35 @@ const STAFF_FILL = '#F2F3F5';
 const DATE_FORMAT = 'dd.mm.yyyy';
 const EURO_FORMAT = '#,##0.00" €"';
 
-const EXEMPT_THIRD_CHILD = 'ab 3. Kind – beitragsfrei';
+const EXEMPT_LADDER = 'Staffel – beitragsfrei';
 const EXEMPT_STAFF = 'Mitarbeiter – beitragsfrei';
+const EXEMPT_JUNIOR = 'Juniorleiter – beitragsfrei';
+
+/**
+ * Where the editable rates sit on the summary sheet.
+ *
+ * Computed, not hardcoded: the ladder has as many rungs as the Stamm
+ * configured, so every row below it moves. The participant sheet points at
+ * these cells, which is what lets the office change a rate and watch the
+ * whole list recalculate.
+ */
+type RateCells = {
+    /** One row per rung, in order, 1-based Excel rows. */
+    rungRows: number[];
+    staffRow: number;
+    juniorRow: number;
+};
+
+function rateCells(ladderLength: number): RateCells {
+    // Row 1 title, row 2 blank, row 3 section heading, rungs from row 4.
+    const first = 4;
+    const rungRows = Array.from({ length: ladderLength }, (_, i) => first + i);
+    return {
+        rungRows,
+        staffRow: first + ladderLength,
+        juniorRow: first + ladderLength + 1,
+    };
+}
 
 const COLUMNS: Array<{ header: string; width: number }> = [
     { header: 'Nachname', width: 16 },
@@ -53,7 +80,7 @@ const COLUMNS: Array<{ header: string; width: number }> = [
     { header: 'Team(s)', width: 30 },
     { header: 'Familien-ID', width: 11 },
     { header: 'RR-Kinder in Familie', width: 11 },
-    { header: 'Mitarbeiter (MA)', width: 10 },
+    { header: 'Eigener Satz (MA/JL)', width: 12 },
     { header: 'Kind-Nr. (beitragspflichtig)', width: 13 },
     { header: 'Beitragspflicht', width: 15 },
     { header: 'Beitrag in €', width: 13 },
@@ -81,10 +108,15 @@ const COLUMNS: Array<{ header: string; width: number }> = [
  * this code and the spreadsheet ever disagree, the workbook says so itself.
  */
 export function buildSheets(rows: ExportRow[], meta: ExportMeta): ExportSheet[] {
-    return [participantsSheet(rows), summarySheet(rows.length, meta), methodSheet(meta)];
+    const cells = rateCells(meta.config.childCents.length);
+    return [
+        participantsSheet(rows, cells),
+        summarySheet(rows.length, meta, cells),
+        methodSheet(meta),
+    ];
 }
 
-function participantsSheet(rows: ExportRow[]): ExportSheet {
+function participantsSheet(rows: ExportRow[], cells: RateCells): ExportSheet {
     const lastRow = rows.length + 1;
     const header = COLUMNS.map((column) => ({
         value: column.header,
@@ -96,7 +128,7 @@ function participantsSheet(rows: ExportRow[]): ExportSheet {
     }));
 
     const data: ExportSheet['data'] = [header];
-    rows.forEach((row, index) => data.push(participantRow(row, index + 2, lastRow)));
+    rows.forEach((row, index) => data.push(participantRow(row, index + 2, lastRow, cells)));
 
     return {
         sheet: SHEET_PARTICIPANTS,
@@ -106,10 +138,15 @@ function participantsSheet(rows: ExportRow[]): ExportSheet {
     };
 }
 
-function participantRow(row: ExportRow, r: number, lastRow: number): ExportSheet['data'][number] {
-    // A Mitarbeiter row is tinted so it reads as "exempt for a reason that has
-    // nothing to do with siblings" at a glance.
-    const tint = row.isStaff ? STAFF_FILL : undefined;
+function participantRow(
+    row: ExportRow,
+    r: number,
+    lastRow: number,
+    cells: RateCells,
+): ExportSheet['data'][number] {
+    // A Mitarbeiter or Juniorleiter row is tinted so it reads as "exempt for a
+    // reason that has nothing to do with siblings" at a glance.
+    const tint = row.isStaff || row.isJuniorLeader ? STAFF_FILL : undefined;
     const text = (value: string) => ({ value, type: String, backgroundColor: tint });
     const formula = (value: string) => ({
         value,
@@ -136,21 +173,30 @@ function participantRow(row: ExportRow, r: number, lastRow: number): ExportSheet
         // hence every following column being a formula over it.
         { value: row.familyKey, type: String, backgroundColor: INPUT_FILL },
         formula(`COUNTIF($J$2:$J$${lastRow},$J${r})`),
-        text(row.isStaff ? 'ja' : 'nein'),
-        formula(`IF($L${r}="ja","",COUNTIFS($J$2:$J${r},$J${r},$L$2:$L${r},"nein"))`),
-        formula(`IF($L${r}="ja","beitragsfrei",IF($M${r}>=3,"beitragsfrei","beitragspflichtig"))`),
+        // Three states, because the two own-rate cases carry different rates:
+        // MA, JL, or an ordinary child who takes a rung of the ladder.
+        text(row.isStaff ? 'MA' : row.isJuniorLeader ? 'JL' : 'nein'),
+        formula(`IF($L${r}<>"nein","",COUNTIFS($J$2:$J${r},$J${r},$L$2:$L${r},"nein"))`),
+        formula(`IF($O${r}=0,"beitragsfrei","beitragspflichtig")`),
         {
-            value: `IF($N${r}="beitragsfrei",0,IF($M${r}=1,${SHEET_SUMMARY}!$B$4,${SHEET_SUMMARY}!$B$5))`,
+            value: feeFormula(r, cells),
             type: 'Formula' as const,
             format: EURO_FORMAT,
             backgroundColor: tint,
         },
-        formula(`IF($L${r}="ja","${EXEMPT_STAFF}",IF($M${r}>=3,"${EXEMPT_THIRD_CHILD}",""))`),
+        // Only a row that pays nothing carries a reason for paying nothing.
+        // A Stamm with a non-zero Mitarbeiter or Juniorleiter rate would
+        // otherwise see a paying row labelled "beitragsfrei" and counted
+        // among the exemptions.
+        formula(
+            `IF($O${r}>0,"",IF($L${r}="MA","${EXEMPT_STAFF}",` +
+                `IF($L${r}="JL","${EXEMPT_JUNIOR}","${EXEMPT_LADDER}")))`,
+        ),
         { value: row.reviewNote, type: String, backgroundColor: tint, wrap: true },
     ];
 }
 
-function summarySheet(rowCount: number, meta: ExportMeta): ExportSheet {
+function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): ExportSheet {
     const last = rowCount + 1;
     const T = (column: string) => `${SHEET_PARTICIPANTS}!$${column}$2:$${column}$${last}`;
 
@@ -172,73 +218,117 @@ function summarySheet(rowCount: number, meta: ExportMeta): ExportSheet {
         backgroundColor: INPUT_FILL,
     });
 
+    const ladder = meta.config.childCents;
+
+    /**
+     * Rows are pushed in order and their Excel numbers remembered as we go.
+     * The ladder has as many rungs as the Stamm configured, so no row number
+     * below it can be written down in advance — the previous version hardcoded
+     * B4/B5/C12/C13 and would have pointed at the wrong cells the moment
+     * anybody used a ladder of a different length.
+     */
+    const data: ExportSheet['data'] = [];
+    const push = (row: ExportSheet['data'][number]): number => {
+        data.push(row);
+        return data.length;
+    };
+
+    push(title(`RR Beiträge zum ${formatDate(meta.dueDate)} — Zusammenfassung`));
+    push([]);
+    push(section('EINGABE — Beitragssätze'));
+    ladder.forEach((cents, i) => {
+        const name = i === ladder.length - 1 ? `ab ${i + 1}. Kind` : `${i + 1}. Kind`;
+        push([label(`Beitrag ${name} (€)`), rate(cents)]);
+    });
+    push([label('Beitrag Mitarbeiter (€)'), rate(meta.config.staffCents)]);
+    push([label('Beitrag Juniorleiter (€)'), rate(meta.config.juniorLeaderCents)]);
+    push([]);
+
+    push([label('Aktive Teilnehmer (gelistet)'), count(`COUNTA(${T('A')})`)]);
+    push([label('davon beitragspflichtig'), count(`COUNTIF(${T('N')},"beitragspflichtig")`)]);
+    push([label('davon beitragsfrei'), count(`COUNTIF(${T('N')},"beitragsfrei")`)]);
+    push([]);
+
+    // One line per rung: how many children sit on it, and what they add up to.
+    const rungLineRows: number[] = [];
+    ladder.forEach((_cents, i) => {
+        const position = i + 1;
+        const isLast = i === ladder.length - 1;
+        const criterion = isLast
+            ? `COUNTIFS(${T('N')},"beitragspflichtig",${T('M')},">=${position}")`
+            : `COUNTIFS(${T('N')},"beitragspflichtig",${T('M')},${position})`;
+        const row = push([
+            label(
+                isLast ? `Kinder ab Satz ${position}. Kind` : `Kinder zum Satz ${position}. Kind`,
+            ),
+            count(criterion),
+            euro(`B${data.length + 1}*$B$${cells.rungRows[i]}`),
+        ]);
+        rungLineRows.push(row);
+    });
+
+    // Own-rate rows pay too when a Stamm configures a non-zero Mitarbeiter or
+    // Juniorleiter rate, and the control below sums these lines against the
+    // grand total. Leaving them out made the control report a difference on a
+    // correct file.
+    const ownRateRows = [
+        push([
+            label('Mitarbeiter mit eigenem Satz'),
+            count(`COUNTIFS(${T('L')},"MA",${T('N')},"beitragspflichtig")`),
+            euro(`B${data.length + 1}*$B$${cells.staffRow}`),
+        ]),
+        push([
+            label('Juniorleiter mit eigenem Satz'),
+            count(`COUNTIFS(${T('L')},"JL",${T('N')},"beitragspflichtig")`),
+            euro(`B${data.length + 1}*$B$${cells.juniorRow}`),
+        ]),
+    ];
+    push([]);
+
+    const totalRow = push([
+        { value: 'Gesamtbetrag (€)', type: String, fontWeight: 'bold' as const },
+        undefined,
+        {
+            value: `SUM(${T('O')})`,
+            type: 'Formula' as const,
+            format: EURO_FORMAT,
+            fontWeight: 'bold' as const,
+        },
+    ]);
+    push([]);
+
+    push(section('Grund der Beitragsfreiheit'));
+    push([label('    Mitarbeiter'), count(`COUNTIF(${T('P')},"${EXEMPT_STAFF}")`)]);
+    push([label('    Juniorleiter'), count(`COUNTIF(${T('P')},"${EXEMPT_JUNIOR}")`)]);
+    push([label('    durch die Staffel'), count(`COUNTIF(${T('P')},"${EXEMPT_LADDER}")`)]);
+    push([]);
+
+    push([label('Familien insgesamt'), { value: meta.families, type: Number }]);
+    push([
+        label('Familien mit 3 oder mehr RR-Kindern'),
+        { value: meta.totals.familiesWithThreeOrMore, type: Number },
+    ]);
+    push([]);
+
+    push(section('Kontrolle'));
+    const lineRows = [...rungLineRows, ...ownRateRows];
+    const lineSum = lineRows.length ? lineRows.map((row) => `C${row}`).join('+') : '0';
+    push([label('Summe der Satz-Zeilen'), undefined, euro(lineSum)]);
+    push([label('Abweichung zum Gesamtbetrag'), undefined, euro(`C${totalRow}-C${data.length}`)]);
+    // The figure the web view showed, written as a plain number. If the
+    // spreadsheet's own arithmetic disagrees with the extension's, this row is
+    // where it becomes visible — to the reader, not just to us.
+    const viewRow = push([
+        label('Kennzahl der Web-Ansicht'),
+        undefined,
+        { value: meta.totals.totalCents / 100, type: Number, format: EURO_FORMAT },
+    ]);
+    push([label('Abweichung zur Web-Ansicht'), undefined, euro(`C${totalRow}-C${viewRow}`)]);
+
     return {
         sheet: SHEET_SUMMARY,
         columns: [{ width: 38 }, { width: 14 }, { width: 16 }],
-        data: [
-            title(`RR Beiträge zum ${formatDate(meta.dueDate)} — Zusammenfassung`),
-            [],
-            section('EINGABE — Beitragssätze'),
-            [label('Beitrag 1. Kind (€)'), rate(meta.config.firstChildCents)],
-            [label('Beitrag 2. Kind (€)'), rate(meta.config.secondChildCents)],
-            [label('ab dem 3. Kind'), label('beitragsfrei')],
-            [],
-            [label('Aktive RR Teilnehmer (gelistet)'), count(`COUNTA(${T('A')})`)],
-            [label('davon beitragspflichtig'), count(`COUNTIF(${T('N')},"beitragspflichtig")`)],
-            [label('davon beitragsfrei'), count(`COUNTIF(${T('N')},"beitragsfrei")`)],
-            [],
-            [
-                label('Kinder zum Satz 1. Kind'),
-                count(`COUNTIFS(${T('N')},"beitragspflichtig",${T('M')},1)`),
-                euro('B12*$B$4'),
-            ],
-            [
-                label('Kinder zum Satz 2. Kind'),
-                count(`COUNTIFS(${T('N')},"beitragspflichtig",${T('M')},2)`),
-                euro('B13*$B$5'),
-            ],
-            [],
-            [
-                { value: 'Gesamtbetrag (€)', type: String, fontWeight: 'bold' as const },
-                undefined,
-                {
-                    value: `SUM(${T('O')})`,
-                    type: 'Formula' as const,
-                    format: EURO_FORMAT,
-                    fontWeight: 'bold' as const,
-                },
-            ],
-            [],
-            section('Grund der Beitragsfreiheit'),
-            [label('    Mitarbeiter (MA)'), count(`COUNTIF(${T('L')},"ja")`)],
-            [
-                label('    ab 3. Kind der Familie'),
-                count(`COUNTIF(${T('P')},"${EXEMPT_THIRD_CHILD}")`),
-            ],
-            [],
-            [label('Familien insgesamt'), { value: meta.families, type: Number }],
-            [
-                label('Familien mit 3 oder mehr RR-Kindern'),
-                { value: meta.totals.familiesWithThreeOrMore, type: Number },
-            ],
-            [],
-            section('Kontrolle'),
-            [label('Summe der beiden Staffeln'), undefined, euro('C12+C13')],
-            [label('Abweichung zum Gesamtbetrag'), undefined, euro('C15-C25')],
-            // The figure the web view showed, written as a plain number. If the
-            // spreadsheet's own arithmetic disagrees with the extension's, this
-            // row is where it becomes visible — to the reader, not just to us.
-            [
-                label('Kennzahl der Web-Ansicht'),
-                undefined,
-                {
-                    value: meta.totals.totalCents / 100,
-                    type: Number,
-                    format: EURO_FORMAT,
-                },
-            ],
-            [label('Abweichung zur Web-Ansicht'), undefined, euro('C15-C27')],
-        ],
+        data,
     };
 }
 
@@ -278,21 +368,20 @@ function methodSheet(meta: ExportMeta): ExportSheet {
             ),
             entry(
                 'Beitragssätze',
-                `1. Kind ${formatEuroPlain(meta.config.firstChildCents)}, 2. Kind ` +
-                    `${formatEuroPlain(meta.config.secondChildCents)}, jedes weitere Kind ` +
-                    'beitragsfrei. Die Sätze stehen in den gelb hinterlegten Zellen B4/B5 des ' +
-                    'Blattes "Zusammenfassung" und lassen sich dort ändern — die ganze Liste ' +
-                    'rechnet dann neu.',
+                describeLadder(meta.config) +
+                    ' Die Sätze stehen in den gelb hinterlegten Zellen des Blattes ' +
+                    '"Zusammenfassung" und lassen sich dort ändern — die ganze Liste rechnet ' +
+                    'dann neu.',
             ),
             [],
-            section('Wer ist "aktiver RR Teilnehmer"?'),
+            section('Wer ist "aktiver Teilnehmer"?'),
             entry(
                 'Definition',
-                'Jede Person mit aktiver Mitgliedschaft in einer der RR-Teamgruppen ' +
-                    '(Gruppentyp Kleingruppe), deren Rolle dort keine Leitungs- oder ' +
-                    'Mitarbeiterrolle ist. Welche Rollen als Leitung gelten, kommt aus den ' +
-                    'ChurchTools-Rollendefinitionen — dieselbe Regel, die der Organigramm-Tab ' +
-                    'für seine Leiter-Kennzahl verwendet.',
+                'Jede Person mit aktiver Mitgliedschaft in einer der Teamgruppen, deren Rolle ' +
+                    'dort keine Leitungs- oder Mitarbeiterrolle ist. Welche Gruppentypen als ' +
+                    'Team gelten und welche Rollen als Leitung, steht in der Konfiguration der ' +
+                    'Extension — dieselbe Regel, die der Organigramm-Tab für seine ' +
+                    'Leiter-Kennzahl verwendet.',
             ),
             entry('Erfasster Bereich', scope),
             entry(
@@ -304,37 +393,38 @@ function methodSheet(meta: ExportMeta): ExportSheet {
             entry(
                 'Keine Merkmalsgruppen',
                 'Teilnehmer- und Mitarbeiter-Status werden aus den Gruppenrollen abgeleitet, ' +
-                    'nicht aus den ChurchTools-Merkmalen "RR Teilnehmer" / "RR Mitarbeiter". ' +
-                    'Diese werden nachts neu berechnet; eine heute eingetragene Mitgliedschaft ' +
-                    'fehlt dort noch. Die Rollen sind in dem Moment aktuell, in dem jemand ' +
-                    'speichert.',
+                    'nicht aus einer Merkmalsgruppe. Merkmale werden nachts neu berechnet; ' +
+                    'eine heute eingetragene Mitgliedschaft fehlt dort noch. Die Rollen sind ' +
+                    'in dem Moment aktuell, in dem jemand speichert.',
             ),
             [],
             section('Beitragsfreiheit'),
             entry(
-                'Mitarbeiter sind beitragsfrei',
-                'Gilt für den eigenen Mitarbeiter-Status der Person, nicht den der Eltern. ' +
-                    'Spalte "Mitarbeiter (MA)" = ja; diese Zeilen sind grau hinterlegt.',
+                'Eigener Satz statt Geschwisterstaffel',
+                'Mitarbeiter und Juniorleiter zahlen den für sie konfigurierten Satz — bei ' +
+                    'vielen Stämmen null. Gilt für den eigenen Status der Person, nicht den ' +
+                    'der Eltern. Spalte "Eigener Satz (MA/JL)" = MA oder JL; diese Zeilen sind ' +
+                    'grau hinterlegt.',
             ),
             entry(
-                'Ab dem 3. Kind beitragsfrei',
-                'Je Familie werden die beitragspflichtigen Kinder ab 1 gezählt (Spalte ' +
-                    '"Kind-Nr."). Kind 1 zahlt den ersten Satz, Kind 2 den zweiten, ab Kind 3 ' +
-                    'ist es beitragsfrei.',
+                'Geschwisterstaffel',
+                `Je Familie werden die übrigen Kinder ab 1 gezählt (Spalte "Kind-Nr."). ` +
+                    `Konfigurierte Staffel: ${describeLadder(meta.config)} Die letzte Stufe ` +
+                    'gilt für jedes weitere Kind.',
             ),
             entry(
-                'Mitarbeiter zählen nicht mit',
-                'Ein Kind mit MA-Status wird aus der Zählung herausgenommen und die übrigen ' +
-                    'Kinder werden neu ab 1 gezählt. Beispiel: 3 Kinder, das älteste ist MA → ' +
-                    'die beiden jüngeren zahlen ersten und zweiten Satz, erst ein 4. Kind wäre ' +
-                    'frei.',
+                'Eigene Sätze zählen nicht mit',
+                'Ein Kind mit MA- oder JL-Status wird aus der Geschwisterzählung ' +
+                    'herausgenommen und die übrigen Kinder werden neu ab 1 gezählt. Beispiel: ' +
+                    '3 Kinder, das älteste ist MA → die beiden jüngeren stehen auf Stufe 1 ' +
+                    'und 2 der Staffel.',
             ),
             entry(
                 'Zählreihenfolge',
                 'Innerhalb einer Familie das älteste Kind zuerst — die Reihenfolge der Zeilen ' +
-                    'auf dem Blatt "Teilnehmer". Welches Geschwisterkind als "Kind 3" markiert ' +
-                    'ist, wurde als unerheblich festgelegt; der Familien-Gesamtbetrag ist in ' +
-                    'jeder Reihenfolge gleich.',
+                    'auf dem Blatt "Teilnehmer". Welches Geschwisterkind auf welcher Stufe ' +
+                    'landet, wurde als unerheblich festgelegt; der Familien-Gesamtbetrag ist ' +
+                    'in jeder Reihenfolge gleich.',
             ),
             [],
             section('Geschwister-Erkennung'),
@@ -379,7 +469,7 @@ function methodSheet(meta: ExportMeta): ExportSheet {
             entry(
                 'Weder Adresse noch Beziehung',
                 `${people(meta.quality.unmatchable)}. Wer beides nicht hat, wird ` +
-                    'zwangsläufig als Einzelkind geführt und zahlt den ersten Satz — auch ' +
+                    'zwangsläufig als Einzelkind geführt und zahlt die erste Stufe — auch ' +
                     'wenn Geschwister im Stamm sind. Die betroffenen Zeilen sind in der ' +
                     'Spalte "Datenprüfung" markiert; korrigieren lässt sich das nur in ' +
                     'ChurchTools.',
@@ -388,8 +478,9 @@ function methodSheet(meta: ExportMeta): ExportSheet {
             section('Kontrolle'),
             entry(
                 'Abweichung zum Gesamtbetrag',
-                'Vergleicht die Summe der Einzelbeträge mit der Summe der beiden Staffeln. ' +
-                    'Diese Zeile muss immer 0,00 € zeigen — alles andere wäre ein Fehler in ' +
+                'Vergleicht die Summe der Einzelbeträge mit der Summe der Satz-Zeilen — ' +
+                    'jede Stufe der Staffel sowie die Sätze für Mitarbeiter und Juniorleiter. ' +
+                    'Diese Zeile muss immer 0,00 € zeigen; alles andere wäre ein Fehler in ' +
                     'der Datei.',
             ),
             entry(
@@ -441,4 +532,41 @@ function formatEuroPlain(cents: number): string {
 export function exportFileName(dueDate: Date): string {
     const iso = dueDate.toISOString().slice(0, 10);
     return `RR-Beitraege-${iso}.xlsx`;
+}
+
+/**
+ * The configured ladder as a sentence, so the file explains the arithmetic it
+ * contains rather than repeating a rate somebody hardcoded once.
+ */
+function describeLadder(config: FeeConfig): string {
+    const rungs = config.childCents.map((cents, i) => {
+        const last = i === config.childCents.length - 1;
+        const who = last ? `ab ${i + 1}. Kind` : `${i + 1}. Kind`;
+        return `${who} ${formatEuroPlain(cents)}`;
+    });
+    return (
+        `${rungs.join(', ')}. Mitarbeiter ${formatEuroPlain(config.staffCents)}, ` +
+        `Juniorleiter ${formatEuroPlain(config.juniorLeaderCents)}.`
+    );
+}
+
+/**
+ * The fee of one participant row, as the sheet computes it.
+ *
+ * The rung is looked up by the position the sheet itself derives from the
+ * family column, so correcting a family in the file still recalculates
+ * everything. `MIN` is what makes the last rung apply to every further child
+ * — the same rule the extension applies, written once more in Excel so the
+ * two can be compared.
+ */
+function feeFormula(r: number, cells: RateCells): string {
+    const staff = `${SHEET_SUMMARY}!$B$${cells.staffRow}`;
+    const junior = `${SHEET_SUMMARY}!$B$${cells.juniorRow}`;
+    const n = cells.rungRows.length;
+    if (n === 0) return `IF($L${r}="MA",${staff},IF($L${r}="JL",${junior},0))`;
+
+    const ladder =
+        `INDEX(${SHEET_SUMMARY}!$B$${cells.rungRows[0]}:$B$${cells.rungRows[n - 1]},` +
+        `MIN($M${r},${n}))`;
+    return `IF($L${r}="MA",${staff},IF($L${r}="JL",${junior},${ladder}))`;
 }

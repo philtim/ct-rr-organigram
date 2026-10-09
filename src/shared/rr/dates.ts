@@ -37,3 +37,44 @@ export function ageAt(birthday: string | null, dueDate: Date): number | null {
     if (monthDiff < 0 || (monthDiff === 0 && dueDate.getUTCDate() < born.getUTCDate())) age -= 1;
     return age >= 0 ? age : null;
 }
+
+/**
+ * Today as a calendar date at UTC midnight.
+ *
+ * Exists so the two callers of `ageBucket` hand it the same kind of value.
+ * `nextDueDate` already returns UTC midnight; reading "now" with local
+ * getters and comparing the two shifts somebody's 18th birthday by a day in
+ * any negative-offset timezone.
+ */
+export function todayUtc(now: Date = new Date()): Date {
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+/**
+ * Which side of 18 somebody is on, on a given day.
+ *
+ * Separate from `ageAt` above, which answers "how many completed years" for
+ * the export. This one answers the only question the figures need, and reads
+ * both sides in UTC — the birthday as written, the reference date as a UTC
+ * calendar date — so no timezone can move somebody's 18th birthday. That
+ * matters because the answer decides whether they are reported to the Bund as
+ * a Juniorleiter or as a Mitarbeiter, and which rate they are billed.
+ *
+ * Anything unparseable is `unknown`, never `adult` — a silent misfiling into
+ * Mitarbeiter is exactly the error the Jahresmeldung exists to surface.
+ */
+export function ageBucket(
+    birthday: string | null | undefined,
+    reference: Date,
+): 'adult' | 'minor' | 'unknown' {
+    const born = parseIsoDate(birthday ?? null);
+    if (!born) return 'unknown';
+
+    let age = reference.getUTCFullYear() - born.getUTCFullYear();
+    const monthDiff = reference.getUTCMonth() - born.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && reference.getUTCDate() < born.getUTCDate())) {
+        age -= 1;
+    }
+
+    return age >= 18 ? 'adult' : 'minor';
+}

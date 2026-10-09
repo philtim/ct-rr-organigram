@@ -21,6 +21,21 @@ import type {
  * @param extensionkey optional - defaults to module with shorty=extensionkey
  * @returns  the custom module
  */
+export async function findModule(
+    extensionkey: string = import.meta.env.VITE_KEY,
+): Promise<CustomModule | undefined> {
+    const allModules: Array<CustomModule> = await churchtoolsClient.get(`/custommodules`);
+    return allModules.find((item: CustomModule) => item.shorty === extensionkey);
+}
+
+/**
+ * Like `findModule`, but throws when the module is absent.
+ *
+ * Callers that need to tell "not installed yet" from "could not ask" must use
+ * `findModule`: a thrown error here conflates a first run with a failed
+ * request, and treating a failed request as "nothing configured" hands the
+ * configuration form to whoever is looking.
+ */
 export async function getModule(
     extensionkey: string = import.meta.env.VITE_KEY,
 ): Promise<CustomModule> {
