@@ -1578,6 +1578,12 @@ export type CustomModule = CustomModuleCreate & {
 
 export type CustomModuleCreate = {
     description?: string;
+    /**
+     * Whether the module gets its own entry in the ChurchTools main menu.
+     * Required by `POST /custommodules`, which rejects the request with
+     * HTTP 400 `validation.boolean` when it is absent.
+     */
+    inMenu: boolean;
     name: string;
     shorty: string;
     sortKey: number;

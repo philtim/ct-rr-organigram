@@ -61,6 +61,12 @@ async function createModule(
         shorty: extensionkey,
         description: description,
         sortKey: 100,
+        // Required by the API — without it the call fails with HTTP 400
+        // `validation.boolean`, which made first-run setup impossible on a
+        // fresh instance. False because the extension is reached through the
+        // menu entry the installed ZIP registers, not through a second one
+        // this call would add.
+        inMenu: false,
     };
 
     const newModule = await churchtoolsClient.post<CustomModule>('/custommodules', createData);
