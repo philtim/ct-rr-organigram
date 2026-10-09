@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/philtim/ct-rr-organigram/compare/v1.10.0...v1.11.0) (2026-10-09)
+
+
+### Features
+
+* **jahresmeldung:** add row totals and name the staff without a team ([ec76fb6](https://github.com/philtim/ct-rr-organigram/commit/ec76fb636aadf35fca3ab97933c9446d52cfec10))
+
 ## [1.10.0](https://github.com/philtim/ct-rr-organigram/compare/v1.9.1...v1.10.0) (2026-10-09)
 
 
