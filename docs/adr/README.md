@@ -26,12 +26,13 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [005](005-api-client.md) | API client: thin wrapper in `src/shared/api.ts` | Accepted |
 | [006](006-linting-and-formatting.md) | Linting and formatting: ESLint flat config + Prettier + eslint-plugin-vue | Accepted |
 | [007](007-multiple-tabs-one-module.md) | Multiple tabs in one extension, not a second custom module | Accepted |
-| [008](008-declarative-access-rules.md) | Access control: declarative access rules per view | Accepted |
+| [008](008-declarative-access-rules.md) | Access control: declarative access rules per view | Access model superseded by [014](014-configuration-over-constants.md) |
 | [009](009-testing-strategy-vitest.md) | Testing strategy: Vitest for pure logic | Accepted |
 | [010](010-xlsx-export.md) | Client-side .xlsx export with `write-excel-file` | Accepted |
 | [011](011-personal-data.md) | Personal data: aggregates on screen, detail only in the export | Accepted |
 | [012](012-no-web-workers.md) | No Web Workers — the host CSP refuses them | Accepted |
 | [013](013-jahresmeldung-personal-data.md) | The Jahresmeldung names people with data gaps, never their values | Accepted |
+| [014](014-configuration-over-constants.md) | Configuration over constants, and one gate for the whole extension | Accepted |
 
 ## When to write a new ADR
 
