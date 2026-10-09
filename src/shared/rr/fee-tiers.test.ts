@@ -14,6 +14,7 @@ function child(personId: number, birthday: string): RrParticipant {
         zip: '70000',
         city: 'Musterstadt',
         teamNames: [],
+        stammNames: ['RR Musterstamm-MA'],
     };
 }
 

@@ -21,6 +21,12 @@ export type RrParticipant = {
     city: string | null;
     /** Team group names the person is an active participant in. */
     teamNames: string[];
+    /**
+     * Teilstamm group names the person's teams hang under. Normally one; a
+     * participant in two teams of different Teilstämme has two, which the
+     * export shows rather than picking one.
+     */
+    stammNames: string[];
 };
 
 /** A sibling cluster. Members are RR participants only — siblings outside RR don't count. */

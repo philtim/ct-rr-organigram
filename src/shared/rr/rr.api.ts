@@ -8,13 +8,15 @@ const KLEINGRUPPE_TYPE_ID = 1;
 /** Person fields the export needs. Requested inline so no /persons calls follow. */
 const PERSON_FIELDS = ['birthday', 'street', 'zip', 'city'] as const;
 
-export type TeamRef = { groupId: number; name: string };
+export type TeamRef = { groupId: number; name: string; stammName: string };
 
 type GroupChildRow = {
     title: string;
     domainIdentifier: string;
     domainAttributes?: { groupTypeId?: number };
 };
+
+type GroupNameRow = { id?: number; name?: string };
 
 /**
  * The team groups under the given Teilstämme.
@@ -31,24 +33,57 @@ type GroupChildRow = {
  * importing from a feature folder inverts ADR-004's direction.
  */
 export async function resolveTeams(teilstammIds: number[]): Promise<TeamRef[]> {
-    const perTeilstamm = await mapWithConcurrency(teilstammIds, 4, async (teilstammId) => {
-        const children = await withRetryOn429(() =>
-            ct.get<GroupChildRow[]>(`/groups/${teilstammId}/children`),
-        );
-        return (children ?? []).filter(
-            (child) => child.domainAttributes?.groupTypeId === KLEINGRUPPE_TYPE_ID,
-        );
-    });
+    const [stammNames, perTeilstamm] = await Promise.all([
+        fetchGroupNames(teilstammIds),
+        mapWithConcurrency(teilstammIds, 4, async (teilstammId) => {
+            const children = await withRetryOn429(() =>
+                ct.get<GroupChildRow[]>(`/groups/${teilstammId}/children`),
+            );
+            return {
+                teilstammId,
+                teams: (children ?? []).filter(
+                    (child) => child.domainAttributes?.groupTypeId === KLEINGRUPPE_TYPE_ID,
+                ),
+            };
+        }),
+    ]);
 
     const byId = new Map<number, TeamRef>();
-    for (const children of perTeilstamm) {
-        for (const child of children) {
+    for (const { teilstammId, teams } of perTeilstamm) {
+        for (const child of teams) {
             const groupId = Number(child.domainIdentifier);
             if (!Number.isFinite(groupId) || byId.has(groupId)) continue;
-            byId.set(groupId, { groupId, name: child.title });
+            byId.set(groupId, {
+                groupId,
+                name: child.title,
+                stammName: stammNames.get(teilstammId) ?? '',
+            });
         }
     }
     return [...byId.values()];
+}
+
+/**
+ * Group names for the given ids, in one request. Only the export uses these —
+ * the figures need no labels — so a failure here must not cost the whole tab
+ * its numbers: an empty map leaves the Teilstamm column blank and everything
+ * else intact.
+ */
+async function fetchGroupNames(groupIds: number[]): Promise<Map<number, string>> {
+    const names = new Map<number, string>();
+    if (groupIds.length === 0) return names;
+    const query = groupIds.map((id) => `ids[]=${id}`).join('&');
+    try {
+        const groups = await withRetryOn429(() =>
+            ct.get<GroupNameRow[]>(`/groups?${query}&limit=${groupIds.length}`),
+        );
+        for (const group of groups ?? []) {
+            if (typeof group.id === 'number' && group.name) names.set(group.id, group.name);
+        }
+    } catch (e) {
+        console.warn('[rr-dashboard] Teilstamm names unavailable:', e);
+    }
+    return names;
 }
 
 export type TeamMembers = {
@@ -114,13 +149,19 @@ export async function fetchTeamMembers(
             const existing = byPerson.get(personId);
             if (existing) {
                 if (!existing.teamNames.includes(team.name)) existing.teamNames.push(team.name);
+                if (team.stammName && !existing.stammNames.includes(team.stammName)) {
+                    existing.stammNames.push(team.stammName);
+                }
                 continue;
             }
-            byPerson.set(personId, toParticipant(personId, member, team.name));
+            byPerson.set(personId, toParticipant(personId, member, team));
         }
     }
 
-    for (const participant of byPerson.values()) participant.teamNames.sort();
+    for (const participant of byPerson.values()) {
+        participant.teamNames.sort();
+        participant.stammNames.sort();
+    }
     return { participants: [...byPerson.values()], staffPersonIds };
 }
 
@@ -164,7 +205,7 @@ export async function fetchStaffFromGroups(
     return ids;
 }
 
-function toParticipant(personId: number, member: GroupMember, teamName: string): RrParticipant {
+function toParticipant(personId: number, member: GroupMember, team: TeamRef): RrParticipant {
     const attrs = (member.person?.domainAttributes ?? {}) as {
         firstName?: string;
         lastName?: string;
@@ -178,7 +219,8 @@ function toParticipant(personId: number, member: GroupMember, teamName: string):
         street: text(fields.street),
         zip: text(fields.zip),
         city: text(fields.city),
-        teamNames: [teamName],
+        teamNames: [team.name],
+        stammNames: team.stammName ? [team.stammName] : [],
     };
 }
 

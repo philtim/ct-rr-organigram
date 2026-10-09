@@ -25,6 +25,7 @@ function person(
         zip: '70000',
         city: 'Musterstadt',
         teamNames: [],
+        stammNames: ['RR Musterstamm-MA'],
         ...opts,
     };
 }
