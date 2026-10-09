@@ -43,3 +43,9 @@ See "Open Questions / TBDs" at the bottom of PRD.md. Don't quietly choose
 - Land a branch on `main` with a **real merge commit** — never squash. The
   individual commits are what release-please reads for the changelog, and
   what makes a single step revertable on its own
+- **Don't give a PR a conventional-commit title.** release-please attributes
+  a merge commit via the pull request's title, so a title like
+  `feat(x): add the thing` is counted on top of the commit of the same name
+  inside it, and the change is listed twice in `CHANGELOG.md`. Write the title
+  as a plain sentence — "Jahresmeldung: Zeilen-Summen und Mitarbeiter ohne
+  Team" — and let the commits carry the prefixes
