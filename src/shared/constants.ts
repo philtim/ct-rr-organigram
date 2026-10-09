@@ -129,14 +129,15 @@ export const COPY = {
     jahresmeldungColJuniorW: 'Juniorleiter weiblich',
     jahresmeldungColMitarbeiterM: 'Mitarbeiter männlich',
     jahresmeldungColMitarbeiterW: 'Mitarbeiter weiblich',
+    jahresmeldungColTeilnehmer: 'Teilnehmer gesamt, nicht Teil des Formulars',
+    jahresmeldungColLeiter: 'Leiter gesamt einschließlich Juniorleiter, nicht Teil des Formulars',
+    jahresmeldungColGesamt: 'Personen gesamt in dieser Zeile, nicht Teil des Formulars',
+    jahresmeldungRollupHint:
+        'Die drei rechten Spalten sind Summen für den eigenen Gebrauch und gehören nicht ' +
+        'ins Bundesformular.',
     jahresmeldungColUnassigned: 'ohne Zuordnung',
     jahresmeldungColUnassignedNote: 'ohne Zuordnung, nicht Teil des Formulars',
     jahresmeldungRowTotal: 'Gesamt',
-    jahresmeldungSummenTitle: 'Summen',
-    jahresmeldungSumEntdecker: 'Gesamt Entdecker',
-    jahresmeldungSumOhneEntdecker: 'Gesamt Rangers und Leiter (ohne Entdecker)',
-    jahresmeldungSumStamm: 'Gesamt Stamm',
-    jahresmeldungSumUnknown: 'Kein Teilstamm als Entdecker erkennbar.',
     jahresmeldungUnassignedHint: 'Diese Spalte gehört nicht ins Bundesformular.',
     jahresmeldungMethodTitle: 'Wie wird gezählt?',
     /**
@@ -187,11 +188,17 @@ export const COPY = {
         'Es sind keine Teilstämme konfiguriert. Ohne diese Auswahl steht nicht fest, welche ' +
         'Teams in die Meldung gehören — bitte zuerst in der Konfiguration festlegen.',
     jahresmeldungLoadError: 'Die Zahlen für die Jahresmeldung konnten nicht geladen werden.',
+    jahresmeldungOhneTeamTitle: 'Mitarbeiter ohne Team',
+    jahresmeldungOhneTeamHint:
+        'Mitarbeiter des Hauptstamms oder eines Teilstamms, die in keinem Team stehen. ' +
+        'Wer hier unerwartet auftaucht, ist meist aus einem Team ausgetragen worden, ohne ' +
+        'aus dem Teilstamm entfernt zu werden.',
+    jahresmeldungOhneTeamEmpty: 'Alle Mitarbeiter stehen in mindestens einem Team.',
     jahresmeldungQualityTitle: 'Datenqualität',
     jahresmeldungQualityNone: 'Alle Personen konnten einer Spalte des Formulars zugeordnet werden.',
     jahresmeldungQualityLead: (count: number) =>
         `${count} ${count === 1 ? 'Person fehlt' : 'Personen fehlen'} in den Formularspalten, ` +
-        `${count === 1 ? 'zählt' : 'zählen'} aber in „Gesamt Stamm".`,
+        `${count === 1 ? 'zählt' : 'zählen'} aber in der Spalte „Gesamt".`,
     jahresmeldungQualityGenderMissing: 'Geschlecht nicht gepflegt',
     jahresmeldungQualityGenderMissingHint: 'In ChurchTools nachtragen, dann neu laden.',
     jahresmeldungQualityGenderDiverse: 'Geschlecht divers',

@@ -68,7 +68,7 @@ Verworfene Alternativen:
 | Option | Warum nicht |
 |---|---|
 | Panel unten im Organigramm-Tab | 7×6-Tabelle unter einem 5-Spalten-Grid ist auf Mobile unrettbar; ein Jahres-Task bekäme dauerhaft Platz auf der Tagesansicht |
-| Zahlen in die Teilstamm-Karten | Zerstört die Scanbarkeit der Karten; „Mitarbeiter ohne Team" und die Summenzeilen haben dort keinen Platz; der Nutzer müsste weiter selbst summieren |
+| Zahlen in die Teilstamm-Karten | Zerstört die Scanbarkeit der Karten; „Mitarbeiter ohne Team" hat dort keinen Platz; der Nutzer müsste weiter selbst summieren |
 | Modal / Drawer | Breite Tabelle im Modal ist eng, nicht verlinkbar, nicht druckbar — man will die Seite dauerhaft neben dem Portal offen haben |
 
 Der Tab folgt dem Muster der Beitragsabrechnung (ADR-007): periodische
@@ -175,21 +175,27 @@ Jungen/Mädchen, statt aus der Tabelle zu verschwinden. Das hält die Invariante
 aus Schritt 2. In der Praxis stehen dort Nullen; das ist die richtige Art,
 null zu zeigen.
 
-### Summenzeilen
+### Zeilen-Summen (nicht Teil des Formulars)
 
-| Zeile | Berechnung |
+Am rechten Rand stehen drei abgeleitete Spalten, hinter einer Trennlinie und
+auf getönter Fläche:
+
+| Spalte | Berechnung |
 |---|---|
-| Gesamt Entdecker | Alle Zellen der Entdecker-Zeile |
-| Gesamt Rangers und Leiter (ohne Entdecker) | Alle Zellen außer der Entdecker-Zeile |
-| Gesamt Stamm | Alle Zellen |
+| Teilnehmer | Jungen + Mädchen |
+| Leiter | Juniorleiter m/w + Mitarbeiter m/w — Juniorleiter zählen als Leiter, sie leiten, sie sind nur unter 18 |
+| Gesamt | alle Zellen der Zeile, einschließlich „ohne Zuordnung" |
 
-Welcher Teilstamm „Entdecker" ist, wird **nicht konfiguriert**, sondern am
-Namen erkannt: genau ein Teilstamm, dessen Name (case-insensitive)
-„entdecker" enthält. Trifft das auf keinen oder auf mehrere zu, zeigen die
-ersten beiden Zeilen „—" mit dem Hinweis „Kein Teilstamm als Entdecker
-erkennbar"; „Gesamt Stamm" funktioniert immer. Eine Heuristik, die sichtbar
-scheitert, ist besser als eine Konfiguration, die niemand pflegt — und sie
-beeinflusst nur die Anzeige, nie die Zählung.
+Sie werden beim Lesen berechnet, nicht gespeichert, und können deshalb nicht
+von den Zellen abweichen, die sie zusammenfassen. Das Bundesformular kennt sie
+nicht — die visuelle Absetzung und eine Fußnote sagen das, damit niemand eine
+Summe ins Portal überträgt.
+
+Die drei Summenzeilen des Formulars („Gesamt Entdecker", „Gesamt Rangers und
+Leiter", „Gesamt Stamm") wurden nach dem ersten Praxiseinsatz gestrichen: die
+Zeilen-Summe „Gesamt" beantwortet dieselbe Frage pro Teilstamm, und die
+Namensheuristik, mit der der Entdecker-Teilstamm erkannt wurde, entfällt
+ersatzlos mit ihnen.
 
 ### Zeilenreihenfolge und -beschriftung
 
@@ -223,23 +229,26 @@ Bundesformular abtippen kann.
 │    im Bundesportal. Zeilen und Spalten stehen in derselben Reihenfolge.              │
 │                                                                                      │
 │  ┌─ MITGLIEDERZAHLEN ──────────────────────────────────────────────────────────────┐ │
-│  │                      │        │         │ Junior-  │ Junior-  │ Mitarb. │ Mitarb.│ │
-│  │                      │ Jungen │ Mädchen │ leiter m │ leiter w │    m    │   w    │ │
-│  │ ─────────────────────┼────────┼─────────┼──────────┼──────────┼─────────┼────────│ │
-│  │  Entdecker           │   18   │   14    │    0     │    0     │    4    │   6    │ │
-│  │  Forscher            │   21   │   17    │    1     │    0     │    3    │   5    │ │
-│  │  Kundschafter        │   16   │   10    │    0     │    1     │    2    │   4    │ │
-│  │  Pfadfinder          │   28   │   24    │    3     │    1     │    5    │   3    │ │
-│  │  Pfadranger          │   13   │    6    │    2     │    1     │    2    │   2    │ │
-│  │  Mitarbeiter o. Team │    0   │    0    │    0     │    0     │    2    │   1    │ │
-│  │ ═════════════════════╪════════╪═════════╪══════════╪══════════╪═════════╪════════│ │
-│  │  Gesamt              │   96   │   71    │    6     │    3     │   18    │  21    │ │
+│  │                  │       │       │ Jun-  │ Jun-  │ Mit-  │ Mit-  ║  TN │  L  │ Ges │ │
+│  │                  │Jungen │Mädchen│ JL m  │ JL w  │ MA m  │ MA w  ║     │     │     │ │
+│  │ ─────────────────┼───────┼───────┼───────┼───────┼───────┼───────╫─────┼─────┼─────│ │
+│  │  Entdecker       │  18   │  14   │   0   │   0   │   4   │   6   ║  32 │  10 │  42 │ │
+│  │  Forscher        │  21   │  17   │   1   │   0   │   3   │   5   ║  38 │   9 │  47 │ │
+│  │  Kundschafter    │  16   │  10   │   0   │   1   │   2   │   4   ║  26 │   7 │  33 │ │
+│  │  Pfadfinder      │  28   │  24   │   3   │   1   │   5   │   3   ║  52 │  12 │  64 │ │
+│  │  Pfadranger      │  13   │   6   │   2   │   1   │   2   │   2   ║  19 │   7 │  26 │ │
+│  │  Mitarb. o. Team │   0   │   0   │   0   │   0   │   2   │   1   ║   0 │   3 │   3 │ │
+│  │ ═════════════════╪═══════╪═══════╪═══════╪═══════╪═══════╪═══════╬═════╪═════╪═════│ │
+│  │  Gesamt          │  96   │  71   │   6   │   3   │  18   │  21   ║ 167 │  48 │ 215 │ │
 │  └─────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                   ↑ Summen, nicht im Bundesformular   │
 │                                                                                      │
-│  ┌─ SUMMEN ───────────────────────────────────┐                                      │
-│  │  Gesamt Entdecker                     42   │                                      │
-│  │  Gesamt Rangers und Leiter (o. Entd.) 173  │                                      │
-│  │  Gesamt Stamm                         215  │                                      │
+│  ┌─ MITARBEITER OHNE TEAM ────────────────────┐                                      │
+│  │  Mitarbeiter des Hauptstamms oder eines    │                                      │
+│  │  Teilstamms, die in keinem Team stehen.    │                                      │
+│  │                                            │                                      │
+│  │  Anke Leiter            [ In ChurchTools ↗]│                                      │
+│  │  Max Werner             [ In ChurchTools ↗]│                                      │
 │  └────────────────────────────────────────────┘                                      │
 │                                                                                      │
 │  ▶ Wie wird gezählt?                                                                 │
@@ -263,7 +272,7 @@ Die Spalte „ohne Angabe" und das Panel erscheinen nur in diesem Fall.
 │                                           ↑ gehört nicht ins Bundesformular           │
 │                                                                                      │
 │  ┌─ DATENQUALITÄT ─────────────────────────────────────────────────────────────────┐ │
-│  │  ⚠  73 Personen fehlen in den Formularspalten, zählen aber in „Gesamt Stamm".   │ │
+│  │  73 Personen fehlen in den Formularspalten, zählen aber in der Spalte „Gesamt".│ │
 │  │                                                                                 │ │
 │  │     ▼ Geschlecht nicht gepflegt (73) — in ChurchTools nachtragen                │ │
 │  │         Lena Hofmann        Entdecker · Biber          [ In ChurchTools ↗ ]     │ │
@@ -335,7 +344,7 @@ Das ist hier der teuerste Fehler, weil eine zu niedrige Zahl aussieht wie eine
 richtige. Deshalb:
 
 - Betroffene Zeile zeigt in allen Zellen `?`, nicht 0.
-- **Die „Gesamt"-Zeile und alle drei Summenzeilen zeigen ebenfalls `?`**, denn
+- **Die „Gesamt"-Zeile und alle Zeilen-Summen zeigen ebenfalls `?`**, denn
   eine Teilsumme, die als Gesamtsumme gelesen wird, ist schlimmer als keine
   Zahl.
 - Warnbanner über der Tabelle, nicht nur ein Toast: „Nicht alle Teams konnten
@@ -388,10 +397,9 @@ Erste Spalte sticky, horizontal scrollbar.
 │ └───────────────────────────┘ │
 │      ◂ scrollen für mehr ▸    │
 │                               │
-│ ┌─ SUMMEN ──────────────────┐ │
-│ │ Gesamt Entdecker      42  │ │
-│ │ Gesamt Rangers …     173  │ │
-│ │ Gesamt Stamm         215  │ │
+│ ┌─ MITARBEITER OHNE TEAM ───┐ │
+│ │ Anke Leiter    ChurchTools│ │
+│ │ Max Werner     ChurchTools│ │
 │ └───────────────────────────┘ │
 └───────────────────────────────┘
 ```
@@ -475,7 +483,7 @@ Wie oben. Maximalbreite folgt `.rr-dash__inner` (1280 px).
 | Komponente | Zweck | Varianten | Notiz |
 |---|---|---|---|
 | `JahresmeldungTable.vue` | Die Matrix inkl. Gesamt-Zeile | default, skeleton, partial-error | Eigene SFC, damit der Skeleton dieselbe Struktur teilen kann |
-| `SummenPanel.vue` | Die drei Summenzeilen | default, unbekannt (`—`) | |
+| `OhneTeamPanel.vue` | Namen hinter der Zeile „Mitarbeiter ohne Team", mit ChurchTools-Link | default, leer | Die einzige Zeile, deren Mitglieder sich nicht durch Öffnen eines Teams prüfen lassen |
 | `DatenqualitaetPanel.vue` | Vier aufklappbare Gruppen mit Personen-Links | Gruppe leer → zugeklappt und als „(0)" sichtbar; Gruppe gefüllt → aufgeklappt | Nahe verwandt mit `DuplicatesPanel.vue` — Wiederverwendung prüfen, nicht erzwingen. Bei >10 Einträgen die ersten 10 zeigen plus „Alle anzeigen" — die größte Gruppe hat auf live 73 Einträge und darf die Seite nicht übernehmen |
 | `CopyableNumber.vue` | Zahl als Kopier-Button | default, unbekannt (`?`) | Sehr klein; ggf. in die Tabelle inlinen statt eigene Datei |
 | — | Toast | — | `Toast.vue` wiederverwenden |
@@ -579,8 +587,6 @@ und der Teams-Filter auf `groupTypeId === 1` stimmt auf beiden Instanzen.
 
 ### 5. Noch offen — braucht eine Antwort vom Bund, nicht vom Code
 
-- **Summenzeilen-Semantik.** Enthält „Gesamt Entdecker" auch die Juniorleiter
-  und Mitarbeiter der Entdecker-Zeile? Diese Spec nimmt ja an.
 - **Umgang mit `divers`.** Heute 0 Fälle, also nicht dringend. Sobald es
   eintritt, braucht es eine Festlegung, wie der Bund das gemeldet haben will.
 
@@ -605,7 +611,6 @@ und der Teams-Filter auf `groupTypeId === 1` stimmt auf beiden Instanzen.
 | Falsche Zahl wird an den Bund gemeldet | Invarianten-Test, `?` statt stiller Teilsummen, „Wie wird gezählt?" macht jede Zelle nachvollziehbar |
 | **20 % ohne Geschlecht — die Meldung ist am Starttag nicht ausfüllbar** | Das ist kein Designrisiko, sondern ein Datenbestandsrisiko, das die Ansicht aufdeckt statt verursacht. Panel priorisiert die Behebung; die Zahl sinkt mit jeder Korrektur in ChurchTools. Der Stammleitung muss vor dem ersten Einsatz klar sein, dass hier Vorarbeit liegt |
 | „Leiter unter 18" trifft nicht die Definition des Bundes | Regel sitzt in einer Funktion mit eigenem Test; Austausch ändert kein Layout |
-| Namensheuristik für Entdecker greift nicht | Degradiert sichtbar auf „—", „Gesamt Stamm" bleibt korrekt |
 | Geburtsdaten verschlechtern sich künftig | Heute 100 % gepflegt; die Kategorie „Leiter ohne Geburtsdatum" bleibt trotzdem bestehen und macht einen Rückfall sofort sichtbar |
 
 ## Verhältnis zu ADR-011
@@ -639,7 +644,7 @@ Wenn die Implementierung zurückkommt, prüfe ich:
    Varianten), error, partial error.
 2. Invariante: Summe aller Zellen = eindeutige Personen im Scope, als Test.
 3. Ein Leiter unter 18 erscheint ausschließlich in der Juniorleiter-Spalte.
-4. Partial Error färbt bis in die Summenzeilen durch.
+4. Partial Error färbt bis in die Gesamt-Zeile und die Zeilen-Summen durch.
 5. Tastaturbedienung: Zelle fokussierbar, Enter kopiert, Toast wird angesagt.
 6. Mobile: erste Spalte sticky, Scroll-Hinweis sichtbar, kein horizontaler
    Scroll der ganzen Seite.
@@ -654,3 +659,7 @@ Wenn die Implementierung zurückkommt, prüfe ich:
   „ohne Angabe" in „ohne Zuordnung" umbenannt, Personen-Deeplink aus
   `person.frontendUrl` statt konstruiert, Live-Abdeckung ergänzt (Geburtsdatum
   100 %, Geschlecht 80 %, 17 Mehrfachzuordnungen)
+- 2026-10-09 — nach dem ersten Praxiseinsatz: drei Zeilen-Summen (Teilnehmer,
+  Leiter, Gesamt) am rechten Rand ergänzt; die drei Summenzeilen des Formulars
+  und mit ihnen die Entdecker-Namensheuristik gestrichen; das frei gewordene
+  Panel zeigt jetzt die Namen hinter „Mitarbeiter ohne Team"

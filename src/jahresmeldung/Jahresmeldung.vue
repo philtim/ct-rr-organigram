@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import DatenqualitaetPanel from './DatenqualitaetPanel.vue';
 import JahresmeldungTable from './JahresmeldungTable.vue';
-import SummenPanel from './SummenPanel.vue';
+import OhneTeamPanel from './OhneTeamPanel.vue';
 import { useJahresmeldung } from './useJahresmeldung';
 import Toast from '@/dashboard/Toast.vue';
 import { formatTimestamp } from '@/dashboard/useDashboard';
@@ -96,7 +96,7 @@ function showToast(message: string) {
                 <JahresmeldungTable :tally="state.result.tally" @copy="copyValue" />
 
                 <div class="jm__panels">
-                    <SummenPanel :tally="state.result.tally" @copy="copyValue" />
+                    <OhneTeamPanel :tally="state.result.tally" />
                     <DatenqualitaetPanel :tally="state.result.tally" />
                 </div>
 
