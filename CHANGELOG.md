@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/philtim/ct-rr-organigram/compare/v1.9.1...v1.10.0) (2026-10-09)
+
+
+### Features
+
+* **jahresmeldung:** count the Bund's Mitgliederzahlen ([e1476e3](https://github.com/philtim/ct-rr-organigram/commit/e1476e3a5b0f7a4411898f4bd2120e3279a13cc3))
+
+
+### Bug Fixes
+
+* **kv-store:** send inMenu when creating the custom module ([1bddeed](https://github.com/philtim/ct-rr-organigram/commit/1bddeed28077e284faeb0bb30b2e13250419f4d0))
+
 ## [1.9.1](https://github.com/philtim/ct-rr-organigram/compare/v1.9.0...v1.9.1) (2026-10-09)
 
 
