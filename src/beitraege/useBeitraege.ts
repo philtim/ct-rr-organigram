@@ -5,14 +5,17 @@ import {
     fetchTeamMembers,
     resolveTeams,
 } from '@/shared/rr/rr.api';
+import { getInstanceOrigin } from '@/shared/api';
 import { fetchLeaderRoleIds } from '@/shared/roles';
 import { groupFamilies } from '@/shared/rr/families';
 import { assignFees, summarize } from '@/shared/rr/fee-tiers';
-import { summarizeDataQuality } from '@/shared/rr/data-quality';
+import { dataQualityFlags, summarizeDataQuality } from '@/shared/rr/data-quality';
+import { nextDueDate } from '@/shared/rr/dates';
 import type { DataQuality } from '@/shared/rr/data-quality';
 import type { FeeTotals } from '@/shared/rr/fee-tiers';
 import { DEFAULT_FEE_CONFIG } from '@/shared/rr/types';
-import type { FeeConfig } from '@/shared/rr/types';
+import type { FeeAssignment, FeeConfig, Relationship, RrParticipant } from '@/shared/rr/types';
+import { COPY } from '@/shared/constants';
 
 export type BeitraegeResult = {
     totals: FeeTotals;
@@ -39,6 +42,29 @@ export type BeitraegeState =
     | { phase: 'ready'; result: BeitraegeResult }
     | { phase: 'error'; message: string };
 
+export type ExportState = { phase: 'idle' | 'working' } | { phase: 'error'; message: string };
+
+/**
+ * What the export needs and the view must not have.
+ *
+ * Kept deliberately outside the reactive state: a `ref` would be rendered the
+ * moment someone writes the wrong `v-for`, and would show up in the Vue
+ * devtools of anyone who opens the tab. The figures are reactive; the people
+ * are not (ADR-011).
+ */
+type ExportSnapshot = {
+    participants: RrParticipant[];
+    assignments: FeeAssignment[];
+    relationships: Relationship[];
+    stammNames: string[];
+    teamCount: number;
+    families: number;
+    config: FeeConfig;
+    totals: FeeTotals;
+    quality: DataQuality;
+    loadedAt: Date;
+};
+
 /**
  * Loads everything the figures need and reduces it to counts.
  *
@@ -49,6 +75,8 @@ export type BeitraegeState =
  */
 export function useBeitraege() {
     const state = ref<BeitraegeState>({ phase: 'idle' });
+    const exportState = ref<ExportState>({ phase: 'idle' });
+    let snapshot: ExportSnapshot | null = null;
 
     async function load(
         gateGroupId: number,
@@ -103,17 +131,34 @@ export function useBeitraege() {
                 staffPersonIds.has(p.personId),
             ).length;
 
+            const totals = summarize(assignments, families);
+            const quality = summarizeDataQuality(participants, relationships);
+            const loadedAt = new Date();
+
+            snapshot = {
+                participants,
+                assignments,
+                relationships,
+                stammNames: [...new Set(teams.map((t) => t.stammName).filter(Boolean))].sort(),
+                teamCount: teams.length,
+                families: families.length,
+                config,
+                totals,
+                quality,
+                loadedAt,
+            };
+
             state.value = {
                 phase: 'ready',
                 result: {
-                    totals: summarize(assignments, families),
+                    totals,
                     leaders: staffPersonIds.size,
                     members: participants.length - staffParticipants,
-                    quality: summarizeDataQuality(participants, relationships),
+                    quality,
                     config,
                     teamCount: teams.length,
                     families: families.length,
-                    loadedAt: new Date(),
+                    loadedAt,
                 },
             };
         } catch (e) {
@@ -125,7 +170,61 @@ export function useBeitraege() {
         }
     }
 
-    return { state, load };
+    /**
+     * Write the .xlsx from the snapshot the figures were computed from.
+     *
+     * Deliberately not a second fetch. Re-reading ChurchTools here could
+     * produce a file whose totals differ from the figures on screen — somebody
+     * joins a team between the two requests and the export silently disagrees
+     * with the page that produced it. The snapshot is what the reader saw.
+     *
+     * The spreadsheet writer and the sheet construction are loaded on first
+     * use (ADR-010): nobody who only looks at the figures downloads them.
+     */
+    async function exportXlsx(): Promise<void> {
+        if (!snapshot || exportState.value.phase === 'working') return;
+        const data = snapshot;
+        exportState.value = { phase: 'working' };
+        try {
+            const [{ buildExportRows }, { buildSheets, exportFileName }, { downloadWorkbook }] =
+                await Promise.all([
+                    import('@/shared/rr/export-rows'),
+                    import('./workbook'),
+                    import('./xlsx'),
+                ]);
+
+            const dueDate = nextDueDate(new Date());
+            const rows = buildExportRows(
+                data.participants,
+                data.assignments,
+                dataQualityFlags(data.participants, data.relationships),
+                dueDate,
+            );
+
+            await downloadWorkbook(
+                buildSheets(rows, {
+                    source: getInstanceOrigin(),
+                    loadedAt: data.loadedAt,
+                    dueDate,
+                    stammNames: data.stammNames,
+                    teamCount: data.teamCount,
+                    config: data.config,
+                    totals: data.totals,
+                    quality: data.quality,
+                    families: data.families,
+                    version: __APP_VERSION__,
+                    commit: __APP_COMMIT__,
+                }),
+                exportFileName(dueDate),
+            );
+            exportState.value = { phase: 'idle' };
+        } catch (e) {
+            console.error('[rr-dashboard] Export failed:', e);
+            exportState.value = { phase: 'error', message: COPY.feesExportError };
+        }
+    }
+
+    return { state, exportState, load, exportXlsx };
 }
 
 /** Euro with German separators, from exact cents. */

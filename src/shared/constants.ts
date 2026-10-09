@@ -68,9 +68,9 @@ export const COPY = {
         'für alle verborgen.',
     beitraegeSetupHintLink: 'Jetzt konfigurieren',
     beitraegeLoadError: 'Die Beitragsdaten konnten nicht geladen werden.',
-    beitraegeExportPending:
+    beitraegeAggregatesOnly:
         'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
-        'stehen nur in der Export-Datei, die als Nächstes folgt.',
+        'stehen nur in der Export-Datei.',
     feesTotalLabel: 'Einzuziehender Gesamtbetrag',
     feesOrganigramTitle: 'Abgleich mit dem Organigramm',
     feesLeaders: 'Leiter',
@@ -99,4 +99,16 @@ export const COPY = {
     feesMissingAddress: 'ohne Adresse',
     feesMissingRelationship: 'ohne Beziehung',
     feesMissingBirthday: 'ohne Geburtsdatum',
+    // Export (ADR-010).
+    feesExportTitle: 'Liste für das Gemeindebüro',
+    feesExportButton: 'Excel-Liste herunterladen',
+    feesExportWorking: 'Datei wird erzeugt …',
+    feesExportError: 'Die Datei konnte nicht erzeugt werden. Bitte erneut versuchen.',
+    feesExportHint: (dueDate: string) =>
+        `Enthält alle Teilnehmer mit Name, Geburtsdatum und Adresse sowie den Beitrag zum ` +
+        `${dueDate}. Beitragssätze und Familienzuordnung lassen sich in der Datei ändern — ` +
+        'sie rechnet dann neu.',
+    feesExportPrivacy:
+        'Die Datei enthält Adressen von Minderjährigen. Nur an das Gemeindebüro ' +
+        'weitergeben und nach dem Einzug löschen.',
 } as const;

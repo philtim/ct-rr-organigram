@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { formatEuro, useBeitraege } from './useBeitraege';
+import { nextDueDate } from '@/shared/rr/dates';
 import { COPY } from '@/shared/constants';
 
 /**
@@ -17,7 +18,7 @@ const props = defineProps<{
     teilstammIds?: number[];
 }>();
 
-const { state, load } = useBeitraege();
+const { state, exportState, load, exportXlsx } = useBeitraege();
 
 onMounted(() => load(props.gateGroupId, props.teilstammIds ?? []));
 
@@ -25,6 +26,13 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
     dateStyle: 'medium',
     timeStyle: 'short',
 });
+
+/** The date the file is about, named before the download rather than after. */
+const dueDateLabel = computed(() =>
+    new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', timeZone: 'UTC' }).format(
+        nextDueDate(new Date()),
+    ),
+);
 </script>
 
 <template>
@@ -165,7 +173,30 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
                     </dl>
                 </section>
 
-                <p class="rr-fees__footnote">{{ COPY.beitraegeExportPending }}</p>
+                <section class="rr-fees__panel">
+                    <h2 class="rr-fees__section-title">{{ COPY.feesExportTitle }}</h2>
+                    <button
+                        type="button"
+                        class="rr-fees__button"
+                        :disabled="exportState.phase === 'working'"
+                        @click="exportXlsx"
+                    >
+                        {{
+                            exportState.phase === 'working'
+                                ? COPY.feesExportWorking
+                                : COPY.feesExportButton
+                        }}
+                    </button>
+                    <p class="rr-fees__detail">{{ COPY.feesExportHint(dueDateLabel) }}</p>
+                    <p class="rr-fees__detail rr-fees__detail--muted">
+                        {{ COPY.feesExportPrivacy }}
+                    </p>
+                    <p v-if="exportState.phase === 'error'" class="rr-fees__detail rr-fees__error">
+                        {{ exportState.message }}
+                    </p>
+                </section>
+
+                <p class="rr-fees__footnote">{{ COPY.beitraegeAggregatesOnly }}</p>
             </template>
         </div>
     </main>
@@ -302,6 +333,31 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
     margin: 0.375rem 0 0;
     font-size: 0.875rem;
     line-height: 1.5;
+}
+
+/* Same affordance as the admin form's primary button. */
+.rr-fees__button {
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border: 0.5px solid var(--rr-text-primary);
+    border-radius: var(--rr-radius-md);
+    background: var(--rr-text-primary);
+    color: var(--rr-bg-primary);
+    cursor: pointer;
+}
+
+.rr-fees__button:disabled {
+    opacity: 0.4;
+    cursor: progress;
+}
+
+.rr-fees__detail--muted {
+    color: var(--rr-text-secondary);
+}
+
+.rr-fees__error {
+    color: var(--rr-error-fg);
 }
 
 .rr-fees__footnote {
