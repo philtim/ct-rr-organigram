@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { COLUMNS, OHNE_TEAM_ROW, ageAt, genderOf, tally } from './tally';
+import {
+    COLUMNS,
+    OHNE_TEAM_ROW,
+    ageAt,
+    genderOf,
+    rowGesamt,
+    rowLeiter,
+    rowTeilnehmer,
+    tally,
+} from './tally';
 import type { Cells, RowDef, ScopedPerson } from './tally';
 
 const ENTDECKER = 1;
@@ -49,7 +58,7 @@ describe('tally', () => {
             OHNE_TEAM_ROW,
         ]);
         expect(sumAll(result.total)).toBe(0);
-        expect(result.summen.stamm).toBe(0);
+        expect(result.ohneTeam).toEqual([]);
     });
 
     it('sorts participants into Jungen and Mädchen by gender', () => {
@@ -225,6 +234,75 @@ describe('tally', () => {
         expect(result.total.maedchen).toBe(1);
     });
 
+    describe('the roll-ups at the end of each row', () => {
+        it('splits the row into Teilnehmer, Leiter and the headcount', () => {
+            const result = tally(
+                [
+                    person({ gender: 'm' }),
+                    person({ gender: 'w' }),
+                    person({ isLeader: true, age: 'minor', gender: 'm' }),
+                    person({ isLeader: true, age: 'adult', gender: 'w' }),
+                ],
+                ROWS,
+            );
+            const cells = row(result, ENTDECKER).cells;
+
+            expect(rowTeilnehmer(cells)).toBe(2);
+            // Juniorleiter count as leaders — they lead, they are just under 18.
+            expect(rowLeiter(cells)).toBe(2);
+            expect(rowGesamt(cells)).toBe(4);
+        });
+
+        it('counts someone the form cannot place in the headcount only', () => {
+            const result = tally(
+                [person({ gender: 'unassignable', genderGap: 'not-maintained' })],
+                ROWS,
+            );
+            const cells = row(result, ENTDECKER).cells;
+
+            expect(rowTeilnehmer(cells)).toBe(0);
+            expect(rowLeiter(cells)).toBe(0);
+            expect(rowGesamt(cells)).toBe(1);
+        });
+
+        it('adds up to the headcount, always', () => {
+            const people = [
+                person(),
+                person({ isLeader: true, age: 'minor', gender: 'w' }),
+                person({ isLeader: true, age: 'adult' }),
+                person({ gender: 'unassignable', genderGap: 'diverse' }),
+            ];
+            const total = tally(people, ROWS).total;
+
+            expect(rowTeilnehmer(total) + rowLeiter(total)).toBe(people.length - 1);
+            expect(rowGesamt(total)).toBe(people.length);
+        });
+    });
+
+    describe('the "Mitarbeiter ohne Team" row', () => {
+        it('names the people it is made of, sorted', () => {
+            const result = tally(
+                [
+                    person({ name: 'Zoe Zweit', teamTeilstammIds: [], leaderTeilstammIds: [] }),
+                    person({
+                        name: 'Anna Erst',
+                        frontendUrl: 'https://ct.example/persons/7',
+                        teamTeilstammIds: [],
+                        leaderTeilstammIds: [],
+                    }),
+                ],
+                ROWS,
+            );
+
+            expect(result.ohneTeam.map((p) => p.name)).toEqual(['Anna Erst', 'Zoe Zweit']);
+            expect(result.ohneTeam[0].frontendUrl).toBe('https://ct.example/persons/7');
+        });
+
+        it('leaves out everyone who does have a team', () => {
+            expect(tally([person()], ROWS).ohneTeam).toEqual([]);
+        });
+    });
+
     it('places every person in exactly one cell, whatever their shape', () => {
         // The invariant the whole table rests on: "Gesamt" is a column sum,
         // not a separately computed number, so it cannot drift from reality.
@@ -241,55 +319,7 @@ describe('tally', () => {
         const result = tally(people, ROWS);
 
         expect(sumAll(result.total)).toBe(people.length);
-        expect(result.summen.stamm).toBe(people.length);
-    });
-
-    describe('Summen', () => {
-        it('splits the Stamm at the Teilstamm whose name says Entdecker', () => {
-            const result = tally(
-                [
-                    person({ teamTeilstammIds: [ENTDECKER] }),
-                    person({ teamTeilstammIds: [ENTDECKER] }),
-                    person({ teamTeilstammIds: [PFADRANGER] }),
-                    person({ teamTeilstammIds: [], leaderTeilstammIds: [] }),
-                ],
-                ROWS,
-            );
-
-            expect(result.summen.entdecker).toBe(2);
-            expect(result.summen.ohneEntdecker).toBe(2);
-            expect(result.summen.stamm).toBe(4);
-        });
-
-        it('matches the name case-insensitively and as a substring', () => {
-            const rows: RowDef[] = [
-                { teilstammId: 9, label: 'rr ENTDECKERstamm', incomplete: false },
-            ];
-            const result = tally([person({ teamTeilstammIds: [9] })], rows);
-
-            expect(result.summen.entdecker).toBe(1);
-        });
-
-        it('gives up visibly when no Teilstamm looks like the Entdecker one', () => {
-            const rows: RowDef[] = [
-                { teilstammId: 9, label: 'RR Forscherstamm', incomplete: false },
-            ];
-            const result = tally([person({ teamTeilstammIds: [9] })], rows);
-
-            expect(result.summen.entdecker).toBeNull();
-            expect(result.summen.ohneEntdecker).toBeNull();
-            expect(result.summen.stamm).toBe(1);
-        });
-
-        it('gives up when the name is ambiguous rather than guessing', () => {
-            const rows: RowDef[] = [
-                { teilstammId: 9, label: 'RR Entdeckerstamm-MA', incomplete: false },
-                { teilstammId: 10, label: 'RR Entdecker Extended', incomplete: false },
-            ];
-            const result = tally([], rows);
-
-            expect(result.summen.entdecker).toBeNull();
-        });
+        expect(rowGesamt(result.total)).toBe(people.length);
     });
 
     describe('when a team could not be loaded', () => {

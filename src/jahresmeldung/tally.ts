@@ -88,15 +88,26 @@ export type Issue = {
     rowLabel: string;
 };
 
+/** The least that identifies a person and lets the reader open them in ChurchTools. */
+export type PersonRef = {
+    personId: number;
+    name: string;
+    frontendUrl: string | null;
+};
+
 export type Tally = {
     rows: TallyRow[];
     total: Cells;
-    summen: {
-        /** Null when no single Teilstamm could be identified as the Entdecker one. */
-        entdecker: number | null;
-        ohneEntdecker: number | null;
-        stamm: number;
-    };
+    /**
+     * Who the "Mitarbeiter ohne Team" row is made of.
+     *
+     * The only row whose members a reader cannot find by opening a team, and
+     * the one most likely to be wrong — somebody who left a team and was never
+     * removed from the Teilstamm lands here silently. Naming them is the same
+     * exposure the organigram's own "Mitarbeiter ohne Team" list already
+     * carries, and nothing beyond a name and ChurchTools' own link (ADR-013).
+     */
+    ohneTeam: PersonRef[];
     issues: Issue[];
     /** True when any team failed to load — every total becomes untrustworthy. */
     incomplete: boolean;
@@ -208,24 +219,33 @@ function rowKeyOf(person: ScopedPerson, order: number[]): { key: string; ambiguo
     return { key: String(led ?? teams[0]), ambiguous: true };
 }
 
-/**
- * Exactly one Teilstamm whose name says "Entdecker", or none.
- *
- * The Bund's form splits its totals at the Entdecker, so the table has to know
- * which row that is. Rather than add a configuration nobody would maintain,
- * the name is matched — and when the match is not unambiguous the two split
- * sums report null instead of guessing. Only the summary lines depend on this;
- * no cell of the table does.
- */
-function findEntdeckerRow(rows: RowDef[]): RowDef | null {
-    const matches = rows.filter((r) => r.label.toLowerCase().includes('entdecker'));
-    return matches.length === 1 ? matches[0] : null;
-}
-
 function sumCells(cells: Cells): number {
     let total = 0;
     for (const column of COLUMNS) total += cells[column];
     return total;
+}
+
+/**
+ * The three roll-ups at the end of each row. Derived on read rather than
+ * stored, so they cannot drift from the cells they summarise.
+ *
+ * These are not part of the Bund's form — it asks for the six columns only.
+ * They are here because the Stamm reads this table for its own purposes too,
+ * and the view sets them apart from the form columns so nobody transcribes
+ * one by mistake.
+ */
+export function rowTeilnehmer(cells: Cells): number {
+    return cells.jungen + cells.maedchen;
+}
+
+/** Everyone in a leading function — Juniorleiter count as leaders. */
+export function rowLeiter(cells: Cells): number {
+    return cells.juniorleiterM + cells.juniorleiterW + cells.mitarbeiterM + cells.mitarbeiterW;
+}
+
+/** Headcount of the row, including anyone the form cannot place. */
+export function rowGesamt(cells: Cells): number {
+    return sumCells(cells);
 }
 
 /**
@@ -257,6 +277,7 @@ export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete
     });
 
     const issues: Issue[] = [];
+    const ohneTeam: PersonRef[] = [];
 
     for (const person of people) {
         const { key, ambiguous } = rowKeyOf(person, order);
@@ -264,6 +285,13 @@ export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete
         if (!row) continue;
 
         row.cells[columnOf(person)] += 1;
+        if (key === OHNE_TEAM_ROW) {
+            ohneTeam.push({
+                personId: person.personId,
+                name: person.name,
+                frontendUrl: person.frontendUrl,
+            });
+        }
 
         const report = (reason: IssueReason) =>
             issues.push({
@@ -289,20 +317,12 @@ export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete
         for (const column of COLUMNS) total[column] += row.cells[column];
     }
 
-    const stamm = sumCells(total);
-    const entdeckerRow = findEntdeckerRow(rows);
-    const entdecker = entdeckerRow
-        ? sumCells(byKey.get(String(entdeckerRow.teilstammId))!.cells)
-        : null;
+    ohneTeam.sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
     return {
         rows: tallyRows,
         total,
-        summen: {
-            entdecker,
-            ohneEntdecker: entdecker === null ? null : stamm - entdecker,
-            stamm,
-        },
+        ohneTeam,
         issues,
         incomplete: ohneTeamIncomplete || rows.some((r) => r.incomplete),
         hasUnassigned: total.ohneZuordnung > 0,

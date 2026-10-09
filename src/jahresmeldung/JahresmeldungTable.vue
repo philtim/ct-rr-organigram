@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Column, Tally } from './tally';
+import { rowGesamt, rowLeiter, rowTeilnehmer } from './tally';
+import type { Cells, Column, Tally } from './tally';
 import { COPY } from '@/shared/constants';
 
 /**
@@ -18,14 +19,25 @@ const emit = defineEmits<{ copy: [number] }>();
  * hidden from it to avoid announcing both.
  */
 type ColumnDef = {
-    key: Column;
+    key: Column | string;
     /** Visible heading, one entry per rendered line. */
     lines: string[];
     /** Visible heading on narrow screens. */
     short: string;
     /** What a screen reader announces, always the form's full wording. */
     label: string;
+    /**
+     * `form` is what the Bund asks for. Everything else is ours, and the table
+     * keeps it visibly apart so nobody transcribes a roll-up into the portal.
+     */
+    group: 'form' | 'unassigned' | 'rollup';
+    value: (cells: Cells) => number;
 };
+
+/** Reads one of the form's six columns straight out of the row. */
+function cell(key: Column): (cells: Cells) => number {
+    return (cells) => cells[key];
+}
 
 const COLUMN_DEFS: ColumnDef[] = [
     {
@@ -33,36 +45,48 @@ const COLUMN_DEFS: ColumnDef[] = [
         lines: ['Jungen'],
         short: 'Jungen',
         label: COPY.jahresmeldungColJungen,
+        group: 'form',
+        value: cell('jungen'),
     },
     {
         key: 'maedchen',
         lines: ['Mädchen'],
         short: 'Mädchen',
         label: COPY.jahresmeldungColMaedchen,
+        group: 'form',
+        value: cell('maedchen'),
     },
     {
         key: 'juniorleiterM',
         lines: ['Juniorleiter', 'männlich'],
         short: 'JL m',
         label: COPY.jahresmeldungColJuniorM,
+        group: 'form',
+        value: cell('juniorleiterM'),
     },
     {
         key: 'juniorleiterW',
         lines: ['Juniorleiter', 'weiblich'],
         short: 'JL w',
         label: COPY.jahresmeldungColJuniorW,
+        group: 'form',
+        value: cell('juniorleiterW'),
     },
     {
         key: 'mitarbeiterM',
         lines: ['Mitarbeiter', 'männlich'],
         short: 'MA m',
         label: COPY.jahresmeldungColMitarbeiterM,
+        group: 'form',
+        value: cell('mitarbeiterM'),
     },
     {
         key: 'mitarbeiterW',
         lines: ['Mitarbeiter', 'weiblich'],
         short: 'MA w',
         label: COPY.jahresmeldungColMitarbeiterW,
+        group: 'form',
+        value: cell('mitarbeiterW'),
     },
 ];
 
@@ -74,7 +98,41 @@ const UNASSIGNED_DEF: ColumnDef = {
     short: COPY.jahresmeldungColUnassigned,
     // Says out loud what the heavier border says visually.
     label: COPY.jahresmeldungColUnassignedNote,
+    group: 'unassigned',
+    value: cell(UNASSIGNED),
 };
+
+/**
+ * The Stamm's own roll-ups. Not in the Bund's form — they are here because the
+ * same table gets read for staffing questions, where "how many altogether" is
+ * the figure people actually want.
+ */
+const ROLLUP_DEFS: ColumnDef[] = [
+    {
+        key: 'sumTeilnehmer',
+        lines: ['Teilnehmer'],
+        short: 'TN',
+        label: COPY.jahresmeldungColTeilnehmer,
+        group: 'rollup',
+        value: rowTeilnehmer,
+    },
+    {
+        key: 'sumLeiter',
+        lines: ['Leiter'],
+        short: 'L',
+        label: COPY.jahresmeldungColLeiter,
+        group: 'rollup',
+        value: rowLeiter,
+    },
+    {
+        key: 'sumGesamt',
+        lines: ['Gesamt'],
+        short: 'Ges.',
+        label: COPY.jahresmeldungColGesamt,
+        group: 'rollup',
+        value: rowGesamt,
+    },
+];
 
 /**
  * The seventh column appears only when somebody is in it. In the normal case
@@ -83,16 +141,20 @@ const UNASSIGNED_DEF: ColumnDef = {
  */
 const showUnassigned = computed(() => props.tally?.hasUnassigned === true);
 
-const columns = computed(() =>
-    showUnassigned.value ? [...COLUMN_DEFS, UNASSIGNED_DEF] : COLUMN_DEFS,
-);
+const columns = computed(() => {
+    const list = [...COLUMN_DEFS];
+    if (showUnassigned.value) list.push(UNASSIGNED_DEF);
+    list.push(...ROLLUP_DEFS);
+    // A rule where the group changes, so the form's six columns read as one
+    // block and ours as another.
+    return list.map((col, i) => ({
+        ...col,
+        divider: i > 0 && col.group !== list[i - 1].group,
+    }));
+});
 
 /** Skeleton placeholders: five Teilstämme plus the "ohne Team" row. */
 const SKELETON_ROWS = 6;
-
-function cellOf(cells: Record<Column, number>, key: Column): number {
-    return cells[key];
-}
 
 /** Every column of a row the loader could not complete reads "?", never 0. */
 function isUnknown(incomplete: boolean): boolean {
@@ -128,7 +190,10 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                             :key="col.key"
                             scope="col"
                             class="jm-table__col-head"
-                            :class="{ 'jm-table__col-head--extra': col.key === UNASSIGNED }"
+                            :class="{
+                                'jm-table__col-head--divider': col.divider,
+                                'jm-table__col-head--rollup': col.group === 'rollup',
+                            }"
                             :aria-label="col.label"
                         >
                             <span class="jm-table__col-long" aria-hidden="true">
@@ -165,7 +230,10 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                             v-for="col in columns"
                             :key="col.key"
                             class="jm-table__cell"
-                            :class="{ 'jm-table__cell--extra': col.key === UNASSIGNED }"
+                            :class="{
+                                'jm-table__cell--divider': col.divider,
+                                'jm-table__cell--rollup': col.group === 'rollup',
+                            }"
                         >
                             <span
                                 v-if="isUnknown(row.incomplete)"
@@ -177,9 +245,9 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                                 v-else
                                 type="button"
                                 class="jm-table__value"
-                                @click="emit('copy', cellOf(row.cells, col.key))"
+                                @click="emit('copy', col.value(row.cells))"
                             >
-                                {{ cellOf(row.cells, col.key) }}
+                                {{ col.value(row.cells) }}
                             </button>
                         </td>
                     </tr>
@@ -194,7 +262,10 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                             v-for="col in columns"
                             :key="col.key"
                             class="jm-table__cell"
-                            :class="{ 'jm-table__cell--extra': col.key === UNASSIGNED }"
+                            :class="{
+                                'jm-table__cell--divider': col.divider,
+                                'jm-table__cell--rollup': col.group === 'rollup',
+                            }"
                         >
                             <span
                                 v-if="footerUnknown"
@@ -206,9 +277,9 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                                 v-else
                                 type="button"
                                 class="jm-table__value"
-                                @click="emit('copy', cellOf(tally.total, col.key))"
+                                @click="emit('copy', col.value(tally.total))"
                             >
-                                {{ cellOf(tally.total, col.key) }}
+                                {{ col.value(tally.total) }}
                             </button>
                         </td>
                     </tr>
@@ -219,6 +290,7 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
         <p v-if="showUnassigned" class="jm-table__note">
             {{ COPY.jahresmeldungUnassignedHint }}
         </p>
+        <p class="jm-table__note">{{ COPY.jahresmeldungRollupHint }}</p>
         <p class="jm-table__note jm-table__note--quiet">{{ COPY.jahresmeldungCopyHint }}</p>
     </section>
 </template>
@@ -280,11 +352,22 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
     display: none;
 }
 
-/* The seventh column is not part of the form. The heavier left border says so
-   before the footnote does. */
-.jm-table__col-head--extra,
-.jm-table__cell--extra {
+/* Everything right of this rule is ours, not the Bund's form. The border says
+   so before the footnote does. */
+.jm-table__col-head--divider,
+.jm-table__cell--divider {
     border-left: 2px solid var(--rr-border-secondary);
+}
+
+/* Roll-ups sit on a tinted surface so the eye can tell at a glance which
+   figures belong in the portal and which do not. */
+.jm-table__col-head--rollup,
+.jm-table__cell--rollup {
+    background: var(--rr-bg-secondary);
+}
+
+tbody tr:nth-child(even) .jm-table__cell--rollup {
+    background: var(--rr-bg-tertiary);
 }
 
 .jm-table__row-head {
