@@ -1,7 +1,7 @@
-import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ct, fetchAllMembers, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import { personFieldsOf } from '@/shared/rr/rr.api';
 import { fetchLeaderRoleIds } from '@/shared/roles';
-import { ageBucket, genderOf } from './tally';
+import { ageBucket, genderOf, todayUtc } from './tally';
 import type { RowDef, ScopedPerson } from './tally';
 import type { Settings } from '@/shared/settings';
 import type { GroupMember } from '@/shared/types';
@@ -63,11 +63,7 @@ function memberQuery(): string {
 }
 
 async function getMembers(groupId: number): Promise<GroupMember[]> {
-    return (
-        (await withRetryOn429(() =>
-            ct.get<GroupMember[]>(`/groups/${groupId}/members?${memberQuery()}`),
-        )) ?? []
-    );
+    return await fetchAllMembers<GroupMember>(groupId, memberQuery());
 }
 
 /** A soft fetch: a failure costs one group's members, not the whole table. */
@@ -168,7 +164,7 @@ class PersonAccumulator {
  */
 export async function loadJahresmeldung(
     settings: Settings,
-    today: Date = new Date(),
+    today: Date = todayUtc(),
 ): Promise<ScopeLoad> {
     const gateGroupId = settings.gateGroupId;
     if (gateGroupId === null) throw new Error('Keine Hauptstamm-Gruppe konfiguriert.');

@@ -1,4 +1,10 @@
-import { ct, fetchAllPages, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import {
+    ct,
+    fetchAllMembers,
+    fetchAllPages,
+    mapWithConcurrency,
+    withRetryOn429,
+} from '@/shared/api';
 import { isLeadershipRole } from '@/shared/roles';
 import type { Group } from '@/shared/types';
 
@@ -103,28 +109,18 @@ type MemberRow = {
 };
 
 /**
- * Active members of one group, all pages.
- *
- * Paginated rather than capped at 200: a Stamm with a larger group would
- * otherwise see its hints and its preview quietly under-report, and an admin
- * could conclude from "0 Personen" that a role is unused. A failure is
- * reported rather than swallowed, for the same reason.
+ * Active members of one group. Shares the paginating reader with the figures,
+ * so the admin's hints cannot report a different headcount than the dashboard
+ * does. A failure is reported rather than swallowed: an admin reading
+ * "0 Personen" should not have to wonder whether it means "nobody" or
+ * "could not ask".
  */
 async function membersOf(groupId: number): Promise<MemberRow[] | null> {
     try {
-        const rows: MemberRow[] = [];
-        for (let page = 1; page <= 20; page++) {
-            const batch = await withRetryOn429(() =>
-                ct.get<MemberRow[]>(
-                    `/groups/${groupId}/members?group_member_statuses[]=active` +
-                        `&limit=200&page=${page}`,
-                ),
-            );
-            if (!batch || batch.length === 0) break;
-            rows.push(...batch);
-            if (batch.length < 200) break;
-        }
-        return rows;
+        return await fetchAllMembers<MemberRow>(
+            groupId,
+            'group_member_statuses[]=active&limit=200',
+        );
     } catch (e) {
         console.error(`[rr-dashboard] admin scan: members of ${groupId} unavailable:`, e);
         return null;

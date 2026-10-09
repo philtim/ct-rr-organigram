@@ -39,29 +39,42 @@ export function ageAt(birthday: string | null, dueDate: Date): number | null {
 }
 
 /**
+ * Today as a calendar date at UTC midnight.
+ *
+ * Exists so the two callers of `ageBucket` hand it the same kind of value.
+ * `nextDueDate` already returns UTC midnight; reading "now" with local
+ * getters and comparing the two shifts somebody's 18th birthday by a day in
+ * any negative-offset timezone.
+ */
+export function todayUtc(now: Date = new Date()): Date {
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+/**
  * Which side of 18 somebody is on, on a given day.
  *
- * Separate from `ageAt` above, which answers "how many completed years" in
- * UTC for the export. This one compares **calendar dates**: the birthday as
- * written, against the reader's own today. No timezone can move somebody's
- * 18th birthday by a day, which matters because the answer decides whether
- * they are reported to the Bund as a Juniorleiter or as a Mitarbeiter.
+ * Separate from `ageAt` above, which answers "how many completed years" for
+ * the export. This one answers the only question the figures need, and reads
+ * both sides in UTC — the birthday as written, the reference date as a UTC
+ * calendar date — so no timezone can move somebody's 18th birthday. That
+ * matters because the answer decides whether they are reported to the Bund as
+ * a Juniorleiter or as a Mitarbeiter, and which rate they are billed.
  *
  * Anything unparseable is `unknown`, never `adult` — a silent misfiling into
  * Mitarbeiter is exactly the error the Jahresmeldung exists to surface.
  */
 export function ageBucket(
     birthday: string | null | undefined,
-    today: Date,
+    reference: Date,
 ): 'adult' | 'minor' | 'unknown' {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthday ?? '');
-    if (!match) return 'unknown';
+    const born = parseIsoDate(birthday ?? null);
+    if (!born) return 'unknown';
 
-    const [, year, month, day] = match.map(Number);
-    let age = today.getFullYear() - year;
-    const hadBirthday =
-        today.getMonth() + 1 > month || (today.getMonth() + 1 === month && today.getDate() >= day);
-    if (!hadBirthday) age -= 1;
+    let age = reference.getUTCFullYear() - born.getUTCFullYear();
+    const monthDiff = reference.getUTCMonth() - born.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && reference.getUTCDate() < born.getUTCDate())) {
+        age -= 1;
+    }
 
     return age >= 18 ? 'adult' : 'minor';
 }

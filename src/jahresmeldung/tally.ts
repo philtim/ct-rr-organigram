@@ -12,7 +12,7 @@
  * ChurchTools. See `docs/design/001-jahresmeldung.md` for the full derivation.
  */
 
-export { ageBucket } from '@/shared/rr/dates';
+export { ageBucket, todayUtc } from '@/shared/rr/dates';
 
 export const COLUMNS = [
     'jungen',

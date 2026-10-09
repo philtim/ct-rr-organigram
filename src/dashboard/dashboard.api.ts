@@ -1,4 +1,4 @@
-import { ct } from '@/shared/api';
+import { ct, fetchAllMembers } from '@/shared/api';
 import type { Group, GroupMember } from '@/shared/types';
 
 /**
@@ -31,7 +31,5 @@ export async function getGroup(groupId: number): Promise<Group> {
  * closes a gap rather than changing a number.
  */
 export async function getGroupMembers(groupId: number): Promise<GroupMember[]> {
-    return await ct.get<GroupMember[]>(
-        `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
-    );
+    return await fetchAllMembers<GroupMember>(groupId, 'group_member_statuses[]=active&limit=200');
 }

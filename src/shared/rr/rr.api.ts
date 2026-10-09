@@ -1,4 +1,4 @@
-import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ct, fetchAllMembers, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import type { GroupMember } from '@/shared/types';
 import type { Relationship, RrParticipant } from './types';
 
@@ -130,9 +130,7 @@ export async function fetchTeamMembers(
 
     const pages = await mapWithConcurrency(teams, 6, async (team) => ({
         team,
-        members: await withRetryOn429(() =>
-            ct.get<GroupMember[]>(`/groups/${team.groupId}/members?${memberQuery()}`),
-        ),
+        members: await fetchAllMembers<GroupMember>(team.groupId, memberQuery()),
     }));
 
     for (const { team, members } of pages) {
@@ -190,11 +188,7 @@ export async function fetchStaffFromGroups(
 ): Promise<Set<number>> {
     const ids = new Set<number>();
     const pages = await mapWithConcurrency(groupIds, 4, (groupId) =>
-        withRetryOn429(() =>
-            ct.get<GroupMember[]>(
-                `/groups/${groupId}/members?group_member_statuses[]=active&limit=200`,
-            ),
-        ),
+        fetchAllMembers<GroupMember>(groupId, 'group_member_statuses[]=active&limit=200'),
     );
     for (const members of pages) {
         for (const member of members ?? []) {
