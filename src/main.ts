@@ -25,7 +25,13 @@ churchtoolsClient.setBaseUrl(baseUrl);
 const username = import.meta.env.VITE_USERNAME;
 const password = import.meta.env.VITE_PASSWORD;
 if (import.meta.env.MODE === 'development' && username && password) {
-    await churchtoolsClient.post('/login', { username, password });
+    // As FormData, because only then does the client fetch and send a CSRF
+    // token. A JSON login is refused with "CSRF-Token is invalid" as soon as
+    // the browser still holds a session cookie from an earlier run.
+    const credentials = new FormData();
+    credentials.append('username', username);
+    credentials.append('password', password);
+    await churchtoolsClient.post('/login', credentials);
 }
 
 createApp(App).mount('#rr-dashboard-app');
