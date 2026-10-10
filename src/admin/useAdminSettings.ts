@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { getOrCreateModule, readCategory, writeCategory } from '@/shared/kv-store';
+import { findCategory, getOrCreateModule, writeCategory } from '@/shared/kv-store';
 import { EXTENSION_KEY, KV_CATEGORY_SHORTY } from '@/shared/constants';
 import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
@@ -25,7 +25,9 @@ export function useAdminSettings() {
         saveError.value = null;
         try {
             const module = await getOrCreateModule(EXTENSION_KEY, MODULE_NAME, MODULE_DESCRIPTION);
-            const existing = (await readCategory(module.id, KV_CATEGORY_SHORTY))?.category;
+            // Only the metadata: a save replaces the data, so it must not
+            // depend on the old data being readable.
+            const existing = await findCategory(module.id, KV_CATEGORY_SHORTY);
             // The existing metadata is reused rather than overwritten with our
             // constants, so a category someone renamed in ChurchTools keeps
             // its name. The fallbacks cover a category that predates a field.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { COPY } from '@/shared/copy';
 import { computed } from 'vue';
 import type { OrgNode } from './types';
+import { COPY } from '@/shared/copy';
 import {
     findDuplicateLeaders,
     findDuplicateMembers,
@@ -30,7 +30,11 @@ const hasAny = computed(
     <section class="dup">
         <h2 class="dup__title">{{ COPY.hintsTitle }}</h2>
 
-        <p v-if="!hasAny" class="dup__empty">{{ COPY.hintsNone }}</p>
+        <!-- Groups that could not be read are not checked, so "nothing found"
+             would claim more than the panel knows. -->
+        <p v-if="!hasAny" class="dup__empty">
+            {{ root.incomplete ? COPY.hintsNoneSoFar : COPY.hintsNone }}
+        </p>
 
         <p v-if="hasDuplicates" class="dup__rule">{{ COPY.hintsRule }}</p>
 

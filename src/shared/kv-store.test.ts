@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const client = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }));
 vi.mock('@churchtools/churchtools-client', () => ({ churchtoolsClient: client }));
 
-import { getOrCreateModule, readCategory, writeCategory } from './kv-store';
+import { findCategory, getOrCreateModule, readCategory, writeCategory } from './kv-store';
 
 const MODULE = { id: 7, shorty: 'rr' };
 const PAYLOAD = { customModuleId: 7, data: '{}', description: 'd', name: 'n', shorty: 'settings' };
@@ -71,5 +71,12 @@ describe('writeCategory', () => {
     it('replaces an existing one with the full payload', async () => {
         await writeCategory(7, PAYLOAD, 3);
         expect(client.put).toHaveBeenCalledWith('/custommodules/7/customdatacategories/3', PAYLOAD);
+    });
+});
+
+describe('findCategory', () => {
+    it('returns the metadata without parsing the data, so a corrupt record can be replaced', async () => {
+        client.get.mockResolvedValueOnce([{ id: 1, shorty: 'settings', data: '{"gateGr' }]);
+        await expect(findCategory(7, 'settings')).resolves.toMatchObject({ id: 1 });
     });
 });

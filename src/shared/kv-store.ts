@@ -50,8 +50,20 @@ export type StoredCategory = {
     data: unknown;
 };
 
+/** The category with the given shorty, without reading its data. */
+export async function findCategory(
+    moduleId: number,
+    shorty: string,
+): Promise<CustomModuleDataCategory | undefined> {
+    const categories = await churchtoolsClient.get<CustomModuleDataCategory[]>(
+        `/custommodules/${moduleId}/customdatacategories`,
+    );
+    return categories.find((c) => c.shorty === shorty);
+}
+
 /**
- * The category with the given shorty, or undefined when there is none.
+ * The category with the given shorty and its data parsed, or undefined when
+ * there is none.
  *
  * Throws when its data is not valid JSON. An unreadable record is not an
  * empty one: read as `{}`, it would make a configured installation look
@@ -61,10 +73,7 @@ export async function readCategory(
     moduleId: number,
     shorty: string,
 ): Promise<StoredCategory | undefined> {
-    const categories = await churchtoolsClient.get<CustomModuleDataCategory[]>(
-        `/custommodules/${moduleId}/customdatacategories`,
-    );
-    const category = categories.find((c) => c.shorty === shorty);
+    const category = await findCategory(moduleId, shorty);
     if (!category) return undefined;
     return { category, data: category.data ? JSON.parse(category.data) : undefined };
 }

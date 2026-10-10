@@ -35,6 +35,14 @@ describe('useMembershipGate', () => {
         await expect(gateFor(42)).resolves.toEqual({ phase: 'denied' });
     });
 
+    it('denies on a 404 as the client actually raises it (axios response.status)', async () => {
+        client.get.mockImplementation(async (url: string) => {
+            if (url === '/whoami') return { id: 5 };
+            throw Object.assign(new Error('Request failed'), { response: { status: 404 } });
+        });
+        await expect(gateFor(42)).resolves.toEqual({ phase: 'denied' });
+    });
+
     it.each([403, 500, 503])('reports %i as an error, not as a denial', async (status) => {
         client.get.mockImplementation(async (url: string) => {
             if (url === '/whoami') return { id: 5 };

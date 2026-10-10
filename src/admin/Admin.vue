@@ -26,6 +26,7 @@ const {
     groups,
     hauptstamm,
     candidates,
+    childrenFailed,
     typeCounts,
     preview,
     leadershipRoles,
@@ -56,7 +57,7 @@ const teilstammSections = computed<CheckSection[]>(() => {
     const sections: CheckSection[] = [
         {
             items: children.map((c) => item(c.id, c.title, COPY.adminGroupId(c.id))),
-            empty: COPY.adminNoChildren,
+            empty: childrenFailed.value ? COPY.adminChildrenUnavailable : COPY.adminNoChildren,
         },
     ];
     if (!onlyChildren.value) {
@@ -132,12 +133,21 @@ function item(id: number, label: string, meta?: string): CheckItem {
                     <input v-model="onlyChildren" type="checkbox" />
                     {{ COPY.adminOnlyChildren }}
                 </label>
-                <CheckList v-model="draft.teilstammIds" :sections="teilstammSections" />
+                <CheckList
+                    v-model="draft.teilstammIds"
+                    :label="COPY.adminTeilstaemmeLabel"
+                    :sections="teilstammSections"
+                />
 
                 <p class="rr-admin__label rr-admin__label--gap">{{ COPY.adminTeamsLabel }}</p>
                 <p class="rr-admin__help">{{ COPY.adminTeamsHelp }}</p>
                 <p v-if="scanning" class="rr-admin__help">{{ COPY.adminReading }}</p>
-                <CheckList v-else v-model="draft.teamGroupTypeIds" :sections="teamTypeSections" />
+                <CheckList
+                    v-else
+                    v-model="draft.teamGroupTypeIds"
+                    :label="COPY.adminTeamsLabel"
+                    :sections="teamTypeSections"
+                />
 
                 <p v-if="scan?.incomplete" class="rr-admin__error-inline" role="alert">
                     {{ COPY.adminScanIncomplete }}
@@ -155,11 +165,19 @@ function item(id: number, label: string, meta?: string): CheckItem {
 
                 <p class="rr-admin__label">{{ COPY.adminLeadersLabel }}</p>
                 <p class="rr-admin__help">{{ COPY.adminLeadersHelp }}</p>
-                <CheckList v-model="draft.extraLeaderRoleIds" :sections="leaderSections" />
+                <CheckList
+                    v-model="draft.extraLeaderRoleIds"
+                    :label="COPY.adminLeadersLabel"
+                    :sections="leaderSections"
+                />
 
                 <p class="rr-admin__label rr-admin__label--gap">{{ COPY.adminVacancyLabel }}</p>
                 <p class="rr-admin__help">{{ COPY.adminVacancyHelp }}</p>
-                <CheckList v-model="draft.alwaysShownRoleIds" :sections="vacancySections" />
+                <CheckList
+                    v-model="draft.alwaysShownRoleIds"
+                    :label="COPY.adminVacancyLabel"
+                    :sections="vacancySections"
+                />
 
                 <label class="rr-admin__label rr-admin__label--gap" for="rr-admin-member-field">
                     {{ COPY.adminMemberFieldLabel }}

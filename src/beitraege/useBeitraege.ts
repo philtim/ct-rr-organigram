@@ -110,7 +110,7 @@ export function useBeitraege() {
 
             const teams = await resolveTeams(teilstammIds, settings.teamGroupTypeIds);
             if (teams.length === 0) {
-                state.value = { phase: 'unconfigured', message: COPY.feesNoTeams };
+                state.value = { phase: 'unconfigured', message: COPY.noTeamsInScope };
                 return;
             }
 

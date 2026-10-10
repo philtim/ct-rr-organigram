@@ -133,7 +133,20 @@ describe('loadFailures', () => {
         ]);
     });
 
+    it('names the Hauptstamm first when its own group failed', () => {
+        expect(loadFailures(rollUpHauptstamm(failed(100), []))).toEqual([
+            { kind: 'hauptstamm', name: 'G100' },
+        ]);
+    });
+
     it('is empty for a tree that loaded completely', () => {
         expect(loadFailures(rollUpHauptstamm(node(100), []))).toEqual([]);
+    });
+});
+
+describe('loadFailures for a small Stamm', () => {
+    it('names a group that is both Hauptstamm and only Teilstamm once', () => {
+        const root = rollUpHauptstamm(failed(100), [rollUpTeilstamm(failed(100), [])]);
+        expect(loadFailures(root)).toEqual([{ kind: 'hauptstamm', name: 'G100' }]);
     });
 });

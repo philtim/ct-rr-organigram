@@ -65,6 +65,9 @@ const appCommit = __APP_COMMIT__;
         <p v-if="state.phase === 'error'" class="rr-dash__error" role="alert">
             {{ state.message }}
         </p>
+        <p v-else-if="state.phase === 'unconfigured'" class="rr-dash__hint" role="alert">
+            {{ state.message }}
+        </p>
 
         <template v-else>
             <!--
@@ -149,6 +152,14 @@ const appCommit = __APP_COMMIT__;
 .rr-dash__warning-list {
     margin: 6px 0 0;
     padding-left: 1.25rem;
+}
+
+.rr-dash__hint {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: var(--rr-bg-primary);
+    border: 0.5px solid var(--rr-border-tertiary);
+    border-radius: var(--rr-radius-md);
 }
 
 .rr-dash__error {

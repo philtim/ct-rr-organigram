@@ -16,6 +16,8 @@ export type JahresmeldungState =
     | { phase: 'idle' }
     | { phase: 'loading' }
     | { phase: 'ready'; result: JahresmeldungResult }
+    /** Something the table depends on is not configured — the hint, never zeros. */
+    | { phase: 'unconfigured'; message: string }
     | { phase: 'error'; message: string };
 
 /**
@@ -38,12 +40,18 @@ export function useJahresmeldung() {
             // and Maßnahme groups that would each become a row and count
             // their members a second time.
             if (settings.gateGroupId === null || settings.teilstammIds.length === 0) {
-                state.value = { phase: 'error', message: COPY.jahresmeldungNoTeilstaemme };
+                state.value = { phase: 'unconfigured', message: COPY.jahresmeldungNoTeilstaemme };
                 return;
             }
 
             const { people, rows, ohneTeamIncomplete, teamCount } =
                 await loadJahresmeldung(settings);
+            // Nothing failed and still no team: the team types match nothing
+            // under these Teilstämme. A table of zeros would be filed as one.
+            if (teamCount === 0 && !ohneTeamIncomplete && !rows.some((r) => r.incomplete)) {
+                state.value = { phase: 'unconfigured', message: COPY.noTeamsInScope };
+                return;
+            }
 
             state.value = {
                 phase: 'ready',
