@@ -12,6 +12,7 @@
  * ChurchTools. See `docs/design/001-jahresmeldung.md` for the full derivation.
  */
 
+import { COPY } from '@/shared/copy';
 import type { AgeBucket } from '@/shared/dates';
 
 export const COLUMNS = [
@@ -247,7 +248,7 @@ export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete
     }
     byKey.set(OHNE_TEAM_ROW, {
         key: OHNE_TEAM_ROW,
-        label: 'Mitarbeiter ohne Team',
+        label: COPY.jahresmeldungOhneTeamRow,
         cells: emptyCells(),
         // Fed by the Hauptstamm and the Teilstamm-MA groups rather than by
         // teams, so it fails independently of any row above it.

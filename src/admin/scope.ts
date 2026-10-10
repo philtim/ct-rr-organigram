@@ -3,7 +3,7 @@
  * offer, how to label them, and what the current selection would cover.
  */
 import type { ChildGroup, GroupTypeRef, PickableRole, ScopeScan } from './admin.api';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Group } from '@/shared/types';
 
 const byName = (a: string, b: string) => a.localeCompare(b, 'de');

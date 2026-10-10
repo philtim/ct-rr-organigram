@@ -56,9 +56,10 @@ CORS note: enable cross-origin requests from `http://localhost:5173` in your Chu
 - `npm run dev` — Vite dev server with hot reload.
 - `npm run build` — production build to `dist/`.
 - `npm run preview` — serve the production build locally.
-- `npm run lint` — ESLint over `src/`.
-- `npm run typecheck` — `vue-tsc --noEmit`.
-- `npm run check` — lint + typecheck + build (what CI runs).
+- `npm run lint` — ESLint over `src/`, including the ADR-004 folder boundaries.
+- `npm run typecheck` — `vue-tsc -b` over the app and the build config.
+- `npm run test` — Vitest over the pure logic and the composables.
+- `npm run check` — lint + typecheck + test + build + bundle check (what CI runs).
 - `npm run deploy` — build and package into `releases/*.zip`.
 
 ### Cutting a release
@@ -74,29 +75,28 @@ Per [ADR-004](docs/adr/004-module-structure.md):
 ```
 src/
 ├── main.ts                       # boot, mount Vue app
-├── App.vue                       # top-level shell (inside .rr-dashboard-root)
-├── gate/                         # US-1: access check
-├── dashboard/                    # US-3, US-4, US-5, US-6, US-7, US-9
-├── admin/                        # US-2: pick Hauptstamm group
-└── shared/
+├── App.vue                       # shell: settings, gate, tabs (inside .rr-dashboard-root)
+├── dashboard/                    # the organigram tab
+├── beitraege/                    # the Beitragsabrechnung tab and its export
+├── jahresmeldung/                # the Jahresmeldung tab
+├── admin/                        # the configuration screen
+└── shared/                       # what more than one feature needs
+    ├── access/                   # the membership gate
     ├── api.ts                    # ChurchTools client wrapper (ADR-005)
-    ├── kv-store.ts               # KV-store helpers from boilerplate
-    ├── ct-types.d.ts             # ChurchTools API types
-    ├── reset.css                 # dev-only host-style simulation
-    ├── constants.ts              # extension key, KV schema, copy strings
-    └── types.ts                  # shared domain types + project aggregates
+    ├── groups.api.ts             # child groups, active members, person ids
+    ├── kv-store.ts               # the KV-store, as far as the extension uses it
+    ├── settings.ts               # the configuration model, parsed without defaults
+    ├── copy.ts                   # every piece of on-screen text
+    ├── types.ts                  # the ChurchTools fields the extension reads
+    ├── ViewShell.vue             # the frame every tab shares
+    └── reset.css                 # dev-only host-style simulation
 ```
+
+Feature folders never import from each other; `npm run lint` fails if one does.
 
 ### Architecture decisions
 
-Six accepted ADRs in [`docs/adr/`](docs/adr/):
-
-- ADR-001 Vue 3 with Composition API
-- ADR-002 `<style scoped>` + BEM, all under `.rr-dashboard-root` (US-8)
-- ADR-003 No automated tests in v1 — TS + ESLint + manual exploration only
-- ADR-004 Feature folders + `shared/`
-- ADR-005 Thin API wrapper in `src/shared/api.ts`
-- ADR-006 ESLint flat config + Prettier + `eslint-plugin-vue`, no Husky
+See [`docs/adr/README.md`](docs/adr/README.md) for the full, current list.
 
 ## License
 

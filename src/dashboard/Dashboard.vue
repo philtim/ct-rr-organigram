@@ -6,9 +6,10 @@ import SkeletonHero from './SkeletonHero.vue';
 import SkeletonTeilstamm from './SkeletonTeilstamm.vue';
 import TeilstammCard from './TeilstammCard.vue';
 import { useDashboard } from './useDashboard';
+import ViewShell from '@/shared/ViewShell.vue';
 import { formatTimestamp } from '@/shared/format';
 import type { LoadFailure } from './rollup';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 
 const props = defineProps<{ settings: Settings }>();
@@ -30,8 +31,10 @@ const teamsOnly = computed(
 );
 const loaded = computed(() => (state.value.phase === 'ready' ? state.value : null));
 
-const stand = computed(() =>
-    state.value.phase === 'ready' ? formatTimestamp(state.value.loadedAt) : null,
+const status = computed(() =>
+    state.value.phase === 'ready'
+        ? COPY.loadedAt(formatTimestamp(state.value.loadedAt))
+        : COPY.loading,
 );
 
 function describe(failure: LoadFailure): string {
@@ -52,140 +55,62 @@ const appCommit = __APP_COMMIT__;
 </script>
 
 <template>
-    <main class="rr-dash">
-        <div class="rr-dash__inner">
-            <header class="rr-dash__header">
-                <div class="rr-dash__title-block">
-                    <h1 class="rr-dash__title">{{ COPY.appTitle }}</h1>
-                    <p class="rr-dash__subtitle">
-                        <template v-if="stand"> {{ COPY.timestampPrefix }}{{ stand }} </template>
-                        <template v-else>{{ COPY.loading }}</template>
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    class="rr-dash__refresh"
-                    :disabled="state.phase === 'loading'"
-                    @click="load(settings)"
-                >
-                    ↻ <span class="rr-dash__refresh-label">{{ COPY.refresh }}</span>
-                </button>
-            </header>
+    <ViewShell
+        :title="COPY.appTitle"
+        :status="status"
+        refreshable
+        :loading="state.phase === 'loading'"
+        @refresh="load(settings)"
+    >
+        <p v-if="state.phase === 'error'" class="rr-dash__error" role="alert">
+            {{ state.message }}
+        </p>
 
-            <p v-if="state.phase === 'error'" class="rr-dash__error" role="alert">
-                {{ state.message }}
-            </p>
+        <template v-else>
+            <!--
+              A warning that stays, not a toast that goes: the red "?" below
+              reads as "missing" only for as long as somebody says what is.
+            -->
+            <section v-if="loaded?.failures.length" class="rr-dash__warning" role="alert">
+                <p class="rr-dash__warning-title">{{ COPY.partialErrorTitle }}</p>
+                <ul class="rr-dash__warning-list">
+                    <li v-for="(f, i) in loaded.failures" :key="i">{{ describe(f) }}</li>
+                </ul>
+            </section>
 
-            <template v-else>
-                <!--
-                  A warning that stays, not a toast that goes: the red "?"
-                  above reads as "missing" only for as long as somebody
-                  says what is missing.
-                -->
-                <section v-if="loaded?.failures.length" class="rr-dash__warning" role="alert">
-                    <p class="rr-dash__warning-title">{{ COPY.partialErrorTitle }}</p>
-                    <ul class="rr-dash__warning-list">
-                        <li v-for="(f, i) in loaded.failures" :key="i">{{ describe(f) }}</li>
-                    </ul>
-                </section>
+            <HauptstammCard v-if="loaded" :node="loaded.root" />
+            <SkeletonHero v-else />
+            <div class="rr-dash__divider" aria-hidden="true">│</div>
+            <!--
+              One grid for the placeholders and the cards, sized by the
+              configured Teilstämme, so nothing moves when data arrives.
+            -->
+            <div class="rr-dash__grid" :class="{ 'rr-dash__grid--single': teamsOnly }">
+                <template v-if="loaded">
+                    <TeilstammCard
+                        v-for="ts in loaded.root.children"
+                        :key="ts.groupId"
+                        :node="ts"
+                        :always-shown-role-ids="settings.alwaysShownRoleIds"
+                        :teams-only="teamsOnly"
+                        :member-field-name="settings.horizontFieldName"
+                    />
+                </template>
+                <template v-else>
+                    <SkeletonTeilstamm v-for="id in teilstammIds" :key="id" />
+                </template>
+            </div>
+            <DuplicatesPanel v-if="loaded" :root="loaded.root" />
+        </template>
 
-                <HauptstammCard v-if="loaded" :node="loaded.root" />
-                <SkeletonHero v-else />
-                <div class="rr-dash__divider" aria-hidden="true">│</div>
-                <!--
-                  One grid for the placeholders and the cards, sized by the
-                  configured Teilstämme, so nothing moves when data arrives.
-                -->
-                <div class="rr-dash__grid" :class="{ 'rr-dash__grid--single': teamsOnly }">
-                    <template v-if="loaded">
-                        <TeilstammCard
-                            v-for="ts in loaded.root.children"
-                            :key="ts.groupId"
-                            :node="ts"
-                            :always-shown-role-ids="settings.alwaysShownRoleIds"
-                            :teams-only="teamsOnly"
-                            :member-field-name="settings.horizontFieldName"
-                        />
-                    </template>
-                    <template v-else>
-                        <SkeletonTeilstamm v-for="id in teilstammIds" :key="id" />
-                    </template>
-                </div>
-                <DuplicatesPanel v-if="loaded" :root="loaded.root" />
-            </template>
-
-            <footer
-                class="rr-dash__footer"
-                :title="`RR Organigram v${appVersion} (build ${appCommit})`"
-            >
-                v{{ appVersion }} · {{ appCommit }}
-            </footer>
-        </div>
-    </main>
+        <footer class="rr-dash__footer" :title="COPY.buildInfo(appVersion, appCommit)">
+            v{{ appVersion }} · {{ appCommit }}
+        </footer>
+    </ViewShell>
 </template>
 
 <style scoped>
-/*
- * Layout-only here. Color tokens come from the global .rr-dashboard-root
- * variables defined in App.vue (light + dark via prefers-color-scheme).
- */
-/*
- * Two-layer layout so the dark-mode background extends edge-to-edge of
- * the host viewport while the content stays centered + capped at 1280px.
- *   .rr-dash       — full-width band; carries background + min-height
- *   .rr-dash__inner — content column; max-width + padding
- */
-.rr-dash {
-    background: var(--rr-bg-tertiary);
-    color: var(--rr-text-primary);
-    font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-}
-.rr-dash__inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
-}
-
-.rr-dash__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    gap: 12px;
-}
-.rr-dash__title-block {
-    min-width: 0;
-}
-.rr-dash__title {
-    margin: 0 0 4px;
-    font-size: 22px;
-    font-weight: 500;
-}
-.rr-dash__subtitle {
-    margin: 0;
-    font-size: 13px;
-    color: var(--rr-text-secondary);
-}
-.rr-dash__refresh {
-    background: var(--rr-bg-primary);
-    border: 1px solid var(--rr-border-secondary);
-    border-radius: var(--rr-radius-md);
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--rr-text-primary);
-    flex-shrink: 0;
-}
-.rr-dash__refresh:disabled {
-    opacity: 0.5;
-    cursor: progress;
-}
-.rr-dash__refresh-label {
-    margin-left: 4px;
-}
+/* Layout only; the frame is ViewShell's, the colour tokens App.vue's. */
 
 .rr-dash__divider {
     text-align: center;
@@ -251,23 +176,13 @@ const appCommit = __APP_COMMIT__;
     }
 }
 
-/* Mobile: single-column stack, hide the inter-level divider, condense
-   the header (the refresh label collapses to just the icon). */
+/* Mobile: single-column stack, no inter-level divider. */
 @media (max-width: 767px) {
-    .rr-dash__inner {
-        padding: 16px;
-    }
     .rr-dash__grid {
         grid-template-columns: minmax(0, 1fr);
         gap: 8px;
     }
     .rr-dash__divider {
-        display: none;
-    }
-    .rr-dash__title {
-        font-size: 18px;
-    }
-    .rr-dash__refresh-label {
         display: none;
     }
 }

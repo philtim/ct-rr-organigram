@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { getOrCreateModule, readCategory, writeCategory } from '@/shared/kv-store';
-import { COPY, EXTENSION_KEY, KV_CATEGORY_SHORTY } from '@/shared/constants';
+import { EXTENSION_KEY, KV_CATEGORY_SHORTY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 import { useSettings } from '@/shared/useSettings';
 

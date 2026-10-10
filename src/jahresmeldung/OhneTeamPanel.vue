@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Tally } from './tally';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 /**
  * Names the people behind the "Mitarbeiter ohne Team" row.

@@ -7,6 +7,7 @@ import {
     personIdOf,
     teamsAmong,
 } from '@/shared/groups.api';
+import { COPY } from '@/shared/copy';
 import { fetchLeaderRoleIds } from '@/shared/roles';
 import type { LeaderRoleIds } from '@/shared/roles';
 import { genderOf } from './tally';
@@ -126,7 +127,7 @@ export async function loadJahresmeldung(
     today: Date = todayUtc(),
 ): Promise<ScopeLoad> {
     const gateGroupId = settings.gateGroupId;
-    if (gateGroupId === null) throw new Error('Keine Hauptstamm-Gruppe konfiguriert.');
+    if (gateGroupId === null) throw new Error(COPY.noHauptstamm);
 
     const leaderRoleIds = await fetchLeaderRoleIds(new Set(settings.extraLeaderRoleIds));
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import StatGrid from './StatGrid.vue';
+import ViewShell from '@/shared/ViewShell.vue';
 import { formatEuro, useBeitraege } from './useBeitraege';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 
 /**
@@ -18,12 +19,23 @@ const props = defineProps<{ settings: Settings }>();
 
 const { state, exportState, load, exportXlsx } = useBeitraege();
 
-onMounted(() => load(props.settings));
+function reload() {
+    load(props.settings);
+}
+
+onMounted(reload);
 
 const dateFormat = new Intl.DateTimeFormat('de-DE', {
     dateStyle: 'medium',
     timeStyle: 'short',
 });
+
+const status = computed(() =>
+    state.value.phase === 'ready'
+        ? `${COPY.loadedAt(dateFormat.format(state.value.result.loadedAt))} · ` +
+          COPY.teamCount(state.value.result.teamCount)
+        : COPY.loading,
+);
 
 /**
  * The date the file is about, named before the download rather than after —
@@ -68,114 +80,104 @@ const grids = computed(() => {
 </script>
 
 <template>
-    <main class="rr-fees">
-        <div class="rr-fees__inner">
-            <header class="rr-fees__header">
-                <h1 class="rr-fees__title">{{ COPY.beitraegeTitle }}</h1>
-                <p v-if="state.phase === 'ready'" class="rr-fees__subtitle">
-                    {{ COPY.timestampPrefix }}{{ dateFormat.format(state.result.loadedAt) }} ·
-                    {{ COPY.teamCount(state.result.teamCount) }}
-                </p>
-                <p v-else-if="state.phase === 'loading'" class="rr-fees__subtitle">
-                    {{ COPY.loading }}
-                </p>
-            </header>
+    <ViewShell
+        :title="COPY.beitraegeTitle"
+        :status="status"
+        refreshable
+        :loading="state.phase === 'loading'"
+        @refresh="reload"
+    >
+        <section v-if="state.phase === 'unconfigured'" class="rr-fees__panel" role="alert">
+            <p class="rr-fees__message">{{ state.message }}</p>
+        </section>
 
-            <section v-if="state.phase === 'unconfigured'" class="rr-fees__panel" role="alert">
-                <p class="rr-fees__message">{{ state.message }}</p>
+        <section v-else-if="state.phase === 'error'" class="rr-fees__panel rr-fees__panel--error">
+            <p class="rr-fees__message">{{ COPY.beitraegeLoadError }}</p>
+            <p class="rr-fees__detail">{{ state.message }}</p>
+        </section>
+
+        <section v-else-if="state.phase !== 'ready'" class="rr-fees__panel">
+            <p class="rr-fees__message">{{ COPY.loading }}</p>
+        </section>
+
+        <template v-else-if="grids">
+            <section class="rr-fees__panel rr-fees__panel--total">
+                <p class="rr-fees__total-label">{{ COPY.feesTotalLabel }}</p>
+                <p class="rr-fees__total">{{ formatEuro(state.result.totals.totalCents) }}</p>
+                <p class="rr-fees__total-note">
+                    <!-- One term per rung of the configured ladder, so the
+                             note explains the total whatever the Stamm charges. -->
+                    <template v-for="(count, i) in state.result.totals.perRung" :key="i">
+                        <span v-if="i > 0"> · </span>{{ count }} ×
+                        {{ formatEuro(state.result.config.childCents[i] ?? 0) }}
+                    </template>
+                </p>
+            </section>
+
+            <section class="rr-fees__panel">
+                <h2 class="rr-fees__section-title">{{ COPY.feesOrganigramTitle }}</h2>
+                <StatGrid :stats="grids.organigram" />
+                <p class="rr-fees__detail">
+                    {{
+                        COPY.feesReconciliation(
+                            state.result.members,
+                            state.result.totals.exemptStaff,
+                            state.result.totals.participants,
+                        )
+                    }}
+                </p>
+            </section>
+
+            <section class="rr-fees__panel">
+                <h2 class="rr-fees__section-title">{{ COPY.feesPeopleTitle }}</h2>
+                <StatGrid :stats="grids.people" />
+                <StatGrid :stats="grids.exempt" sub />
+            </section>
+
+            <section class="rr-fees__panel">
+                <h2 class="rr-fees__section-title">{{ COPY.feesFamiliesTitle }}</h2>
+                <StatGrid :stats="grids.families" />
             </section>
 
             <section
-                v-else-if="state.phase === 'error'"
-                class="rr-fees__panel rr-fees__panel--error"
+                v-if="state.result.quality.unmatchable > 0"
+                class="rr-fees__panel rr-fees__panel--warn"
             >
-                <p class="rr-fees__message">{{ COPY.beitraegeLoadError }}</p>
-                <p class="rr-fees__detail">{{ state.message }}</p>
+                <h2 class="rr-fees__section-title">{{ COPY.feesQualityTitle }}</h2>
+                <p class="rr-fees__detail">
+                    {{ COPY.feesQualityHint(state.result.quality.unmatchable) }}
+                </p>
+                <StatGrid :stats="grids.quality" sub />
             </section>
 
-            <section v-else-if="state.phase !== 'ready'" class="rr-fees__panel">
-                <p class="rr-fees__message">{{ COPY.loading }}</p>
-            </section>
-
-            <template v-else-if="grids">
-                <section class="rr-fees__panel rr-fees__panel--total">
-                    <p class="rr-fees__total-label">{{ COPY.feesTotalLabel }}</p>
-                    <p class="rr-fees__total">{{ formatEuro(state.result.totals.totalCents) }}</p>
-                    <p class="rr-fees__total-note">
-                        <!-- One term per rung of the configured ladder, so the
-                             note explains the total whatever the Stamm charges. -->
-                        <template v-for="(count, i) in state.result.totals.perRung" :key="i">
-                            <span v-if="i > 0"> · </span>{{ count }} ×
-                            {{ formatEuro(state.result.config.childCents[i] ?? 0) }}
-                        </template>
-                    </p>
-                </section>
-
-                <section class="rr-fees__panel">
-                    <h2 class="rr-fees__section-title">{{ COPY.feesOrganigramTitle }}</h2>
-                    <StatGrid :stats="grids.organigram" />
-                    <p class="rr-fees__detail">
-                        {{
-                            COPY.feesReconciliation(
-                                state.result.members,
-                                state.result.totals.exemptStaff,
-                                state.result.totals.participants,
-                            )
-                        }}
-                    </p>
-                </section>
-
-                <section class="rr-fees__panel">
-                    <h2 class="rr-fees__section-title">{{ COPY.feesPeopleTitle }}</h2>
-                    <StatGrid :stats="grids.people" />
-                    <StatGrid :stats="grids.exempt" sub />
-                </section>
-
-                <section class="rr-fees__panel">
-                    <h2 class="rr-fees__section-title">{{ COPY.feesFamiliesTitle }}</h2>
-                    <StatGrid :stats="grids.families" />
-                </section>
-
-                <section
-                    v-if="state.result.quality.unmatchable > 0"
-                    class="rr-fees__panel rr-fees__panel--warn"
+            <section class="rr-fees__panel">
+                <h2 class="rr-fees__section-title">{{ COPY.feesExportTitle }}</h2>
+                <button
+                    type="button"
+                    class="rr-fees__button"
+                    :disabled="exportState.phase === 'working'"
+                    @click="exportXlsx"
                 >
-                    <h2 class="rr-fees__section-title">{{ COPY.feesQualityTitle }}</h2>
-                    <p class="rr-fees__detail">
-                        {{ COPY.feesQualityHint(state.result.quality.unmatchable) }}
-                    </p>
-                    <StatGrid :stats="grids.quality" sub />
-                </section>
+                    {{
+                        exportState.phase === 'working'
+                            ? COPY.feesExportWorking
+                            : COPY.feesExportButton
+                    }}
+                </button>
+                <p class="rr-fees__detail">
+                    {{ COPY.feesExportHint(dueDateFormat.format(state.result.dueDate)) }}
+                </p>
+                <p class="rr-fees__detail rr-fees__detail--muted">
+                    {{ COPY.feesExportPrivacy }}
+                </p>
+                <p v-if="exportState.phase === 'error'" class="rr-fees__detail rr-fees__error">
+                    {{ exportState.message }}
+                </p>
+            </section>
 
-                <section class="rr-fees__panel">
-                    <h2 class="rr-fees__section-title">{{ COPY.feesExportTitle }}</h2>
-                    <button
-                        type="button"
-                        class="rr-fees__button"
-                        :disabled="exportState.phase === 'working'"
-                        @click="exportXlsx"
-                    >
-                        {{
-                            exportState.phase === 'working'
-                                ? COPY.feesExportWorking
-                                : COPY.feesExportButton
-                        }}
-                    </button>
-                    <p class="rr-fees__detail">
-                        {{ COPY.feesExportHint(dueDateFormat.format(state.result.dueDate)) }}
-                    </p>
-                    <p class="rr-fees__detail rr-fees__detail--muted">
-                        {{ COPY.feesExportPrivacy }}
-                    </p>
-                    <p v-if="exportState.phase === 'error'" class="rr-fees__detail rr-fees__error">
-                        {{ exportState.message }}
-                    </p>
-                </section>
-
-                <p class="rr-fees__footnote">{{ COPY.beitraegeAggregatesOnly }}</p>
-            </template>
-        </div>
-    </main>
+            <p class="rr-fees__footnote">{{ COPY.beitraegeAggregatesOnly }}</p>
+        </template>
+    </ViewShell>
 </template>
 
 <style scoped>
@@ -183,36 +185,6 @@ const grids = computed(() => {
  * Layout only — colour tokens come from the global .rr-dashboard-root
  * variables defined in App.vue (ADR-002).
  */
-.rr-fees {
-    background: var(--rr-bg-tertiary);
-    color: var(--rr-text-primary);
-    font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-}
-
-.rr-fees__inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 1.5rem;
-}
-
-.rr-fees__header {
-    margin-bottom: 1.25rem;
-}
-
-.rr-fees__title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-.rr-fees__subtitle {
-    font-size: 0.875rem;
-    color: var(--rr-text-secondary);
-    margin: 0.25rem 0 0;
-}
 
 .rr-fees__panel {
     border: 0.5px solid var(--rr-border-tertiary);
@@ -312,10 +284,6 @@ const grids = computed(() => {
 }
 
 @media (max-width: 767px) {
-    .rr-fees__inner {
-        padding: 1rem;
-    }
-
     .rr-fees__total {
         font-size: 2rem;
     }

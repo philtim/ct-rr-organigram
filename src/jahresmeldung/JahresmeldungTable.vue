@@ -1,105 +1,50 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { rowGesamt, rowLeiter, rowTeilnehmer } from './tally';
+import { COLUMNS, rowGesamt, rowLeiter, rowTeilnehmer } from './tally';
 import type { Cells, Column, Tally } from './tally';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 /**
  * `tally: null` renders the skeleton. Same component, same markup, so the
  * loading state cannot drift from the real table and nothing shifts when the
  * data arrives (US-4).
  */
-const props = defineProps<{ tally: Tally | null }>();
+const props = defineProps<{
+    tally: Tally | null;
+    /** Rows the skeleton draws: one per configured Teilstamm, plus "ohne Team". */
+    skeletonRows: number;
+}>();
 const emit = defineEmits<{ copy: [number] }>();
 
 /**
- * Two labels per column: the full one the form uses, and a short one for
- * narrow screens. The `<th>` carries the full text as `aria-label` either way,
- * so a screen reader never has to expand "JL m" — and the visible spans are
- * hidden from it to avoid announcing both.
+ * Each column carries the full heading the form uses and a short one for
+ * narrow screens (COPY.jahresmeldungColumns). The `<th>` carries the full
+ * text as `aria-label` either way, so a screen reader never has to expand
+ * "JL m" — and the visible spans are hidden from it to avoid announcing both.
+ *
+ * `form` is what the Bund asks for. Everything else is ours, and the table
+ * keeps it visibly apart so nobody transcribes a roll-up into the portal.
  */
 type ColumnDef = {
-    key: Column | string;
-    /** Visible heading, one entry per rendered line. */
-    lines: string[];
-    /** Visible heading on narrow screens. */
-    short: string;
-    /** What a screen reader announces, always the form's full wording. */
-    label: string;
-    /**
-     * `form` is what the Bund asks for. Everything else is ours, and the table
-     * keeps it visibly apart so nobody transcribes a roll-up into the portal.
-     */
+    key: keyof typeof COPY.jahresmeldungColumns;
     group: 'form' | 'unassigned' | 'rollup';
     value: (cells: Cells) => number;
 };
 
-/** Reads one of the form's six columns straight out of the row. */
-function cell(key: Column): (cells: Cells) => number {
-    return (cells) => cells[key];
-}
+const FORM_COLUMNS = COLUMNS.filter(
+    (c): c is Exclude<Column, 'ohneZuordnung'> => c !== 'ohneZuordnung',
+);
 
-const COLUMN_DEFS: ColumnDef[] = [
-    {
-        key: 'jungen',
-        lines: ['Jungen'],
-        short: 'Jungen',
-        label: COPY.jahresmeldungColJungen,
-        group: 'form',
-        value: cell('jungen'),
-    },
-    {
-        key: 'maedchen',
-        lines: ['Mädchen'],
-        short: 'Mädchen',
-        label: COPY.jahresmeldungColMaedchen,
-        group: 'form',
-        value: cell('maedchen'),
-    },
-    {
-        key: 'juniorleiterM',
-        lines: ['Juniorleiter', 'männlich'],
-        short: 'JL m',
-        label: COPY.jahresmeldungColJuniorM,
-        group: 'form',
-        value: cell('juniorleiterM'),
-    },
-    {
-        key: 'juniorleiterW',
-        lines: ['Juniorleiter', 'weiblich'],
-        short: 'JL w',
-        label: COPY.jahresmeldungColJuniorW,
-        group: 'form',
-        value: cell('juniorleiterW'),
-    },
-    {
-        key: 'mitarbeiterM',
-        lines: ['Mitarbeiter', 'männlich'],
-        short: 'MA m',
-        label: COPY.jahresmeldungColMitarbeiterM,
-        group: 'form',
-        value: cell('mitarbeiterM'),
-    },
-    {
-        key: 'mitarbeiterW',
-        lines: ['Mitarbeiter', 'weiblich'],
-        short: 'MA w',
-        label: COPY.jahresmeldungColMitarbeiterW,
-        group: 'form',
-        value: cell('mitarbeiterW'),
-    },
-];
-
-const UNASSIGNED: Column = 'ohneZuordnung';
+const FORM_DEFS: ColumnDef[] = FORM_COLUMNS.map((key) => ({
+    key,
+    group: 'form',
+    value: (cells) => cells[key],
+}));
 
 const UNASSIGNED_DEF: ColumnDef = {
-    key: UNASSIGNED,
-    lines: ['ohne', 'Zuordnung'],
-    short: COPY.jahresmeldungColUnassigned,
-    // Says out loud what the heavier border says visually.
-    label: COPY.jahresmeldungColUnassignedNote,
+    key: 'ohneZuordnung',
     group: 'unassigned',
-    value: cell(UNASSIGNED),
+    value: (cells) => cells.ohneZuordnung,
 };
 
 /**
@@ -108,30 +53,9 @@ const UNASSIGNED_DEF: ColumnDef = {
  * the figure people actually want.
  */
 const ROLLUP_DEFS: ColumnDef[] = [
-    {
-        key: 'sumTeilnehmer',
-        lines: ['Teilnehmer'],
-        short: 'TN',
-        label: COPY.jahresmeldungColTeilnehmer,
-        group: 'rollup',
-        value: rowTeilnehmer,
-    },
-    {
-        key: 'sumLeiter',
-        lines: ['Leiter'],
-        short: 'L',
-        label: COPY.jahresmeldungColLeiter,
-        group: 'rollup',
-        value: rowLeiter,
-    },
-    {
-        key: 'sumGesamt',
-        lines: ['Gesamt'],
-        short: 'Ges.',
-        label: COPY.jahresmeldungColGesamt,
-        group: 'rollup',
-        value: rowGesamt,
-    },
+    { key: 'sumTeilnehmer', group: 'rollup', value: rowTeilnehmer },
+    { key: 'sumLeiter', group: 'rollup', value: rowLeiter },
+    { key: 'sumGesamt', group: 'rollup', value: rowGesamt },
 ];
 
 /**
@@ -142,24 +66,17 @@ const ROLLUP_DEFS: ColumnDef[] = [
 const showUnassigned = computed(() => props.tally?.hasUnassigned === true);
 
 const columns = computed(() => {
-    const list = [...COLUMN_DEFS];
+    const list = [...FORM_DEFS];
     if (showUnassigned.value) list.push(UNASSIGNED_DEF);
     list.push(...ROLLUP_DEFS);
     // A rule where the group changes, so the form's six columns read as one
     // block and ours as another.
     return list.map((col, i) => ({
         ...col,
+        ...COPY.jahresmeldungColumns[col.key],
         divider: i > 0 && col.group !== list[i - 1].group,
     }));
 });
-
-/** Skeleton placeholders: five Teilstämme plus the "ohne Team" row. */
-const SKELETON_ROWS = 6;
-
-/** Every column of a row the loader could not complete reads "?", never 0. */
-function isUnknown(incomplete: boolean): boolean {
-    return incomplete;
-}
 
 /**
  * Any failure anywhere makes the footer unknown too. A Gesamt row that silently
@@ -183,7 +100,7 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                 <thead>
                     <tr>
                         <th scope="col" class="jm-table__row-head">
-                            <span class="jm-table__sr">Teilstamm</span>
+                            <span class="jm-table__sr">{{ COPY.jahresmeldungRowHead }}</span>
                         </th>
                         <th
                             v-for="col in columns"
@@ -209,7 +126,7 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                 </thead>
 
                 <tbody v-if="!tally">
-                    <tr v-for="i in SKELETON_ROWS" :key="i">
+                    <tr v-for="i in skeletonRows" :key="i">
                         <th scope="row" class="jm-table__row-head">
                             <span class="jm-sk jm-sk--label"></span>
                         </th>
@@ -236,7 +153,7 @@ const footerUnknown = computed(() => props.tally?.incomplete === true);
                             }"
                         >
                             <span
-                                v-if="isUnknown(row.incomplete)"
+                                v-if="row.incomplete"
                                 class="jm-table__unknown"
                                 :aria-label="COPY.jahresmeldungUnknownCell"
                                 >?</span

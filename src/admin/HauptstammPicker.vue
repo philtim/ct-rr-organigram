@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { searchGroups } from './scope';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Group } from '@/shared/types';
 
 /**

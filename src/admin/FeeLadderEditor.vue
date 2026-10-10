@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import EuroInput from './EuroInput.vue';
 import { rungLabel } from './scope';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { FeeConfig } from '@/shared/settings';
 
 /**

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Leader, OrgNode } from './types';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { leaderRoleRows } from './counts';
 import LeaderAvatar from './LeaderAvatar.vue';
@@ -25,19 +25,15 @@ function namesOf(leaders: Leader[]): string {
 </script>
 
 <template>
-    <a
-        class="hs-card"
-        :href="href"
-        :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
-    >
-        <p class="hs-card__subtitle">HAUPTSTAMM</p>
+    <a class="hs-card" :href="href" :aria-label="COPY.openGroup(node.name)">
+        <p class="hs-card__subtitle">{{ COPY.levelHauptstamm }}</p>
         <h2 class="hs-card__name">{{ node.name }}</h2>
 
         <div class="hs-card__body">
             <div class="hs-card__main">
                 <template v-if="isError">
                     <p class="hs-card__label">{{ COPY.leiterStat }}</p>
-                    <p class="hs-card__placeholder" aria-label="unbekannt">?</p>
+                    <p class="hs-card__placeholder" :aria-label="COPY.unknown">?</p>
                 </template>
                 <template v-else>
                     <div v-for="g in roleGroups" :key="g.role" class="hs-card__group">
@@ -50,9 +46,7 @@ function namesOf(leaders: Leader[]): string {
                         </div>
                         <p class="hs-card__group-text">{{ namesOf(g.leaders) }}</p>
                     </div>
-                    <p v-if="!roleGroups.length" class="hs-card__empty">
-                        Keine Leiter eingetragen.
-                    </p>
+                    <p v-if="!roleGroups.length" class="hs-card__empty">{{ COPY.noLeaders }}</p>
                 </template>
             </div>
 

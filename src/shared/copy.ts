@@ -1,0 +1,350 @@
+/**
+ * Every piece of text the extension shows, in one place — German only, so a
+ * translation or a wording change is a one-file change. Components name a
+ * key; they do not carry text of their own.
+ *
+ * Not in here: the export file's content (beitraege/workbook.ts), which is a
+ * document of its own, and console messages, which nobody using the
+ * extension reads.
+ */
+const teamCount = (n: number) => `${n} ${n === 1 ? 'Team' : 'Teams'}`;
+
+export const COPY = {
+    appTitle: 'RR Mitarbeiter-Dashboard',
+    configUnreadable:
+        'Die Konfiguration konnte nicht gelesen werden. Das heißt nicht, dass keine ' +
+        'vorhanden ist — bitte die Seite neu laden. Hält das an, fehlen vermutlich die ' +
+        'Rechte auf das Modul.',
+    configMissing:
+        'Diese Ansicht ist noch nicht konfiguriert. Unter Admin → Extensions müssen ' +
+        'Hauptstamm-Gruppe, Teilstämme und die Gruppentypen der Teams festgelegt werden.',
+    feesNoTeams:
+        'Unter den konfigurierten Teilstämmen wurden keine Teams gefunden. Bitte die ' +
+        'Teilstamm- und Team-Auswahl in der Konfiguration prüfen.',
+    feesNotConfigured:
+        'Für die Beitragsabrechnung sind noch keine Beitragssätze hinterlegt. Die Staffel ' +
+        'wird unter Admin → Extensions festgelegt.',
+    refresh: 'Aktualisieren',
+    loadedAt: (time: string) => `Stand: ${time}`,
+    buildInfo: (version: string, commit: string) => `RR Organigram v${version} (build ${commit})`,
+    accessDenied: 'Du hast keinen Zugriff auf das RR Mitarbeiter-Dashboard.',
+    partialErrorTitle:
+        'Nicht alle Gruppen konnten geladen werden. Die rot markierten Summen sind deshalb ' +
+        'nicht berechenbar — „Aktualisieren" versucht es erneut.',
+    failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
+    failedTeilstamm: (name: string) => `Teilstamm „${name}“`,
+    failedTeilstammTeams: (name: string) => `Teams von Teilstamm „${name}“`,
+    failedTeam: (name: string, teilstamm: string) => `Team „${name}“ (Teilstamm „${teilstamm}“)`,
+    // Organigram cards.
+    levelHauptstamm: 'HAUPTSTAMM',
+    levelTeilstamm: 'TEILSTAMM',
+    levelTeams: 'TEAMS',
+    noLeaders: 'Keine Leiter eingetragen.',
+    noTeams: 'Keine Teams.',
+    teamsUnavailable: 'Teams konnten nicht geladen werden.',
+    unknown: 'unbekannt',
+    openGroup: (name: string) => `Zur ChurchTools-Gruppe von ${name} wechseln`,
+    countsLine: (leaders: number | '?', participants: number | '?') =>
+        `${leaders} Leiter · ${participants} Teilnehmer`,
+    fieldLine: (count: number | '?', field: string) => `${count}× ${field}`,
+    teilstammSummary: (leaders: string, teams: number) =>
+        `${leaders || 'Keine Leiter eingetragen'} · ${teamCount(teams)}`,
+    noHauptstamm: 'Keine Hauptstamm-Gruppe konfiguriert.',
+    groupFallbackName: (id: number) => `Gruppe ${id}`,
+    dashboardLoadError: 'Daten konnten nicht geladen werden.',
+    // Hints below the organigram.
+    hintsTitle: 'Hinweise',
+    hintsNone: 'Keine Auffälligkeiten — niemand ist mehrfach zugewiesen oder ohne Team.',
+    hintsRule:
+        'Personen mit Leiter-Rolle in mindestens einem Team werden in der Gesamtzählung immer ' +
+        'als Leiter gewertet — auch wenn sie in anderen Teams als Mitglied geführt sind. ' +
+        'Dadurch wird niemand doppelt gezählt.',
+    hintsLeadersInTeams: 'Teamleiter in mehreren Teams',
+    hintsMembersInTeams: 'Teilnehmer in mehreren Teams',
+    hintsMixed: 'Leiter in einem Team, Teilnehmer in einem anderen',
+    hintsMixedLeader: (teams: string[]) => `Leiter: ${teams.join(', ')}`,
+    hintsMixedParticipant: (teams: string[]) => `Teilnehmer: ${teams.join(', ')}`,
+    hintsStaffWithoutTeam: 'Mitarbeiter ohne Team',
+    hintsLeadershipWithoutTeam: 'Stammleitung ohne Team',
+    /** Read out in place of a "?" that stands for a sum missing a part. */
+    notComputable: 'nicht berechenbar',
+    loading: 'Lädt …',
+    viewsNav: 'Ansichten',
+    gateCheckFailed: (status?: number) =>
+        status
+            ? `Der Gate-Check konnte nicht durchgeführt werden (HTTP ${status}).`
+            : 'Der Gate-Check konnte nicht durchgeführt werden.',
+    listTruncated: (url: string, max: number) =>
+        `${url} liefert mehr als ${max} Einträge — die Liste wäre unvollständig.`,
+    close: 'Schließen',
+    // Leader lists are labelled with the group role's own name, straight from
+    // ChurchTools — see `groupLeadersByRole` in dashboard/counts.ts. The labels
+    // below are only for the stat tiles and the "?" error state.
+    teamleiterStat: 'Teamleiter',
+    leiterStat: 'Leiter',
+    mitgliederStat: 'Teilnehmer',
+    gesamtStat: 'Gesamt',
+    /** Shown in place of a name when a leadership position is unfilled. */
+    vacantRole: 'nicht besetzt',
+    // Tabs (ADR-007).
+    tabOrganigram: 'Organigramm',
+    tabBeitraege: 'Beitragsabrechnung',
+    beitraegeTitle: 'RR Beitragsabrechnung',
+    teamCount,
+    beitraegeLoadError: 'Die Beitragsdaten konnten nicht geladen werden.',
+    beitraegeAggregatesOnly:
+        'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
+        'stehen nur in der Export-Datei.',
+    feesTotalLabel: 'Einzuziehender Gesamtbetrag',
+    feesOrganigramTitle: 'Abgleich mit dem Organigramm',
+    feesLeaders: 'Leiter',
+    feesMembers: 'Mitglieder',
+    feesReconciliation: (members: number, staffChildren: number, participants: number) =>
+        `Dieselben Zahlen wie im Tab „Organigramm", aus denselben Daten nach denselben ` +
+        `Regeln. Die Abrechnung zählt zusätzlich die ${staffChildren} Mitarbeiter, die ` +
+        `selbst Teilnehmer sind: ${members} + ${staffChildren} = ${participants}. Im ` +
+        'Organigramm stehen sie bei den Leitern, hier als beitragsfreie Teilnehmer.',
+    feesPeopleTitle: 'Teilnehmer',
+    feesParticipants: 'Teilnehmer gesamt',
+    feesLiable: 'beitragspflichtig',
+    feesExempt: 'beitragsfrei',
+    feesExemptStaff: 'davon Mitarbeiter',
+    feesExemptLadder: 'davon beitragsfreie Kinder',
+    feesExemptJuniorLeader: 'davon Juniorleiter',
+    feesFamiliesTitle: 'Familien',
+    feesFamilies: 'Familien gesamt',
+    feesFamiliesOnLastRung: (rungs: number) => `mit ${rungs}+ RR-Kindern`,
+    feesQualityTitle: 'Unvollständige Daten',
+    feesQualityHint: (count: number) =>
+        `${count} ${count === 1 ? 'Teilnehmer hat' : 'Teilnehmer haben'} weder eine Adresse ` +
+        `noch eine Beziehung zu ${count === 1 ? 'einem anderen' : 'anderen'} Teilnehmer` +
+        `${count === 1 ? '' : 'n'} und ${count === 1 ? 'gilt' : 'gelten'} deshalb als ` +
+        'Einzelkind. Falls es Geschwister gibt, wird zu viel berechnet — die Lücke muss ' +
+        'in ChurchTools geschlossen werden.',
+    feesMissingAddress: 'ohne Adresse',
+    feesMissingRelationship: 'ohne Beziehung',
+    feesMissingBirthday: 'ohne Geburtsdatum',
+    // Export (ADR-010).
+    feesExportTitle: 'Liste für das Gemeindebüro',
+    feesExportButton: 'Excel-Liste herunterladen',
+    feesExportWorking: 'Datei wird erzeugt …',
+    feesExportError: 'Die Datei konnte nicht erzeugt werden. Bitte erneut versuchen.',
+    feesExportHint: (dueDate: string) =>
+        `Enthält alle Teilnehmer mit Name, Geburtsdatum und Adresse sowie den Beitrag zum ` +
+        `${dueDate}. Beitragssätze und Familienzuordnung lassen sich in der Datei ändern — ` +
+        'sie rechnet dann neu.',
+    feesExportPrivacy:
+        'Die Datei enthält Adressen von Minderjährigen. Nur an das Gemeindebüro ' +
+        'weitergeben und nach dem Einzug löschen.',
+    // Jahresmeldung. The column headings deliberately repeat the wording of
+    // the Bund's "Mitgliederzahlen" form, so that abtippen needs no mental
+    // translation step (docs/design/001-jahresmeldung.md).
+    tabJahresmeldung: 'Jahresmeldung',
+    jahresmeldungTitle: 'RR Jahresmeldung',
+    jahresmeldungIntro:
+        'Aktueller Stand aus ChurchTools, gegliedert wie das Formular „Mitgliederzahlen" ' +
+        'im Bundesportal. Zeilen und Spalten stehen in derselben Reihenfolge.',
+    jahresmeldungTableTitle: 'Mitgliederzahlen',
+    jahresmeldungTableCaption: 'Mitgliederzahlen für die Jahresmeldung an den Bund',
+    jahresmeldungScope: (teams: number) =>
+        `Grundlage: ${teams} ${teams === 1 ? 'Team' : 'Teams'} unter den konfigurierten Teilstämmen.`,
+    jahresmeldungRollupHint:
+        'Die drei rechten Spalten sind Summen für den eigenen Gebrauch und gehören nicht ' +
+        'ins Bundesformular.',
+    jahresmeldungRowTotal: 'Gesamt',
+    jahresmeldungRowHead: 'Teilstamm',
+    jahresmeldungOhneTeamRow: 'Mitarbeiter ohne Team',
+    /**
+     * The table's columns: heading lines as the Bund's form prints them, a
+     * short heading for narrow screens, and what a screen reader announces.
+     */
+    jahresmeldungColumns: {
+        jungen: { lines: ['Jungen'], short: 'Jungen', label: 'Jungen' },
+        maedchen: { lines: ['Mädchen'], short: 'Mädchen', label: 'Mädchen' },
+        juniorleiterM: {
+            lines: ['Juniorleiter', 'männlich'],
+            short: 'JL m',
+            label: 'Juniorleiter männlich',
+        },
+        juniorleiterW: {
+            lines: ['Juniorleiter', 'weiblich'],
+            short: 'JL w',
+            label: 'Juniorleiter weiblich',
+        },
+        mitarbeiterM: {
+            lines: ['Mitarbeiter', 'männlich'],
+            short: 'MA m',
+            label: 'Mitarbeiter männlich',
+        },
+        mitarbeiterW: {
+            lines: ['Mitarbeiter', 'weiblich'],
+            short: 'MA w',
+            label: 'Mitarbeiter weiblich',
+        },
+        ohneZuordnung: {
+            lines: ['ohne', 'Zuordnung'],
+            short: 'ohne Zuordnung',
+            // Says out loud what the heavier border says visually.
+            label: 'ohne Zuordnung, nicht Teil des Formulars',
+        },
+        sumTeilnehmer: {
+            lines: ['Teilnehmer'],
+            short: 'TN',
+            label: 'Teilnehmer gesamt, nicht Teil des Formulars',
+        },
+        sumLeiter: {
+            lines: ['Leiter'],
+            short: 'L',
+            label: 'Leiter gesamt einschließlich Juniorleiter, nicht Teil des Formulars',
+        },
+        sumGesamt: {
+            lines: ['Gesamt'],
+            short: 'Ges.',
+            label: 'Personen gesamt in dieser Zeile, nicht Teil des Formulars',
+        },
+    },
+    jahresmeldungUnassignedHint: 'Diese Spalte gehört nicht ins Bundesformular.',
+    jahresmeldungMethodTitle: 'Wie wird gezählt?',
+    /**
+     * Every cell of the table, explained — so the figures can be defended
+     * against a query from the Bundesgeschäftsstelle without reading the code.
+     */
+    jahresmeldungMethod: [
+        {
+            term: 'Zeile',
+            text:
+                'Der Teilstamm, unter dem die Person in einem Team steht. Wer in keinem Team ' +
+                'steht, aber Mitarbeiter ist, zählt unter „Mitarbeiter ohne Team".',
+        },
+        {
+            term: 'Jungen / Mädchen',
+            text: 'Teilnehmer ohne Leitungs- oder Mitarbeiterrolle.',
+        },
+        {
+            term: 'Juniorleiter',
+            text:
+                'Leiter unter 18 Jahren. Sie zählen nicht zusätzlich bei Jungen/Mädchen — ' +
+                'ein Pfadranger, der leitet, erscheint also nur hier.',
+        },
+        {
+            term: 'Mitarbeiter',
+            text:
+                'Leiter ab 18 Jahren. Als Leitungsrolle gilt, was ChurchTools selbst als ' +
+                'Leitung führt, dazu die Rollen, die unter Admin → Extensions zusätzlich ' +
+                'angehakt sind.',
+        },
+        {
+            term: 'Mehrfach',
+            text:
+                'Wer in zwei Teams steht, zählt einmal — bei mehreren Teilstämmen dort, wo ' +
+                'die Person leitet.',
+        },
+        {
+            term: 'Stand',
+            text: 'Alle Zahlen beziehen sich auf jetzt, nicht auf einen Stichtag.',
+        },
+    ],
+    jahresmeldungCopied: (value: number) => `${value} kopiert`,
+    jahresmeldungCopyHint: 'Klick auf eine Zahl kopiert sie.',
+    jahresmeldungUnknownCell: 'unbekannt, Daten konnten nicht vollständig geladen werden',
+    jahresmeldungIncomplete:
+        'Nicht alle Teams konnten geladen werden. Die mit „?" markierten Zahlen sind ' +
+        'unvollständig — bitte nicht melden, sondern neu laden.',
+    jahresmeldungNoTeilstaemme:
+        'Es sind keine Teilstämme konfiguriert. Ohne diese Auswahl steht nicht fest, welche ' +
+        'Teams in die Meldung gehören — bitte zuerst in der Konfiguration festlegen.',
+    jahresmeldungLoadError: 'Die Zahlen für die Jahresmeldung konnten nicht geladen werden.',
+    jahresmeldungOhneTeamTitle: 'Mitarbeiter ohne Team',
+    jahresmeldungOhneTeamHint:
+        'Mitarbeiter des Hauptstamms oder eines Teilstamms, die in keinem Team stehen. ' +
+        'Wer hier unerwartet auftaucht, ist meist aus einem Team ausgetragen worden, ohne ' +
+        'aus dem Teilstamm entfernt zu werden.',
+    jahresmeldungOhneTeamEmpty: 'Alle Mitarbeiter stehen in mindestens einem Team.',
+    jahresmeldungQualityTitle: 'Datenqualität',
+    jahresmeldungQualityNone: 'Alle Personen konnten einer Spalte des Formulars zugeordnet werden.',
+    jahresmeldungQualityLead: (count: number) =>
+        `${count} ${count === 1 ? 'Person fehlt' : 'Personen fehlen'} in den Formularspalten, ` +
+        `${count === 1 ? 'zählt' : 'zählen'} aber in der Spalte „Gesamt".`,
+    jahresmeldungQualityGenderMissing: 'Geschlecht nicht gepflegt',
+    jahresmeldungQualityGenderMissingHint: 'In ChurchTools nachtragen, dann neu laden.',
+    jahresmeldungQualityGenderDiverse: 'Geschlecht divers',
+    jahresmeldungQualityGenderDiverseHint:
+        'Vollständig erfasst — das Formular kennt dafür nur zwei Spalten. Hier ist nichts zu ' +
+        'korrigieren; wie gemeldet wird, entscheidet die Stammleitung.',
+    jahresmeldungQualityAgeUnknown: 'Leiter ohne Geburtsdatum',
+    jahresmeldungQualityAgeUnknownHint:
+        'Ohne Geburtsdatum lässt sich Mitarbeiter nicht von Juniorleiter unterscheiden.',
+    jahresmeldungQualityMulti: 'In mehreren Teilstämmen aktiv',
+    jahresmeldungQualityMultiHint: 'Jeweils einmal gezählt, in der genannten Zeile.',
+    jahresmeldungQualityCountedIn: (row: string) => `gezählt bei: ${row}`,
+    jahresmeldungQualityPersonLink: 'In ChurchTools',
+    jahresmeldungQualityShowAll: (rest: number) => `Alle anzeigen (${rest} weitere)`,
+    // Configuration screen.
+    adminFirstRun: 'Erstmaliges Setup',
+    adminConfiguration: 'Konfiguration',
+    adminLead:
+        'Diese Extension kennt keinen Stamm. Alles, was sie über euren wissen muss, steht ' +
+        'hier — damit derselbe Build bei jedem Royal-Rangers-Stamm läuft.',
+    adminLoadError: 'Konfiguration konnte nicht geladen werden.',
+    adminSectionStructure: 'Struktur',
+    adminHauptstammLabel: 'Hauptstamm-Gruppe',
+    adminHauptstammHelp:
+        'Zugangstor, Hero-Karte im Organigramm, und eine der beiden Quellen für ' +
+        '„Mitarbeiter ohne Team".',
+    adminSearchPlaceholder: 'Gruppe suchen (Name oder ID)…',
+    adminNoGroupFound: 'Keine Gruppe gefunden.',
+    adminGroupId: (id: number) => `ID ${id}`,
+    adminTeilstaemmeLabel: 'Teilstämme',
+    adminTeilstaemmeHelp:
+        'Ein kleiner Stamm trägt hier dieselbe Gruppe ein wie oben — dafür den Haken entfernen.',
+    adminOnlyChildren: 'Nur Untergruppen des Hauptstamms anzeigen',
+    adminNoChildren: 'Keine passenden Untergruppen — Haken entfernen, um alle Gruppen zu sehen.',
+    adminOtherGroups: 'Weitere Gruppen',
+    adminTeamsLabel: 'Welche Gruppen sind Teams?',
+    adminTeamsHelp:
+        'Unter den gewählten Teilstämmen gefunden. Nur die angehakten Typen zählen als Team ' +
+        'und fließen in die Zahlen ein.',
+    adminReading: 'Wird gelesen …',
+    adminNoSubgroups: 'Unter den gewählten Teilstämmen liegen keine Untergruppen.',
+    adminGroupCount: (n: number) => `${n} Gruppen`,
+    adminScanIncomplete:
+        'Mindestens eine Gruppe konnte nicht gelesen werden. Die Zahlen unten sind deshalb ' +
+        'Untergrenzen — eine 0 heißt hier nicht zwingend „niemand".',
+    adminPreviewLead: 'Mit dieser Einstellung:',
+    adminPreviewTeilstaemme: 'Teilstämme',
+    adminPreviewTeams: 'Teams',
+    adminPreviewPersons: 'Personen',
+    adminSectionRules: 'Zählregeln',
+    adminLeadersLabel: 'Wer zählt als Leiter?',
+    adminLeadersHelp:
+        'Was ChurchTools selbst als Leitung führt, zählt immer — auch eine Rolle, die ihr ' +
+        'später anlegt. Darunter die Teilnehmer-Rollen, die euer Stamm zusätzlich als ' +
+        'Mitarbeiter wertet.',
+    adminPersonCount: (n: number) => `${n} Personen`,
+    adminAlwaysCounts: (n: number) => `immer · ${n} Personen`,
+    adminVacancyLabel: 'Unbesetzte Positionen sichtbar lassen',
+    adminVacancyHelp: 'Erscheint auf der Teilstamm-Karte als „nicht besetzt", statt zu fehlen.',
+    adminMemberFieldLabel: 'Mitgliederfeld für die Horizont-Kachel',
+    adminMemberFieldHelp:
+        'Leer lassen, wenn euer Stamm keine solche Bestellung führt — dann entfällt die Kachel.',
+    adminMemberFieldFound: (names: string[]) => `Gefunden: ${names.join(', ')}.`,
+    adminMemberFieldPlaceholder: 'z. B. Horizont',
+    adminSectionFees: 'Beiträge',
+    adminFeesHelp:
+        'Die letzte Zeile gilt für alle weiteren Kinder. „Ab dem dritten beitragsfrei" ist ' +
+        'also eine Staffel aus drei Zeilen, deren letzte 0,00 € ist.',
+    adminRung: (n: number) => `${n}. Kind`,
+    adminRungFrom: (n: number) => `ab ${n}. Kind`,
+    adminNoLadder: 'Noch keine Staffel — ohne sie bleibt die Beitragsabrechnung ungenutzt.',
+    adminAddRung: '+ Weitere Position',
+    adminRemoveRung: '✕ letzte entfernen',
+    adminStaffFee: 'Mitarbeiter',
+    adminJuniorLeaderFee: 'Juniorleiter',
+    adminJuniorLeaderNote: 'Leiter unter 18',
+    adminSave: 'Speichern',
+    adminSaving: 'Speichert …',
+    adminSaved: 'Gespeichert.',
+    adminSaveError: 'Unbekannter Fehler beim Speichern.',
+    adminSaveIncomplete:
+        'Hauptstamm, mindestens ein Teilstamm und mindestens ein Team-Gruppentyp sind nötig.',
+} as const;

@@ -18,11 +18,11 @@ watch(
 </script>
 
 <template>
-    <span class="avatar">
+    <span class="avatar" aria-hidden="true">
         <img
             v-if="leader.imageUrl && !failed"
             :src="leader.imageUrl"
-            :alt="leader.fullName"
+            alt=""
             class="avatar__img"
             loading="lazy"
             decoding="async"

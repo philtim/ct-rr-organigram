@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { COPY } from '@/shared/copy';
 import { computed } from 'vue';
 import type { OrgNode } from './types';
 import {
@@ -27,21 +28,15 @@ const hasAny = computed(
 
 <template>
     <section class="dup">
-        <h2 class="dup__title">Hinweise</h2>
+        <h2 class="dup__title">{{ COPY.hintsTitle }}</h2>
 
-        <p v-if="!hasAny" class="dup__empty">
-            Keine Auffälligkeiten — niemand ist mehrfach zugewiesen oder ohne Team.
-        </p>
+        <p v-if="!hasAny" class="dup__empty">{{ COPY.hintsNone }}</p>
 
-        <p v-if="hasDuplicates" class="dup__rule">
-            Personen mit Leiter-Rolle in mindestens einem Team werden in der Gesamtzählung immer als
-            Leiter gewertet — auch wenn sie in anderen Teams als Mitglied geführt sind. Dadurch wird
-            niemand doppelt gezählt.
-        </p>
+        <p v-if="hasDuplicates" class="dup__rule">{{ COPY.hintsRule }}</p>
 
         <div v-if="hasAny" class="dup__groups">
             <article v-if="leaders.length" class="dup__group">
-                <h3 class="dup__group-title">Teamleiter in mehreren Teams</h3>
+                <h3 class="dup__group-title">{{ COPY.hintsLeadersInTeams }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in leaders" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>
@@ -51,7 +46,7 @@ const hasAny = computed(
             </article>
 
             <article v-if="members.length" class="dup__group">
-                <h3 class="dup__group-title">Teilnehmer in mehreren Teams</h3>
+                <h3 class="dup__group-title">{{ COPY.hintsMembersInTeams }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in members" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>
@@ -61,20 +56,20 @@ const hasAny = computed(
             </article>
 
             <article v-if="mixed.length" class="dup__group">
-                <h3 class="dup__group-title">Leiter in einem Team, Teilnehmer in einem anderen</h3>
+                <h3 class="dup__group-title">{{ COPY.hintsMixed }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in mixed" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>
-                        <span class="dup__teams"> Leiter: {{ e.leaderTeams.join(', ') }} </span>
-                        <span class="dup__teams">
-                            Teilnehmer: {{ e.participantTeams.join(', ') }}
-                        </span>
+                        <span class="dup__teams">{{ COPY.hintsMixedLeader(e.leaderTeams) }}</span>
+                        <span class="dup__teams">{{
+                            COPY.hintsMixedParticipant(e.participantTeams)
+                        }}</span>
                     </li>
                 </ul>
             </article>
 
             <article v-if="withoutTeam.staff.length" class="dup__group">
-                <h3 class="dup__group-title">Mitarbeiter ohne Team</h3>
+                <h3 class="dup__group-title">{{ COPY.hintsStaffWithoutTeam }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in withoutTeam.staff" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>
@@ -84,7 +79,7 @@ const hasAny = computed(
             </article>
 
             <article v-if="withoutTeam.leadership.length" class="dup__group">
-                <h3 class="dup__group-title">Stammleitung ohne Team</h3>
+                <h3 class="dup__group-title">{{ COPY.hintsLeadershipWithoutTeam }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in withoutTeam.leadership" :key="e.personId" class="dup__item">
                         <span class="dup__name">{{ e.fullName }}</span>

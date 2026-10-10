@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TabId } from './tabs';
+import { COPY } from './copy';
 
 /** The views of the extension (ADR-007). Everyone past the gate sees all of them. */
 const props = defineProps<{
@@ -11,7 +12,7 @@ const emit = defineEmits<{ select: [TabId] }>();
 </script>
 
 <template>
-    <nav class="rr-tabs" aria-label="Ansichten">
+    <nav class="rr-tabs" :aria-label="COPY.viewsNav">
         <button
             v-for="tab in props.tabs"
             :key="tab.id"
