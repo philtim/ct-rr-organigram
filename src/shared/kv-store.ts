@@ -1,5 +1,6 @@
 /**
- * This module provides easy to use access to KV storage
+ * The ChurchTools KV-Store, as far as this extension uses it: one custom
+ * module, holding one data category per stored document.
  */
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type {
@@ -7,314 +8,80 @@ import type {
     CustomModuleCreate,
     CustomModuleDataCategory,
     CustomModuleDataCategoryCreate,
-    CustomModuleDataValue,
-    CustomModuleDataValueCreate,
 } from './ct-types';
 
 /**
- * ────────────────────────────────────────────────
- *  CUSTOM MODULE itself
- * ────────────────────────────────────────────────
- */
-/**
- * retrieves the module configuration
- * @param extensionkey optional - defaults to module with shorty=extensionkey
- * @returns  the custom module
- */
-export async function findModule(
-    extensionkey: string = import.meta.env.VITE_KEY,
-): Promise<CustomModule | undefined> {
-    const allModules: Array<CustomModule> = await churchtoolsClient.get(`/custommodules`);
-    return allModules.find((item: CustomModule) => item.shorty === extensionkey);
-}
-
-/**
- * Like `findModule`, but throws when the module is absent.
+ * The extension's module, or undefined when it is not installed yet.
  *
- * Callers that need to tell "not installed yet" from "could not ask" must use
- * `findModule`: a thrown error here conflates a first run with a failed
- * request, and treating a failed request as "nothing configured" hands the
- * configuration form to whoever is looking.
+ * A failed request throws rather than answering "undefined": a first run and
+ * a failed read are different facts, and treating a failed read as "nothing
+ * configured" would hand the configuration form to whoever is looking.
  */
-export async function getModule(
-    extensionkey: string = import.meta.env.VITE_KEY,
-): Promise<CustomModule> {
-    //console.log("Extension Key:", extensionkey);
-    const allModules: Array<CustomModule> = await churchtoolsClient.get(`/custommodules`);
-    //console.log("Retrieving Modules", allModules);
-
-    const module = allModules.find((item: CustomModule) => item.shorty === extensionkey);
-
-    if (!module) {
-        throw new Error(`Module for extension key "${extensionkey}" not found.`);
-    }
-
-    return module;
+export async function findModule(extensionKey: string): Promise<CustomModule | undefined> {
+    const modules = await churchtoolsClient.get<CustomModule[]>('/custommodules');
+    return modules.find((m) => m.shorty === extensionKey);
 }
 
-/**
- * Creates the module only when the lookup succeeded and found nothing. A
- * failed lookup propagates: treating it as "absent" would create a second
- * module next to the one we merely could not read.
- */
+/** Creates the module only when the lookup succeeded and found nothing. */
 export async function getOrCreateModule(
-    extensionkey: string,
+    extensionKey: string,
     name: string,
     description: string,
 ): Promise<CustomModule> {
-    return (await findModule(extensionkey)) ?? createModule(extensionkey, name, description);
-}
-
-async function createModule(
-    extensionkey: string,
-    name: string,
-    description: string,
-): Promise<CustomModule> {
-    const createData: CustomModuleCreate = {
-        name: name,
-        shorty: extensionkey,
-        description: description,
+    const existing = await findModule(extensionKey);
+    if (existing) return existing;
+    const create: CustomModuleCreate = {
+        name,
+        shorty: extensionKey,
+        description,
         sortKey: 100,
         // Required by the API — without it the call fails with HTTP 400
-        // `validation.boolean`, which made first-run setup impossible on a
-        // fresh instance. False because the extension is reached through the
-        // menu entry the installed ZIP registers, not through a second one
-        // this call would add.
+        // `validation.boolean`. False because the extension is reached
+        // through the menu entry the installed ZIP registers, not through a
+        // second one this call would add.
         inMenu: false,
     };
-
-    const newModule = await churchtoolsClient.post<CustomModule>('/custommodules', createData);
-
-    console.log(`Created new module for ${extensionkey}:`, newModule);
-    return newModule;
+    return await churchtoolsClient.post<CustomModule>('/custommodules', create);
 }
 
-/**
- * Resolves module id either on provided number or using the getModule function
- * @param moduleId optional if known
- * @returns moduleId
- */
-async function resolveModuleId(moduleId?: number): Promise<number> {
-    if (moduleId) return moduleId;
-    const module = await getModule();
-    return module.id;
-}
+/** A stored category: its metadata, and its `data` parsed from JSON. */
+export type StoredCategory = {
+    category: CustomModuleDataCategory;
+    data: unknown;
+};
 
 /**
- * ────────────────────────────────────────────────
- *  CUSTOM DATA CATEGORIES
- * ────────────────────────────────────────────────
+ * The category with the given shorty, or undefined when there is none.
+ *
+ * Throws when its data is not valid JSON. An unreadable record is not an
+ * empty one: read as `{}`, it would make a configured installation look
+ * unconfigured.
  */
-
-/**
- * retrieves a list of all custom data categories
- * T is used to cast JSON data into readable object
- * @param moduleId - optional module id - otherwise tries default
- * @returns list of category objects and repective data following T
- * implements GET `/custommodules/{moduleId}/customdatacategories`
- */
-export async function getCustomDataCategories<T extends object>(
-    moduleId?: number,
-): Promise<(T & Omit<CustomModuleDataCategory, 'data'>)[]> {
-    moduleId = await resolveModuleId(moduleId);
-
-    const categories: CustomModuleDataCategory[] = await churchtoolsClient.get(
-        `/custommodules/${moduleId}/customdatacategories`,
-    );
-
-    return categories.map((category) => {
-        const { data, ...rest } = category;
-        const parsedData: T = data ? (JSON.parse(data) as T) : ({} as T);
-
-        return {
-            ...rest,
-            ...parsedData,
-        };
-    });
-}
-
-/**
- * retrieve a single category
- * @param shorty short name of the extension - preferably matching extension name
- * @param moduleId - optional module id - otherwise tries default
- * @returns the one category with matching name - if it exists
- * @throws when the category's data is not valid JSON — an unreadable record
- *   is not an empty one
- */
-export async function getCustomDataCategory<T extends object>(
+export async function readCategory(
+    moduleId: number,
     shorty: string,
-    moduleId?: number,
-): Promise<(T & Omit<CustomModuleDataCategory, 'data'>) | undefined> {
-    const categories = await getCustomDataCategories<T>(moduleId);
-    return categories.find((category) => category.shorty === shorty);
-}
-
-/**
- * Create a new custom data category
- * Implements: POST `/custommodules/{moduleId}/customdatacategories`
- * @param payload new data to be saved
- * @param moduleId - optional module id - otherwise tries default
- * @returns - the created category
- */
-export async function createCustomDataCategory(
-    payload: CustomModuleDataCategoryCreate,
-    moduleId?: number,
-): Promise<CustomModuleDataCategory> {
-    moduleId = await resolveModuleId(moduleId);
-    const newCategory: CustomModuleDataCategory = await churchtoolsClient.post(
+): Promise<StoredCategory | undefined> {
+    const categories = await churchtoolsClient.get<CustomModuleDataCategory[]>(
         `/custommodules/${moduleId}/customdatacategories`,
-        payload,
     );
-    console.log(`Created category in module ${moduleId}:`, newCategory);
-    return newCategory;
+    const category = categories.find((c) => c.shorty === shorty);
+    if (!category) return undefined;
+    return { category, data: category.data ? JSON.parse(category.data) : undefined };
 }
 
 /**
- * update an existing custom data category
- * implements  PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`
+ * Create a category, or replace an existing one.
  *
- * The PUT **replaces** the record, so the payload has to be complete. A body
+ * The PUT **replaces** the record, so the payload has to be complete: a body
  * carrying only `data` is rejected with HTTP 400 and validation errors on
- * `customModuleId` and `shorty` — which is why this takes the full
- * `CustomModuleDataCategoryCreate` rather than a `Partial`. The type used to
- * promise a partial update the API does not offer.
- *
- * @param moduleId - optional module id - otherwise tries default
+ * `customModuleId` and `shorty`.
  */
-export async function updateCustomDataCategory(
-    dataCategoryId: number,
+export async function writeCategory(
+    moduleId: number,
     payload: CustomModuleDataCategoryCreate,
-    moduleId?: number,
+    existingId?: number,
 ): Promise<void> {
-    moduleId = await resolveModuleId(moduleId);
-    const updatedCategory: CustomModuleDataCategory = await churchtoolsClient.put(
-        `/custommodules/${moduleId}/customdatacategories/${dataCategoryId}`,
-        payload,
-    );
-    console.log(`Updated category ${dataCategoryId} in module ${moduleId}:`, updatedCategory);
-}
-
-/**
- * Delete an existing custom data category
- * implements DELETE `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}`
- * @param moduleId - optional module id - otherwise tries default
- */
-export async function deleteCustomDataCategory(
-    dataCategoryId: number,
-    moduleId?: number,
-): Promise<void> {
-    moduleId = await resolveModuleId(moduleId);
-    await churchtoolsClient.deleteApi(
-        `/custommodules/${moduleId}/customdatacategories/${dataCategoryId}`,
-    );
-    console.log(`Deleted category ${dataCategoryId} from module ${moduleId}`);
-}
-
-/**
- * ────────────────────────────────────────────────
- *  CUSTOM DATA VALUES
- * ────────────────────────────────────────────────
- */
-
-/** Get existing custom data value and cast it's JSON content into readable format of type T
- * implements GET `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`
- * @param moduleId - optional module id - otherwise tries default
- * @returns - the custom data value casted as T and metadata
- */
-export async function getCustomDataValues<T extends object>(
-    dataCategoryId: number,
-    moduleId?: number,
-): Promise<(T & Omit<CustomModuleDataValue, 'value'>)[]> {
-    moduleId = await resolveModuleId(moduleId);
-
-    const values: (Omit<CustomModuleDataValue, 'value'> & { value: string })[] =
-        await churchtoolsClient.get(
-            `/custommodules/${moduleId}/customdatacategories/${dataCategoryId}/customdatavalues`,
-        );
-
-    return values.map((val) => {
-        const { value, ...rest } = val;
-
-        if (value == null) {
-            throw new Error(`Custom data value ${val.id} has null or undefined 'value' field.`);
-        }
-
-        const parsedData = safeParseJSON(value, {} as T);
-
-        return {
-            ...rest,
-            ...parsedData,
-        };
-    });
-}
-
-/**
- * Create a new custom data value
- * implements POST `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues`
- * @param moduleId - optional module id - otherwise tries default
- * @returns - the created custom data value
- */
-export async function createCustomDataValue(
-    payload: CustomModuleDataValueCreate,
-    moduleId?: number,
-): Promise<CustomModuleDataValue> {
-    moduleId = await resolveModuleId(moduleId);
-    const newValue: CustomModuleDataValue = await churchtoolsClient.post(
-        `/custommodules/${moduleId}/customdatacategories/${payload.dataCategoryId}/customdatavalues`,
-        payload,
-    );
-    console.log(`Created data value in category ${payload.dataCategoryId}:`, newValue);
-    return newValue;
-}
-
-/**
- * update an existing custom data value.
- * implements PUT `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues/{valueId}`
- * @param moduleId - optional module id - otherwise tries default
- */
-export async function updateCustomDataValue(
-    dataCategoryId: number,
-    valueId: number,
-    payload: Partial<CustomModuleDataValue>,
-    moduleId?: number,
-): Promise<void> {
-    moduleId = await resolveModuleId(moduleId);
-    const updatedValue: CustomModuleDataValue = await churchtoolsClient.put(
-        `/custommodules/${moduleId}/customdatacategories/${dataCategoryId}/customdatavalues/${valueId}`,
-        payload,
-    );
-    console.log(`Updated data value ${valueId} in category ${dataCategoryId}:`, updatedValue);
-}
-
-/**
- * delete an existing custom data value
- * implements DELETE `/custommodules/{moduleId}/customdatacategories/{dataCategoryId}/customdatavalues/{valueId}`
- * @param moduleId - optional module id - otherwise tries default
- */
-export async function deleteCustomDataValue(
-    dataCategoryId: number,
-    valueId: number,
-    moduleId?: number,
-): Promise<void> {
-    moduleId = await resolveModuleId(moduleId);
-    await churchtoolsClient.deleteApi(
-        `/custommodules/${moduleId}/customdatacategories/${dataCategoryId}/customdatavalues/${valueId}`,
-    );
-    console.log(`Deleted data value ${valueId} from category ${dataCategoryId}`);
-}
-
-/**
- * ────────────────────────────────────────────────
- *  Other Utils
- * ────────────────────────────────────────────────
- */
-
-function safeParseJSON<T>(json: string | null | undefined, fallback: T): T {
-    if (!json) return fallback;
-    try {
-        return JSON.parse(json) as T;
-    } catch (err) {
-        console.warn('Failed to parse JSON:', err);
-        return fallback;
-    }
+    const base = `/custommodules/${moduleId}/customdatacategories`;
+    if (existingId === undefined) await churchtoolsClient.post(base, payload);
+    else await churchtoolsClient.put(`${base}/${existingId}`, payload);
 }
