@@ -12,30 +12,52 @@ beforeEach(() => {
     vi.useRealTimers();
 });
 
+/** A page as the client returns it with `rawResponse`. */
+const page = <T>(data: T[], lastPage?: number) => ({
+    data: { data, meta: lastPage === undefined ? undefined : { pagination: { lastPage } } },
+});
+
 describe('fetchAllPages', () => {
+    it('reads up to the last page the server reports, even past a short page', async () => {
+        // A server that caps `limit` below what was asked returns short pages
+        // that are not the end — the pagination block says how many follow.
+        client.get
+            .mockResolvedValueOnce(page([1], 3))
+            .mockResolvedValueOnce(page([2], 3))
+            .mockResolvedValueOnce(page([3], 3));
+        await expect(fetchAllPages('/x', 200)).resolves.toEqual([1, 2, 3]);
+        expect(client.get).toHaveBeenCalledTimes(3);
+    });
+
+    it('stops at the reported last page without asking for another', async () => {
+        client.get.mockResolvedValueOnce(page([1, 2], 1));
+        await expect(fetchAllPages('/x', 2)).resolves.toEqual([1, 2]);
+        expect(client.get).toHaveBeenCalledOnce();
+    });
+
     it('reads pages until a short one', async () => {
         client.get
-            .mockResolvedValueOnce([1, 2])
-            .mockResolvedValueOnce([3, 2])
-            .mockResolvedValueOnce([4]);
+            .mockResolvedValueOnce(page([1, 2]))
+            .mockResolvedValueOnce(page([3, 2]))
+            .mockResolvedValueOnce(page([4]));
         await expect(fetchAllPages('/x?a=1', 2)).resolves.toEqual([1, 2, 3, 2, 4]);
-        expect(client.get).toHaveBeenNthCalledWith(1, '/x?a=1&limit=2&page=1');
-        expect(client.get).toHaveBeenNthCalledWith(3, '/x?a=1&limit=2&page=3');
+        expect(client.get.mock.calls[0][0]).toBe('/x?a=1&limit=2&page=1');
+        expect(client.get.mock.calls[2][0]).toBe('/x?a=1&limit=2&page=3');
     });
 
     it('stops on an empty page', async () => {
-        client.get.mockResolvedValueOnce([1, 2]).mockResolvedValueOnce([]);
+        client.get.mockResolvedValueOnce(page([1, 2])).mockResolvedValueOnce(page([]));
         await expect(fetchAllPages('/x', 2)).resolves.toEqual([1, 2]);
-        expect(client.get).toHaveBeenNthCalledWith(1, '/x?limit=2&page=1');
+        expect(client.get.mock.calls[0][0]).toBe('/x?limit=2&page=1');
     });
 
     it('throws at the page cap instead of returning a truncated list', async () => {
-        client.get.mockResolvedValue([1]);
+        client.get.mockResolvedValue(page([1]));
         await expect(fetchAllPages('/x', 1)).rejects.toThrow(/unvollständig/);
     });
 
     it('throws when a page fails', async () => {
-        client.get.mockResolvedValueOnce([1]).mockRejectedValueOnce(httpError(500));
+        client.get.mockResolvedValueOnce(page([1])).mockRejectedValueOnce(httpError(500));
         await expect(fetchAllPages('/x', 1)).rejects.toThrow('HTTP 500');
     });
 });

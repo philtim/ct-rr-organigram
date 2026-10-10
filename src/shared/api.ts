@@ -98,19 +98,35 @@ export async function mapWithConcurrency<T, R>(
  * it. That is the one failure mode this project treats as worse than an
  * error, so this throws when a page fails, and throws at the page cap rather
  * than returning a short list.
+ *
+ * It stops at the last page the server reports (`meta.pagination.lastPage`),
+ * not at the first short page: a short page only means "the end" if the
+ * server honoured the requested `limit`, and the pagination block says so
+ * without that assumption. The short-page rule remains the fallback for a
+ * response that carries no pagination block.
  */
 const MAX_PAGES = 100;
+
+type RawPage<T> = { data?: { data?: T[]; meta?: { pagination?: { lastPage?: number } } } };
 
 export async function fetchAllPages<T>(url: string, limit: number): Promise<T[]> {
     const separator = url.includes('?') ? '&' : '?';
     const rows: T[] = [];
     for (let page = 1; page <= MAX_PAGES; page++) {
-        const batch = await withRetryOn429(() =>
-            ct.get<T[]>(`${url}${separator}limit=${limit}&page=${page}`),
+        const response = await withRetryOn429(() =>
+            ct.get<RawPage<T>>(
+                `${url}${separator}limit=${limit}&page=${page}`,
+                {},
+                {
+                    rawResponse: true,
+                },
+            ),
         );
-        if (!batch || batch.length === 0) return rows;
+        const batch = response?.data?.data ?? [];
+        const lastPage = response?.data?.meta?.pagination?.lastPage;
         rows.push(...batch);
-        if (batch.length < limit) return rows;
+        if (batch.length === 0) return rows;
+        if (lastPage !== undefined ? page >= lastPage : batch.length < limit) return rows;
     }
     throw new Error(COPY.listTruncated(url, MAX_PAGES * limit));
 }
