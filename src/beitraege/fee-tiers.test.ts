@@ -293,7 +293,7 @@ describe('summarize', () => {
             exemptJuniorLeader: 0,
             exemptLadder: 1,
             perRung: [2, 1, 1],
-            familiesWithThreeOrMore: 1,
+            familiesOnLastRung: 1,
             totalCents: 22000,
         });
     });

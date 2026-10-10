@@ -68,25 +68,34 @@ function rateCells(ladderLength: number): RateCells {
     };
 }
 
-const COLUMNS: Array<{ header: string; width: number }> = [
-    { header: 'Nachname', width: 16 },
-    { header: 'Vorname', width: 16 },
-    { header: 'Geburtsdatum', width: 13 },
-    { header: 'Alter am Stichtag', width: 11 },
-    { header: 'PLZ', width: 8 },
-    { header: 'Ort', width: 16 },
-    { header: 'Straße', width: 26 },
-    { header: 'Teilstamm', width: 24 },
-    { header: 'Team(s)', width: 30 },
-    { header: 'Familien-ID', width: 11 },
-    { header: 'RR-Kinder in Familie', width: 11 },
-    { header: 'Eigener Satz (MA/JL)', width: 12 },
-    { header: 'Kind-Nr. (beitragspflichtig)', width: 13 },
-    { header: 'Beitragspflicht', width: 15 },
-    { header: 'Beitrag in €', width: 13 },
-    { header: 'Hinweis', width: 26 },
-    { header: 'Datenprüfung', width: 34 },
-];
+const COLUMNS = [
+    { key: 'lastName', header: 'Nachname', width: 16 },
+    { key: 'firstName', header: 'Vorname', width: 16 },
+    { key: 'birthday', header: 'Geburtsdatum', width: 13 },
+    { key: 'age', header: 'Alter am Stichtag', width: 11 },
+    { key: 'zip', header: 'PLZ', width: 8 },
+    { key: 'city', header: 'Ort', width: 16 },
+    { key: 'street', header: 'Straße', width: 26 },
+    { key: 'stamm', header: 'Teilstamm', width: 24 },
+    { key: 'teams', header: 'Team(s)', width: 30 },
+    { key: 'familyId', header: 'Familien-ID', width: 11 },
+    { key: 'familySize', header: 'RR-Kinder in Familie', width: 11 },
+    { key: 'ownRate', header: 'Eigener Satz (MA/JL)', width: 12 },
+    { key: 'childNo', header: 'Kind-Nr. (beitragspflichtig)', width: 13 },
+    { key: 'liability', header: 'Beitragspflicht', width: 15 },
+    { key: 'fee', header: 'Beitrag in €', width: 13 },
+    { key: 'reason', header: 'Hinweis', width: 26 },
+    { key: 'review', header: 'Datenprüfung', width: 34 },
+] as const;
+
+/**
+ * Column letters, derived from the order above. The formulas name columns by
+ * key, so inserting or moving a column cannot leave one pointing at its
+ * neighbour.
+ */
+const COL = Object.fromEntries(
+    COLUMNS.map((column, i) => [column.key, String.fromCharCode(65 + i)]),
+) as Record<(typeof COLUMNS)[number]['key'], string>;
 
 /**
  * The three sheets of the Beitragsabrechnung, as plain data.
@@ -147,6 +156,7 @@ function participantRow(
     // A Mitarbeiter or Juniorleiter row is tinted so it reads as "exempt for a
     // reason that has nothing to do with siblings" at a glance.
     const tint = row.isStaff || row.isJuniorLeader ? STAFF_FILL : undefined;
+    const { familyId: J, ownRate: L, fee: O } = COL;
     const text = (value: string) => ({ value, type: String, backgroundColor: tint });
     const formula = (value: string) => ({
         value,
@@ -172,12 +182,14 @@ function participantRow(
         // The one column the office is meant to correct — hence the fill, and
         // hence every following column being a formula over it.
         { value: row.familyKey, type: String, backgroundColor: INPUT_FILL },
-        formula(`COUNTIF($J$2:$J$${lastRow},$J${r})`),
+        formula(`COUNTIF($${J}$2:$${J}$${lastRow},$${J}${r})`),
         // Three states, because the two own-rate cases carry different rates:
         // MA, JL, or an ordinary child who takes a rung of the ladder.
         text(row.isStaff ? 'MA' : row.isJuniorLeader ? 'JL' : 'nein'),
-        formula(`IF($L${r}<>"nein","",COUNTIFS($J$2:$J${r},$J${r},$L$2:$L${r},"nein"))`),
-        formula(`IF($O${r}=0,"beitragsfrei","beitragspflichtig")`),
+        formula(
+            `IF($${L}${r}<>"nein","",COUNTIFS($${J}$2:$${J}${r},$${J}${r},$${L}$2:$${L}${r},"nein"))`,
+        ),
+        formula(`IF($${O}${r}=0,"beitragsfrei","beitragspflichtig")`),
         {
             value: feeFormula(r, cells),
             type: 'Formula' as const,
@@ -189,8 +201,8 @@ function participantRow(
         // otherwise see a paying row labelled "beitragsfrei" and counted
         // among the exemptions.
         formula(
-            `IF($O${r}>0,"",IF($L${r}="MA","${EXEMPT_STAFF}",` +
-                `IF($L${r}="JL","${EXEMPT_JUNIOR}","${EXEMPT_LADDER}")))`,
+            `IF($${O}${r}>0,"",IF($${L}${r}="MA","${EXEMPT_STAFF}",` +
+                `IF($${L}${r}="JL","${EXEMPT_JUNIOR}","${EXEMPT_LADDER}")))`,
         ),
         { value: row.reviewNote, type: String, backgroundColor: tint, wrap: true },
     ];
@@ -223,9 +235,7 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     /**
      * Rows are pushed in order and their Excel numbers remembered as we go.
      * The ladder has as many rungs as the Stamm configured, so no row number
-     * below it can be written down in advance — the previous version hardcoded
-     * B4/B5/C12/C13 and would have pointed at the wrong cells the moment
-     * anybody used a ladder of a different length.
+     * below it can be written down in advance.
      */
     const data: ExportSheet['data'] = [];
     const push = (row: ExportSheet['data'][number]): number => {
@@ -236,17 +246,30 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     push(title(`RR Beiträge zum ${formatDate(meta.dueDate)} — Zusammenfassung`));
     push([]);
     push(section('EINGABE — Beitragssätze'));
+    // The rates land where `rateCells` says they do — the participant rows'
+    // formulas point there. Checked, not hoped: a heading added above would
+    // otherwise shift every rate one row and bill from the wrong cell.
+    const placed = (row: number, expected: number) => {
+        if (row !== expected)
+            throw new Error(`Beitragssatz in Zeile ${row}, erwartet ${expected}.`);
+    };
     ladder.forEach((cents, i) => {
         const name = i === ladder.length - 1 ? `ab ${i + 1}. Kind` : `${i + 1}. Kind`;
-        push([label(`Beitrag ${name} (€)`), rate(cents)]);
+        placed(push([label(`Beitrag ${name} (€)`), rate(cents)]), cells.rungRows[i]);
     });
-    push([label('Beitrag Mitarbeiter (€)'), rate(meta.config.staffCents)]);
-    push([label('Beitrag Juniorleiter (€)'), rate(meta.config.juniorLeaderCents)]);
+    placed(push([label('Beitrag Mitarbeiter (€)'), rate(meta.config.staffCents)]), cells.staffRow);
+    placed(
+        push([label('Beitrag Juniorleiter (€)'), rate(meta.config.juniorLeaderCents)]),
+        cells.juniorRow,
+    );
     push([]);
 
-    push([label('Aktive Teilnehmer (gelistet)'), count(`COUNTA(${T('A')})`)]);
-    push([label('davon beitragspflichtig'), count(`COUNTIF(${T('N')},"beitragspflichtig")`)]);
-    push([label('davon beitragsfrei'), count(`COUNTIF(${T('N')},"beitragsfrei")`)]);
+    push([label('Aktive Teilnehmer (gelistet)'), count(`COUNTA(${T(COL.lastName)})`)]);
+    push([
+        label('davon beitragspflichtig'),
+        count(`COUNTIF(${T(COL.liability)},"beitragspflichtig")`),
+    ]);
+    push([label('davon beitragsfrei'), count(`COUNTIF(${T(COL.liability)},"beitragsfrei")`)]);
     push([]);
 
     // One line per rung: how many children sit on it, and what they add up to.
@@ -255,8 +278,8 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
         const position = i + 1;
         const isLast = i === ladder.length - 1;
         const criterion = isLast
-            ? `COUNTIFS(${T('N')},"beitragspflichtig",${T('M')},">=${position}")`
-            : `COUNTIFS(${T('N')},"beitragspflichtig",${T('M')},${position})`;
+            ? `COUNTIFS(${T(COL.liability)},"beitragspflichtig",${T(COL.childNo)},">=${position}")`
+            : `COUNTIFS(${T(COL.liability)},"beitragspflichtig",${T(COL.childNo)},${position})`;
         const row = push([
             label(
                 isLast ? `Kinder ab Satz ${position}. Kind` : `Kinder zum Satz ${position}. Kind`,
@@ -274,12 +297,12 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     const ownRateRows = [
         push([
             label('Mitarbeiter mit eigenem Satz'),
-            count(`COUNTIFS(${T('L')},"MA",${T('N')},"beitragspflichtig")`),
+            count(`COUNTIFS(${T(COL.ownRate)},"MA",${T(COL.liability)},"beitragspflichtig")`),
             euro(`B${data.length + 1}*$B$${cells.staffRow}`),
         ]),
         push([
             label('Juniorleiter mit eigenem Satz'),
-            count(`COUNTIFS(${T('L')},"JL",${T('N')},"beitragspflichtig")`),
+            count(`COUNTIFS(${T(COL.ownRate)},"JL",${T(COL.liability)},"beitragspflichtig")`),
             euro(`B${data.length + 1}*$B$${cells.juniorRow}`),
         ]),
     ];
@@ -289,7 +312,7 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
         { value: 'Gesamtbetrag (€)', type: String, fontWeight: 'bold' as const },
         undefined,
         {
-            value: `SUM(${T('O')})`,
+            value: `SUM(${T(COL.fee)})`,
             type: 'Formula' as const,
             format: EURO_FORMAT,
             fontWeight: 'bold' as const,
@@ -298,16 +321,19 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     push([]);
 
     push(section('Grund der Beitragsfreiheit'));
-    push([label('    Mitarbeiter'), count(`COUNTIF(${T('P')},"${EXEMPT_STAFF}")`)]);
-    push([label('    Juniorleiter'), count(`COUNTIF(${T('P')},"${EXEMPT_JUNIOR}")`)]);
-    push([label('    durch die Staffel'), count(`COUNTIF(${T('P')},"${EXEMPT_LADDER}")`)]);
+    push([label('    Mitarbeiter'), count(`COUNTIF(${T(COL.reason)},"${EXEMPT_STAFF}")`)]);
+    push([label('    Juniorleiter'), count(`COUNTIF(${T(COL.reason)},"${EXEMPT_JUNIOR}")`)]);
+    push([label('    durch die Staffel'), count(`COUNTIF(${T(COL.reason)},"${EXEMPT_LADDER}")`)]);
     push([]);
 
     push([label('Familien insgesamt'), { value: meta.families, type: Number }]);
-    push([
-        label('Familien mit 3 oder mehr RR-Kindern'),
-        { value: meta.totals.familiesWithThreeOrMore, type: Number },
-    ]);
+    const rungs = meta.config.childCents.length;
+    if (rungs > 1) {
+        push([
+            label(`Familien mit ${rungs} oder mehr RR-Kindern`),
+            { value: meta.totals.familiesOnLastRung, type: Number },
+        ]);
+    }
     push([]);
 
     push(section('Kontrolle'));
@@ -563,10 +589,11 @@ function feeFormula(r: number, cells: RateCells): string {
     const staff = `${SHEET_SUMMARY}!$B$${cells.staffRow}`;
     const junior = `${SHEET_SUMMARY}!$B$${cells.juniorRow}`;
     const n = cells.rungRows.length;
-    if (n === 0) return `IF($L${r}="MA",${staff},IF($L${r}="JL",${junior},0))`;
+    const { ownRate: L, childNo: M } = COL;
+    if (n === 0) return `IF($${L}${r}="MA",${staff},IF($${L}${r}="JL",${junior},0))`;
 
     const ladder =
         `INDEX(${SHEET_SUMMARY}!$B$${cells.rungRows[0]}:$B$${cells.rungRows[n - 1]},` +
-        `MIN($M${r},${n}))`;
-    return `IF($L${r}="MA",${staff},IF($L${r}="JL",${junior},${ladder}))`;
+        `MIN($${M}${r},${n}))`;
+    return `IF($${L}${r}="MA",${staff},IF($${L}${r}="JL",${junior},${ladder}))`;
 }

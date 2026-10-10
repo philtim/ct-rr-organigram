@@ -20,6 +20,9 @@ export const COPY = {
     configMissing:
         'Diese Ansicht ist noch nicht konfiguriert. Unter Admin → Extensions müssen ' +
         'Hauptstamm-Gruppe, Teilstämme und die Gruppentypen der Teams festgelegt werden.',
+    feesNoTeams:
+        'Unter den konfigurierten Teilstämmen wurden keine Teams gefunden. Bitte die ' +
+        'Teilstamm- und Team-Auswahl in der Konfiguration prüfen.',
     feesNotConfigured:
         'Für die Beitragsabrechnung sind noch keine Beitragssätze hinterlegt. Die Staffel ' +
         'wird unter Admin → Extensions festgelegt.',
@@ -50,6 +53,7 @@ export const COPY = {
     tabOrganigram: 'Organigramm',
     tabBeitraege: 'Beitragsabrechnung',
     beitraegeTitle: 'RR Beitragsabrechnung',
+    teamCount: (n: number) => `${n} ${n === 1 ? 'Team' : 'Teams'}`,
     beitraegeLoadError: 'Die Beitragsdaten konnten nicht geladen werden.',
     beitraegeAggregatesOnly:
         'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
@@ -72,7 +76,7 @@ export const COPY = {
     feesExemptJuniorLeader: 'davon Juniorleiter',
     feesFamiliesTitle: 'Familien',
     feesFamilies: 'Familien gesamt',
-    feesFamiliesThreePlus: 'mit 3+ RR-Kindern',
+    feesFamiliesOnLastRung: (rungs: number) => `mit ${rungs}+ RR-Kindern`,
     feesQualityTitle: 'Unvollständige Daten',
     feesQualityHint: (count: number) =>
         `${count} ${count === 1 ? 'Teilnehmer hat' : 'Teilnehmer haben'} weder eine Adresse ` +

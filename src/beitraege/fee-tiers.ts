@@ -111,7 +111,12 @@ export type FeeTotals = {
     exemptLadder: number;
     /** Paying children per rung, index 0 = first child. Trails the ladder's length. */
     perRung: number[];
-    familiesWithThreeOrMore: number;
+    /**
+     * Families with at least as many RR children as the ladder has rungs —
+     * the ones the last rung applies to. Zero with a one-rung ladder, where
+     * every child pays the same and the figure would say nothing.
+     */
+    familiesOnLastRung: number;
     totalCents: number;
 };
 
@@ -161,7 +166,8 @@ export function summarize(
         exemptJuniorLeader,
         exemptLadder,
         perRung,
-        familiesWithThreeOrMore: families.filter((f) => f.personIds.length >= 3).length,
+        familiesOnLastRung:
+            rungCount > 1 ? families.filter((f) => f.personIds.length >= rungCount).length : 0,
         totalCents,
     };
 }

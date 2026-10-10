@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
+import StatGrid from './StatGrid.vue';
 import { formatEuro, useBeitraege } from './useBeitraege';
 import { COPY } from '@/shared/constants';
 import type { Settings } from '@/shared/settings';
@@ -29,6 +30,41 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
  * the one the figures were computed for, not today's.
  */
 const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', timeZone: 'UTC' });
+
+/** The figure rows, so the template lays them out instead of reaching into totals. */
+const grids = computed(() => {
+    if (state.value.phase !== 'ready') return null;
+    const { totals, quality, config, leaders, members, families } = state.value.result;
+    const rungs = config.childCents.length;
+    return {
+        organigram: [
+            { label: COPY.feesLeaders, value: leaders },
+            { label: COPY.feesMembers, value: members },
+        ],
+        people: [
+            { label: COPY.feesParticipants, value: totals.participants },
+            { label: COPY.feesLiable, value: totals.liable },
+            { label: COPY.feesExempt, value: totals.exempt },
+        ],
+        exempt: [
+            { label: COPY.feesExemptStaff, value: totals.exemptStaff },
+            { label: COPY.feesExemptLadder, value: totals.exemptLadder },
+            { label: COPY.feesExemptJuniorLeader, value: totals.exemptJuniorLeader },
+        ],
+        // "With N+ children" only says something when the ladder has steps.
+        families: [
+            { label: COPY.feesFamilies, value: families },
+            ...(rungs > 1
+                ? [{ label: COPY.feesFamiliesOnLastRung(rungs), value: totals.familiesOnLastRung }]
+                : []),
+        ],
+        quality: [
+            { label: COPY.feesMissingAddress, value: quality.missingAddress },
+            { label: COPY.feesMissingRelationship, value: quality.withoutRelationship },
+            { label: COPY.feesMissingBirthday, value: quality.missingBirthday },
+        ],
+    };
+});
 </script>
 
 <template>
@@ -38,14 +74,21 @@ const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', time
                 <h1 class="rr-fees__title">{{ COPY.beitraegeTitle }}</h1>
                 <p v-if="state.phase === 'ready'" class="rr-fees__subtitle">
                     {{ COPY.timestampPrefix }}{{ dateFormat.format(state.result.loadedAt) }} ·
-                    {{ state.result.teamCount }} Teams
+                    {{ COPY.teamCount(state.result.teamCount) }}
                 </p>
                 <p v-else-if="state.phase === 'loading'" class="rr-fees__subtitle">
                     {{ COPY.loading }}
                 </p>
             </header>
 
-            <section v-if="state.phase === 'error'" class="rr-fees__panel rr-fees__panel--error">
+            <section v-if="state.phase === 'unconfigured'" class="rr-fees__panel" role="alert">
+                <p class="rr-fees__message">{{ state.message }}</p>
+            </section>
+
+            <section
+                v-else-if="state.phase === 'error'"
+                class="rr-fees__panel rr-fees__panel--error"
+            >
                 <p class="rr-fees__message">{{ COPY.beitraegeLoadError }}</p>
                 <p class="rr-fees__detail">{{ state.message }}</p>
             </section>
@@ -54,7 +97,7 @@ const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', time
                 <p class="rr-fees__message">{{ COPY.loading }}</p>
             </section>
 
-            <template v-else>
+            <template v-else-if="grids">
                 <section class="rr-fees__panel rr-fees__panel--total">
                     <p class="rr-fees__total-label">{{ COPY.feesTotalLabel }}</p>
                     <p class="rr-fees__total">{{ formatEuro(state.result.totals.totalCents) }}</p>
@@ -70,16 +113,7 @@ const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', time
 
                 <section class="rr-fees__panel">
                     <h2 class="rr-fees__section-title">{{ COPY.feesOrganigramTitle }}</h2>
-                    <dl class="rr-fees__grid">
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesLeaders }}</dt>
-                            <dd class="rr-fees__stat-value">{{ state.result.leaders }}</dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesMembers }}</dt>
-                            <dd class="rr-fees__stat-value">{{ state.result.members }}</dd>
-                        </div>
-                    </dl>
+                    <StatGrid :stats="grids.organigram" />
                     <p class="rr-fees__detail">
                         {{
                             COPY.feesReconciliation(
@@ -93,60 +127,13 @@ const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', time
 
                 <section class="rr-fees__panel">
                     <h2 class="rr-fees__section-title">{{ COPY.feesPeopleTitle }}</h2>
-                    <dl class="rr-fees__grid">
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesParticipants }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.totals.participants }}
-                            </dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesLiable }}</dt>
-                            <dd class="rr-fees__stat-value">{{ state.result.totals.liable }}</dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesExempt }}</dt>
-                            <dd class="rr-fees__stat-value">{{ state.result.totals.exempt }}</dd>
-                        </div>
-                    </dl>
-                    <dl class="rr-fees__grid rr-fees__grid--sub">
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesExemptStaff }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.totals.exemptStaff }}
-                            </dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesExemptLadder }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.totals.exemptLadder }}
-                            </dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">
-                                {{ COPY.feesExemptJuniorLeader }}
-                            </dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.totals.exemptJuniorLeader }}
-                            </dd>
-                        </div>
-                    </dl>
+                    <StatGrid :stats="grids.people" />
+                    <StatGrid :stats="grids.exempt" sub />
                 </section>
 
                 <section class="rr-fees__panel">
                     <h2 class="rr-fees__section-title">{{ COPY.feesFamiliesTitle }}</h2>
-                    <dl class="rr-fees__grid">
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesFamilies }}</dt>
-                            <dd class="rr-fees__stat-value">{{ state.result.families }}</dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesFamiliesThreePlus }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.totals.familiesWithThreeOrMore }}
-                            </dd>
-                        </div>
-                    </dl>
+                    <StatGrid :stats="grids.families" />
                 </section>
 
                 <section
@@ -157,26 +144,7 @@ const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', time
                     <p class="rr-fees__detail">
                         {{ COPY.feesQualityHint(state.result.quality.unmatchable) }}
                     </p>
-                    <dl class="rr-fees__grid rr-fees__grid--sub">
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesMissingAddress }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.quality.missingAddress }}
-                            </dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesMissingRelationship }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.quality.withoutRelationship }}
-                            </dd>
-                        </div>
-                        <div class="rr-fees__stat">
-                            <dt class="rr-fees__stat-label">{{ COPY.feesMissingBirthday }}</dt>
-                            <dd class="rr-fees__stat-value">
-                                {{ state.result.quality.missingBirthday }}
-                            </dd>
-                        </div>
-                    </dl>
+                    <StatGrid :stats="grids.quality" sub />
                 </section>
 
                 <section class="rr-fees__panel">
@@ -298,38 +266,6 @@ const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', time
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--rr-text-secondary);
-}
-
-.rr-fees__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.75rem;
-    margin: 0;
-}
-
-.rr-fees__grid--sub {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 0.5px solid var(--rr-border-tertiary);
-}
-
-.rr-fees__stat {
-    background: var(--rr-bg-secondary);
-    border-radius: var(--rr-radius-md);
-    padding: 0.75rem 0.875rem;
-}
-
-.rr-fees__stat-label {
-    font-size: 0.8125rem;
-    color: var(--rr-text-secondary);
-    margin: 0;
-}
-
-.rr-fees__stat-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    margin: 0.125rem 0 0;
 }
 
 .rr-fees__message {

@@ -5,15 +5,13 @@ import {
     fetchTeamMembers,
     resolveTeams,
 } from './beitraege.api';
-import { getInstanceOrigin } from '@/shared/api';
-import { fetchLeaderRoleIds } from '@/shared/roles';
-import { groupFamilies } from './families';
-import { assignFees, summarize } from './fee-tiers';
-import { dataQualityFlags, summarizeDataQuality } from './data-quality';
-import { nextDueDate } from '@/shared/dates';
+import { computeBeitraege } from './compute';
+import { dataQualityFlags } from './data-quality';
 import type { DataQuality } from './data-quality';
 import type { FeeTotals } from './fee-tiers';
-import { ageBucket } from '@/shared/dates';
+import { getInstanceOrigin } from '@/shared/api';
+import { nextDueDate } from '@/shared/dates';
+import { fetchLeaderRoleIds } from '@/shared/roles';
 import { areFeesConfigured } from '@/shared/settings';
 import type { FeeConfig, Settings } from '@/shared/settings';
 import type { FeeAssignment, Relationship, RrParticipant } from './types';
@@ -48,6 +46,8 @@ export type BeitraegeState =
     | { phase: 'idle' }
     | { phase: 'loading' }
     | { phase: 'ready'; result: BeitraegeResult }
+    /** Something the figures depend on is not configured — the hint, never a zero. */
+    | { phase: 'unconfigured'; message: string }
     | { phase: 'error'; message: string };
 
 export type ExportState = { phase: 'idle' | 'working' } | { phase: 'error'; message: string };
@@ -93,30 +93,24 @@ export function useBeitraege() {
         const config = settings.fees;
         state.value = { phase: 'loading' };
         try {
-            // No fallback to "every child of the Hauptstamm" on purpose. The
-            // organigram can afford to guess; a sum cannot. On the live
-            // instance that guess would pull in a Teilstamm the organigram
-            // deliberately leaves out, adding 25 people to a total nobody
-            // would notice was wrong.
+            // No fallback to "every child of the Hauptstamm" on purpose: that
+            // guess would pull in a Teilstamm the organigram deliberately
+            // leaves out, adding people to a total nobody would notice was
+            // wrong.
             if (gateGroupId === null || teilstammIds.length === 0) {
-                state.value = { phase: 'error', message: COPY.configMissing };
+                state.value = { phase: 'unconfigured', message: COPY.configMissing };
                 return;
             }
             // A ladder with no rungs is not "everything free", it is "nobody
             // said". Rendering a total of 0,00 € would look like an answer.
             if (!areFeesConfigured(settings)) {
-                state.value = { phase: 'error', message: COPY.feesNotConfigured };
+                state.value = { phase: 'unconfigured', message: COPY.feesNotConfigured };
                 return;
             }
 
             const teams = await resolveTeams(teilstammIds, settings.teamGroupTypeIds);
             if (teams.length === 0) {
-                state.value = {
-                    phase: 'error',
-                    message:
-                        'Unter den konfigurierten Teilstämmen wurden keine Teams gefunden. ' +
-                        'Bitte die Teilstamm-Auswahl in der Konfiguration prüfen.',
-                };
+                state.value = { phase: 'unconfigured', message: COPY.feesNoTeams };
                 return;
             }
 
@@ -127,59 +121,28 @@ export function useBeitraege() {
             ]);
             for (const id of groupLeaderIds) staffPersonIds.add(id);
 
-            const personIds = participants.map((p) => p.personId);
-            const relationships = await fetchRelationships(personIds);
+            const relationships = await fetchRelationships(participants.map((p) => p.personId));
 
-            const families = groupFamilies(participants, relationships);
-
-            // A Juniorleiter is a leader under 18, so they are already in
-            // `staffPersonIds`; the age is what separates the two rates. Only
-            // people who are also participants can be billed at all, and
-            // those are the ones whose birthday we hold.
-            //
-            // Measured at the due date, not today: that is the date the fee
-            // is for, and it is the date the export's own "Alter am Stichtag"
-            // column shows. Using today would bill somebody at the
-            // Juniorleiter rate beside a column saying they are 18.
             const loadedAt = new Date();
             const dueDate = nextDueDate(loadedAt);
-            const juniorLeaderPersonIds = new Set(
-                participants
-                    .filter(
-                        (p) =>
-                            staffPersonIds.has(p.personId) &&
-                            ageBucket(p.birthday, dueDate) === 'minor',
-                    )
-                    .map((p) => p.personId),
-            );
-
-            const assignments = assignFees(
+            const figures = computeBeitraege(
                 participants,
-                families,
                 staffPersonIds,
-                juniorLeaderPersonIds,
+                relationships,
                 config,
+                dueDate,
             );
-
-            // Leader status takes precedence over participant status, exactly
-            // as `hierarchy.ts` resolves it for the organigram's tiles.
-            const staffParticipants = participants.filter((p) =>
-                staffPersonIds.has(p.personId),
-            ).length;
-
-            const totals = summarize(assignments, families, config.childCents.length);
-            const quality = summarizeDataQuality(participants, relationships);
 
             snapshot = {
                 participants,
-                assignments,
+                assignments: figures.assignments,
                 relationships,
                 stammNames: [...new Set(teams.map((t) => t.stammName).filter(Boolean))].sort(),
                 teamCount: teams.length,
-                families: families.length,
+                families: figures.families.length,
                 config,
-                totals,
-                quality,
+                totals: figures.totals,
+                quality: figures.quality,
                 loadedAt,
                 dueDate,
             };
@@ -187,13 +150,13 @@ export function useBeitraege() {
             state.value = {
                 phase: 'ready',
                 result: {
-                    totals,
-                    leaders: staffPersonIds.size,
-                    members: participants.length - staffParticipants,
-                    quality,
+                    totals: figures.totals,
+                    leaders: figures.leaders,
+                    members: figures.members,
+                    quality: figures.quality,
                     config,
                     teamCount: teams.length,
-                    families: families.length,
+                    families: figures.families.length,
                     loadedAt,
                     dueDate,
                 },
@@ -202,7 +165,7 @@ export function useBeitraege() {
             console.error('[rr-dashboard] Beitragsabrechnung failed to load:', e);
             state.value = {
                 phase: 'error',
-                message: e instanceof Error ? e.message : 'Die Daten konnten nicht geladen werden.',
+                message: e instanceof Error ? e.message : COPY.beitraegeLoadError,
             };
         }
     }
