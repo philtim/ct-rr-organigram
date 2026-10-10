@@ -41,7 +41,7 @@ export function useAdminSettings() {
             );
             settings.value = next;
         } catch (e) {
-            saveError.value = e instanceof Error ? e.message : 'Unbekannter Fehler beim Speichern.';
+            saveError.value = e instanceof Error ? e.message : COPY.adminSaveError;
             throw e;
         } finally {
             saving.value = false;

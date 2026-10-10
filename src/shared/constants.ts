@@ -198,4 +198,72 @@ export const COPY = {
     jahresmeldungQualityCountedIn: (row: string) => `gezählt bei: ${row}`,
     jahresmeldungQualityPersonLink: 'In ChurchTools',
     jahresmeldungQualityShowAll: (rest: number) => `Alle anzeigen (${rest} weitere)`,
+    // Configuration screen.
+    adminFirstRun: 'Erstmaliges Setup',
+    adminConfiguration: 'Konfiguration',
+    adminLead:
+        'Diese Extension kennt keinen Stamm. Alles, was sie über euren wissen muss, steht ' +
+        'hier — damit derselbe Build bei jedem Royal-Rangers-Stamm läuft.',
+    adminLoadError: 'Konfiguration konnte nicht geladen werden.',
+    adminSectionStructure: 'Struktur',
+    adminHauptstammLabel: 'Hauptstamm-Gruppe',
+    adminHauptstammHelp:
+        'Zugangstor, Hero-Karte im Organigramm, und eine der beiden Quellen für ' +
+        '„Mitarbeiter ohne Team".',
+    adminSearchPlaceholder: 'Gruppe suchen (Name oder ID)…',
+    adminNoGroupFound: 'Keine Gruppe gefunden.',
+    adminGroupId: (id: number) => `ID ${id}`,
+    adminTeilstaemmeLabel: 'Teilstämme',
+    adminTeilstaemmeHelp:
+        'Ein kleiner Stamm trägt hier dieselbe Gruppe ein wie oben — dafür den Haken entfernen.',
+    adminOnlyChildren: 'Nur Untergruppen des Hauptstamms anzeigen',
+    adminNoChildren: 'Keine passenden Untergruppen — Haken entfernen, um alle Gruppen zu sehen.',
+    adminOtherGroups: 'Weitere Gruppen',
+    adminTeamsLabel: 'Welche Gruppen sind Teams?',
+    adminTeamsHelp:
+        'Unter den gewählten Teilstämmen gefunden. Nur die angehakten Typen zählen als Team ' +
+        'und fließen in die Zahlen ein.',
+    adminReading: 'Wird gelesen …',
+    adminNoSubgroups: 'Unter den gewählten Teilstämmen liegen keine Untergruppen.',
+    adminGroupCount: (n: number) => `${n} Gruppen`,
+    adminScanIncomplete:
+        'Mindestens eine Gruppe konnte nicht gelesen werden. Die Zahlen unten sind deshalb ' +
+        'Untergrenzen — eine 0 heißt hier nicht zwingend „niemand".',
+    adminPreviewLead: 'Mit dieser Einstellung:',
+    adminPreviewTeilstaemme: 'Teilstämme',
+    adminPreviewTeams: 'Teams',
+    adminPreviewPersons: 'Personen',
+    adminSectionRules: 'Zählregeln',
+    adminLeadersLabel: 'Wer zählt als Leiter?',
+    adminLeadersHelp:
+        'Was ChurchTools selbst als Leitung führt, zählt immer — auch eine Rolle, die ihr ' +
+        'später anlegt. Darunter die Teilnehmer-Rollen, die euer Stamm zusätzlich als ' +
+        'Mitarbeiter wertet.',
+    adminPersonCount: (n: number) => `${n} Personen`,
+    adminAlwaysCounts: (n: number) => `immer · ${n} Personen`,
+    adminVacancyLabel: 'Unbesetzte Positionen sichtbar lassen',
+    adminVacancyHelp: 'Erscheint auf der Teilstamm-Karte als „nicht besetzt", statt zu fehlen.',
+    adminMemberFieldLabel: 'Mitgliederfeld für die Horizont-Kachel',
+    adminMemberFieldHelp:
+        'Leer lassen, wenn euer Stamm keine solche Bestellung führt — dann entfällt die Kachel.',
+    adminMemberFieldFound: (names: string[]) => `Gefunden: ${names.join(', ')}.`,
+    adminMemberFieldPlaceholder: 'z. B. Horizont',
+    adminSectionFees: 'Beiträge',
+    adminFeesHelp:
+        'Die letzte Zeile gilt für alle weiteren Kinder. „Ab dem dritten beitragsfrei" ist ' +
+        'also eine Staffel aus drei Zeilen, deren letzte 0,00 € ist.',
+    adminRung: (n: number) => `${n}. Kind`,
+    adminRungFrom: (n: number) => `ab ${n}. Kind`,
+    adminNoLadder: 'Noch keine Staffel — ohne sie bleibt die Beitragsabrechnung ungenutzt.',
+    adminAddRung: '+ Weitere Position',
+    adminRemoveRung: '✕ letzte entfernen',
+    adminStaffFee: 'Mitarbeiter',
+    adminJuniorLeaderFee: 'Juniorleiter',
+    adminJuniorLeaderNote: 'Leiter unter 18',
+    adminSave: 'Speichern',
+    adminSaving: 'Speichert …',
+    adminSaved: 'Gespeichert.',
+    adminSaveError: 'Unbekannter Fehler beim Speichern.',
+    adminSaveIncomplete:
+        'Hauptstamm, mindestens ein Teilstamm und mindestens ein Team-Gruppentyp sind nötig.',
 } as const;

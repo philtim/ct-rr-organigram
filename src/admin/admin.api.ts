@@ -196,31 +196,3 @@ export async function scanScope(
         incomplete,
     };
 }
-
-/** How many people in scope hold a given role. Drives the hints in the picker. */
-export function personsWithRole(scan: ScopeScan, roleId: number): number {
-    let count = 0;
-    for (const held of scan.rolesByPerson.values()) if (held.has(roleId)) count += 1;
-    return count;
-}
-
-/** Unique people the current selection would cover. The preview line. */
-export function personsInScope(
-    scan: ScopeScan,
-    gateGroupId: number | null,
-    teilstammIds: number[],
-    teamGroupTypeIds: number[],
-): number {
-    const types = new Set(teamGroupTypeIds);
-    const groupIds = [
-        ...(gateGroupId === null ? [] : [gateGroupId]),
-        ...teilstammIds,
-        ...scan.children.filter((c) => types.has(c.groupTypeId)).map((c) => c.id),
-    ];
-
-    const persons = new Set<number>();
-    for (const id of groupIds) {
-        for (const personId of scan.personsByGroup.get(id) ?? []) persons.add(personId);
-    }
-    return persons.size;
-}
