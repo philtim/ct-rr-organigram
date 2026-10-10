@@ -11,7 +11,10 @@ import {
     teamsAmong,
 } from './groups.api';
 
-beforeEach(() => client.get.mockReset());
+beforeEach(() => {
+    client.get.mockReset();
+    vi.useRealTimers();
+});
 
 describe('getChildGroups', () => {
     it('normalises the rows and drops those without a usable id', async () => {
@@ -25,6 +28,18 @@ describe('getChildGroups', () => {
             { id: 12, title: 'Odd', groupTypeId: null },
         ]);
         expect(client.get).toHaveBeenCalledWith('/groups/1/children');
+    });
+});
+
+describe('getChildGroups — rate limit', () => {
+    it('retries a 429 instead of reporting the Teilstamm as unreadable', async () => {
+        vi.useFakeTimers();
+        client.get
+            .mockRejectedValueOnce(Object.assign(new Error('HTTP 429'), { status: 429 }))
+            .mockResolvedValueOnce([{ title: 'T', domainIdentifier: '5' }]);
+        const result = getChildGroups(1);
+        await vi.runAllTimersAsync();
+        await expect(result).resolves.toHaveLength(1);
     });
 });
 
@@ -56,7 +71,12 @@ describe('personIdOf', () => {
     });
 
     it('returns null rather than 0 when there is none', () => {
-        for (const member of [{}, { person: {} }, { person: { domainIdentifier: '' } }]) {
+        for (const member of [
+            {},
+            { person: {} },
+            { person: { domainIdentifier: '' } },
+            { person: { domainIdentifier: 'abc' } },
+        ]) {
             expect(personIdOf(member)).toBeNull();
         }
     });

@@ -22,11 +22,22 @@ describe('resolveRelationshipTypes', () => {
         expect(resolveRelationshipTypes([{ id: 9, name: ' Geschwister ' }]).sibling).toBe(9);
     });
 
+    it('finds a sibling type by its translated name, and skips a row without an id', () => {
+        expect(
+            resolveRelationshipTypes([
+                { name: 'relationship.parent-child' },
+                { id: 7, name: 'relationship.parent-child' },
+                { id: 8, name: 'custom.x', nameTranslated: 'Geschwister' },
+            ]),
+        ).toEqual({ parentChild: 7, sibling: 8 });
+    });
+
     it('does not mistake a type named in passing for one of them', () => {
         expect(
             resolveRelationshipTypes([
                 { id: 1, name: 'Elternteil/Kind (Pflege)' },
                 { id: 2, name: 'Geschwisterkind-Pate' },
+                { id: 3, name: 'relationship.siblings-in-law' },
             ]),
         ).toEqual({ parentChild: null, sibling: null });
     });

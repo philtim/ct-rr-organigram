@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const client = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('@churchtools/churchtools-client', () => ({ churchtoolsClient: client }));
 
-import { fetchAllPages, mapWithConcurrency, withRetryOn429 } from './api';
+import { fetchAllPages, mapWithConcurrency, statusOf, withRetryOn429 } from './api';
 
 const httpError = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status });
 
@@ -56,6 +56,17 @@ describe('fetchAllPages', () => {
         await expect(fetchAllPages('/x', 1)).rejects.toThrow(/unvollständig/);
     });
 
+    it('retries a rate-limited page rather than failing the list', async () => {
+        vi.useFakeTimers();
+        client.get
+            .mockResolvedValueOnce(page([1], 2))
+            .mockRejectedValueOnce(httpError(429))
+            .mockResolvedValueOnce(page([2], 2));
+        const result = fetchAllPages('/x', 1);
+        await vi.runAllTimersAsync();
+        await expect(result).resolves.toEqual([1, 2]);
+    });
+
     it('throws when a page fails', async () => {
         client.get.mockResolvedValueOnce(page([1])).mockRejectedValueOnce(httpError(500));
         await expect(fetchAllPages('/x', 1)).rejects.toThrow('HTTP 500');
@@ -102,5 +113,16 @@ describe('mapWithConcurrency', () => {
         });
         expect(result).toEqual([50, 10, 30, 20, 40]);
         expect(peak).toBe(2);
+    });
+});
+
+describe('statusOf', () => {
+    // The client is axios-based: a failed request rejects with the status on
+    // `response.status`. The gate's 404-means-denied rule depends on reading it.
+    it('reads the status from an axios-style error and from a plain one', () => {
+        expect(statusOf({ response: { status: 404 } })).toBe(404);
+        expect(statusOf(httpError(429))).toBe(429);
+        expect(statusOf(new Error('network'))).toBeUndefined();
+        expect(statusOf(null)).toBeUndefined();
     });
 });

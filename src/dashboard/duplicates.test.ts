@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { findDuplicateMembers, findPeopleWithoutTeam } from './duplicates';
+import {
+    findDuplicateLeaders,
+    findDuplicateMembers,
+    findMixedAssignments,
+    findPeopleWithoutTeam,
+} from './duplicates';
 import { rollUpHauptstamm, rollUpTeilstamm } from './rollup';
-import type { OrgNode } from './types';
+import type { Leader, OrgNode } from './types';
 
 function node(groupId: number, over: Partial<OrgNode> = {}): OrgNode {
     return {
@@ -20,6 +25,16 @@ function node(groupId: number, over: Partial<OrgNode> = {}): OrgNode {
 }
 
 const p = (personId: number) => ({ personId, fullName: `P${personId}` });
+const leader = (personId: number, isPillRole = true): Leader => ({
+    personId,
+    roleId: 1,
+    fullName: `P${personId}`,
+    initials: 'P',
+    imageUrl: null,
+    roleName: isPillRole ? 'Leiter' : 'Mitarbeiter',
+    roleSortKey: 0,
+    isPillRole,
+});
 const failed = (groupId: number) => node(groupId, { error: 'fetch-failed', incomplete: true });
 
 describe('findPeopleWithoutTeam', () => {
@@ -61,6 +76,48 @@ describe('findDuplicateMembers', () => {
         ]);
         expect(findDuplicateMembers(root)).toEqual([
             { personId: 1, fullName: 'P1', teamNames: ['A', 'B'] },
+        ]);
+    });
+});
+
+describe('findPeopleWithoutTeam — leaders', () => {
+    it('does not name a team leader, and splits the rest by leadership role', () => {
+        const root = rollUpHauptstamm(node(100), [
+            rollUpTeilstamm(node(1, { leaders: [leader(1), leader(2), leader(3, false)] }), [
+                node(10, { leaders: [leader(1)] }),
+            ]),
+        ]);
+        expect(findPeopleWithoutTeam(root)).toEqual({
+            leadership: [{ personId: 2, fullName: 'P2', teilstammNames: ['G1'] }],
+            staff: [{ personId: 3, fullName: 'P3', teilstammNames: ['G1'] }],
+        });
+    });
+});
+
+describe('findDuplicateLeaders', () => {
+    it('lists a leader of two teams, and not a participant of two', () => {
+        const root = rollUpHauptstamm(node(100), [
+            rollUpTeilstamm(node(1), [
+                node(10, { name: 'A', leaders: [leader(1)], participants: [p(2)] }),
+                node(11, { name: 'B', leaders: [leader(1)], participants: [p(2)] }),
+            ]),
+        ]);
+        expect(findDuplicateLeaders(root)).toEqual([
+            { personId: 1, fullName: 'P1', teamNames: ['A', 'B'] },
+        ]);
+    });
+});
+
+describe('findMixedAssignments', () => {
+    it('lists someone who leads one team and takes part in another, and nobody else', () => {
+        const root = rollUpHauptstamm(node(100), [
+            rollUpTeilstamm(node(1), [
+                node(10, { name: 'A', leaders: [leader(1), leader(3)], participants: [p(2)] }),
+                node(11, { name: 'B', leaders: [leader(3)], participants: [p(1), p(2)] }),
+            ]),
+        ]);
+        expect(findMixedAssignments(root)).toEqual([
+            { personId: 1, fullName: 'P1', leaderTeams: ['A'], participantTeams: ['B'] },
         ]);
     });
 });

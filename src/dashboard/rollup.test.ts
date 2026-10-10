@@ -133,6 +133,12 @@ describe('loadFailures', () => {
         ]);
     });
 
+    it('names the Hauptstamm first when its own group failed', () => {
+        expect(loadFailures(rollUpHauptstamm(failed(100), []))).toEqual([
+            { kind: 'hauptstamm', name: 'G100' },
+        ]);
+    });
+
     it('is empty for a tree that loaded completely', () => {
         expect(loadFailures(rollUpHauptstamm(node(100), []))).toEqual([]);
     });
