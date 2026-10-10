@@ -47,7 +47,7 @@ const META: ExportMeta = {
         exemptJuniorLeader: 0,
         exemptLadder: 0,
         perRung: [1, 1, 0],
-        familiesWithThreeOrMore: 0,
+        familiesOnLastRung: 0,
         totalCents: 14000,
     },
     quality: {
