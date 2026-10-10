@@ -176,10 +176,7 @@ export async function fetchStaffFromGroups(
 }
 
 function toParticipant(personId: number, member: GroupMember, team: TeamRef): RrParticipant {
-    const attrs = (member.person?.domainAttributes ?? {}) as {
-        firstName?: string;
-        lastName?: string;
-    };
+    const attrs = member.person?.domainAttributes ?? {};
     const fields = personFieldsOf(member);
     return {
         personId,

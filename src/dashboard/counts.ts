@@ -63,7 +63,7 @@ export function splitMembers(
 
 /** Pull the person's profile-picture URL from the member's inlined person object. */
 function imageUrlOf(m: GroupMember): string | null {
-    const url = (m.person as unknown as { imageUrl?: string | null } | undefined)?.imageUrl;
+    const url = m.person?.imageUrl;
     return typeof url === 'string' && url.length > 0 ? url : null;
 }
 
@@ -72,12 +72,9 @@ function imageUrlOf(m: GroupMember): string | null {
  * first letters of first/last name.
  */
 function deriveInitials(member: GroupMember): string {
-    const inlinedInitials = (member.person as unknown as { initials?: string } | undefined)
-        ?.initials;
+    const inlinedInitials = member.person?.initials;
     if (inlinedInitials) return inlinedInitials;
-    const attrs = member.person?.domainAttributes as
-        | { firstName?: string; lastName?: string }
-        | undefined;
+    const attrs = member.person?.domainAttributes;
     const f = attrs?.firstName?.[0] ?? '';
     const l = attrs?.lastName?.[0] ?? '';
     return `${f}${l}`.toUpperCase();
@@ -95,7 +92,7 @@ export function horizontCountFromMembers(members: GroupMember[], fieldName: stri
     if (!wanted) return 0;
     let count = 0;
     for (const m of members) {
-        const fields = (m as { fields?: unknown }).fields;
+        const fields = m.fields;
         if (!Array.isArray(fields)) continue;
         for (const f of fields) {
             const entry = f as { name?: unknown; value?: unknown };

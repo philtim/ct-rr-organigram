@@ -8,7 +8,7 @@ import type {
     CustomModuleCreate,
     CustomModuleDataCategory,
     CustomModuleDataCategoryCreate,
-} from './ct-types';
+} from './types';
 
 /**
  * The extension's module, or undefined when it is not installed yet.

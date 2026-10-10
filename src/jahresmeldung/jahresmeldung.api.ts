@@ -54,8 +54,7 @@ async function safeGetMembers(groupId: number): Promise<GroupMember[] | null> {
 
 /** ChurchTools' own person link, taken as given rather than constructed (ADR-013). */
 function frontendUrlOf(member: GroupMember): string | null {
-    const url = (member.person as unknown as { frontendUrl?: string | null } | undefined)
-        ?.frontendUrl;
+    const url = member.person?.frontendUrl;
     return typeof url === 'string' && url.length > 0 ? url : null;
 }
 
