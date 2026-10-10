@@ -2,6 +2,7 @@
 import type { OrgNode } from '@/shared/types';
 import { computed } from 'vue';
 import { getGroupFrontendUrl } from '@/shared/api';
+import { countsLine, fieldLine } from './counts';
 
 const props = defineProps<{
     node: OrgNode;
@@ -12,26 +13,9 @@ const props = defineProps<{
 const isError = computed(() => Boolean(props.node.error));
 const leaderNames = computed(() => props.node.leaders.map((l) => l.fullName).join(', '));
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
-// Variante C counts, written out below the leader names and separated
-// from them by a divider. Leiter + Teilnehmer share one line; the member-field
-// count gets its own line and is shown whenever a field is configured — an
-// explicit "0× <Feld>"
-// tells the Stammleitung the team really ordered nothing (as opposed
-// to data still missing, which renders as "?").
-const countsText = computed(() => {
-    if (isError.value) return '? Leiter · ? Teilnehmer';
-    return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
-});
-/**
- * Named after the configured member field, and absent when there is none —
- * a Stamm that keeps no such list would otherwise read a hardcoded "0×
- * Horizont" as an answer about something it does not do.
- */
-const fieldText = computed(() =>
-    props.memberFieldName
-        ? `${isError.value ? '?' : props.node.horizontCount}× ${props.memberFieldName}`
-        : null,
-);
+// Counts written out below the leader names, separated by a divider.
+const countsText = computed(() => countsLine(props.node));
+const fieldText = computed(() => fieldLine(props.node, props.memberFieldName));
 </script>
 
 <template>

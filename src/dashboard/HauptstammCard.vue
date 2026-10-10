@@ -9,6 +9,11 @@ import LeaderAvatar from './LeaderAvatar.vue';
 const props = defineProps<{ node: OrgNode }>();
 
 const isError = computed(() => Boolean(props.node.error));
+const stats = computed(() => [
+    { label: COPY.leiterStat, value: props.node.leaderCount },
+    { label: COPY.mitgliederStat, value: props.node.memberCount },
+    { label: COPY.gesamtStat, value: props.node.leaderCount + props.node.memberCount },
+]);
 // One block per role the group actually defines — "Hauptstammleiter",
 // "Hauptstammwart", … — in the group type's own order.
 const roleGroups = computed(() => leaderRoleRows(props.node.leaderRoles, props.node.leaders));
@@ -30,9 +35,10 @@ function namesOf(leaders: Leader[]): string {
 
         <div class="hs-card__body">
             <div class="hs-card__main">
-                <p v-if="isError" class="hs-card__label">{{ COPY.leiterStat }}</p>
-                <p v-if="isError" class="hs-card__placeholder" aria-label="unbekannt">?</p>
-
+                <template v-if="isError">
+                    <p class="hs-card__label">{{ COPY.leiterStat }}</p>
+                    <p class="hs-card__placeholder" aria-label="unbekannt">?</p>
+                </template>
                 <template v-else>
                     <div v-for="g in roleGroups" :key="g.role" class="hs-card__group">
                         <p class="hs-card__label">{{ g.role }}</p>
@@ -51,23 +57,17 @@ function namesOf(leaders: Leader[]): string {
             </div>
 
             <div class="hs-card__stats">
-                <div class="hs-card__stat-tile">
-                    <p class="hs-card__stat-label">{{ COPY.leiterStat }}</p>
-                    <p class="hs-card__stat-value">
-                        {{ isError ? '?' : node.leaderCount }}
+                <div v-for="stat in stats" :key="stat.label" class="hs-card__stat-tile">
+                    <p class="hs-card__stat-label">{{ stat.label }}</p>
+                    <!-- A sum missing a part is no sum: "?" in red, never a smaller number. -->
+                    <p
+                        v-if="node.incomplete"
+                        class="hs-card__stat-value hs-card__stat-value--unknown"
+                        :aria-label="COPY.notComputable"
+                    >
+                        ?
                     </p>
-                </div>
-                <div class="hs-card__stat-tile">
-                    <p class="hs-card__stat-label">{{ COPY.mitgliederStat }}</p>
-                    <p class="hs-card__stat-value">
-                        {{ isError ? '?' : node.memberCount }}
-                    </p>
-                </div>
-                <div class="hs-card__stat-tile">
-                    <p class="hs-card__stat-label">{{ COPY.gesamtStat }}</p>
-                    <p class="hs-card__stat-value">
-                        {{ isError ? '?' : node.leaderCount + node.memberCount }}
-                    </p>
+                    <p v-else class="hs-card__stat-value">{{ stat.value }}</p>
                 </div>
             </div>
         </div>
@@ -198,6 +198,9 @@ function namesOf(leaders: Leader[]): string {
     margin: 0;
     font-size: 24px;
     font-weight: 500;
+}
+.hs-card__stat-value--unknown {
+    color: var(--rr-error-fg);
 }
 
 /*

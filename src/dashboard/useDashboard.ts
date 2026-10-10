@@ -1,12 +1,14 @@
 import { ref } from 'vue';
-import { hasAnyError, loadOrganigram } from './hierarchy';
+import { loadOrganigram } from './hierarchy';
+import { loadFailures } from './rollup';
+import type { LoadFailure } from './rollup';
 import type { Settings } from '@/shared/settings';
 import type { OrgNode } from '@/shared/types';
 
 export type DashboardState =
     | { phase: 'idle' }
     | { phase: 'loading' }
-    | { phase: 'ready'; root: OrgNode; loadedAt: Date; hasErrors: boolean }
+    | { phase: 'ready'; root: OrgNode; loadedAt: Date; failures: LoadFailure[] }
     | { phase: 'error'; message: string };
 
 export function useDashboard() {
@@ -20,7 +22,7 @@ export function useDashboard() {
                 phase: 'ready',
                 root,
                 loadedAt: new Date(),
-                hasErrors: hasAnyError(root),
+                failures: loadFailures(root),
             };
         } catch (e) {
             // loadOrganigram itself shouldn't throw — it absorbs per-call

@@ -113,11 +113,7 @@ async function handleSaved() {
     <Admin v-else-if="showAdmin" :first-run="!isAdminRoute && !configured" @saved="handleSaved" />
     <template v-else-if="gateStatus.phase === 'allowed'">
         <TabBar :tabs="availableTabs" :active="activeTab" @select="selectTab" />
-        <Dashboard
-            v-if="activeTab === 'organigram'"
-            :person="gateStatus.person"
-            :settings="settings"
-        />
+        <Dashboard v-if="activeTab === 'organigram'" :settings="settings" />
         <Jahresmeldung v-else-if="activeTab === 'jahresmeldung'" :settings="settings" />
         <Beitraege v-else :settings="settings" />
     </template>

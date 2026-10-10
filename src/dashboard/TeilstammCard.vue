@@ -4,7 +4,7 @@ import type { OrgNode } from '@/shared/types';
 import TeamChip from './TeamChip.vue';
 import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
-import { leaderRoleRows } from './counts';
+import { countsLine, fieldLine, leaderRoleRows } from './counts';
 
 const props = defineProps<{
     node: OrgNode;
@@ -37,7 +37,7 @@ const leaderText = computed(() =>
         .join(', '),
 );
 const summary = computed(() => {
-    if (isError.value) return 'Teams konnten nicht geladen werden';
+    if (props.node.childrenFailed) return 'Teams konnten nicht geladen werden';
     const teamWord = props.node.children.length === 1 ? 'Team' : 'Teams';
     const lead = leaderText.value || 'Keine Leiter eingetragen';
     return `${lead} · ${props.node.children.length} ${teamWord}`;
@@ -46,15 +46,13 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Written-out counts for the mobile compact view — Variante-C style,
 // consistent with TeamChip: divider above, Leiter + Teilnehmer on one
 // line, the configured member field on its own line when there is one.
-const compactCounts = computed(() => {
-    if (isError.value) return '? Leiter · ? Teilnehmer';
-    return `${props.node.leaderCount} Leiter · ${props.node.memberCount} Teilnehmer`;
-});
-const compactField = computed(() =>
-    props.memberFieldName
-        ? `${isError.value ? '?' : props.node.horizontCount}× ${props.memberFieldName}`
-        : null,
-);
+const compactCounts = computed(() => countsLine(props.node));
+const compactField = computed(() => fieldLine(props.node, props.memberFieldName));
+const stats = computed(() => [
+    { label: COPY.teamleiterStat, value: props.node.leaderCount },
+    { label: COPY.mitgliederStat, value: props.node.memberCount },
+    { label: COPY.gesamtStat, value: props.node.leaderCount + props.node.memberCount },
+]);
 </script>
 
 <template>
@@ -64,79 +62,85 @@ const compactField = computed(() =>
             :href="href"
             :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
         >
-            <!-- Compact mobile row (hidden on tablet+) -->
-            <div v-if="!props.teamsOnly" class="ts-card__compact-row">
-                <span class="ts-card__compact-name">{{ node.name }}</span>
-            </div>
-            <p v-if="!props.teamsOnly" class="ts-card__compact-summary">{{ summary }}</p>
-            <div v-if="!props.teamsOnly" class="ts-card__compact-meta">
-                <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
-                <span v-if="compactField" class="ts-card__compact-meta-line">
-                    {{ compactField }}
-                </span>
-            </div>
+            <template v-if="!props.teamsOnly">
+                <!-- Compact mobile row (hidden on tablet+) -->
+                <div class="ts-card__compact-row">
+                    <span class="ts-card__compact-name">{{ node.name }}</span>
+                </div>
+                <p class="ts-card__compact-summary">{{ summary }}</p>
+                <div class="ts-card__compact-meta">
+                    <span class="ts-card__compact-meta-line">{{ compactCounts }}</span>
+                    <span v-if="compactField" class="ts-card__compact-meta-line">
+                        {{ compactField }}
+                    </span>
+                </div>
 
-            <!-- Full layout (hidden on mobile) -->
-            <header v-if="!props.teamsOnly" class="ts-card__head">
-                <p class="ts-card__subtitle">TEILSTAMM</p>
-                <h3 class="ts-card__name">{{ node.name }}</h3>
-            </header>
+                <!-- Full layout (hidden on mobile) -->
+                <header class="ts-card__head">
+                    <p class="ts-card__subtitle">TEILSTAMM</p>
+                    <h3 class="ts-card__name">{{ node.name }}</h3>
+                </header>
 
-            <div v-if="!props.teamsOnly" class="ts-card__leiter-list">
-                <template v-if="isError">
-                    <span class="ts-card__label">{{ COPY.leiterStat }}</span>
-                    <span class="ts-card__leiter-name">?</span>
-                </template>
-                <template v-else>
-                    <template v-for="g in roleGroups" :key="g.role">
-                        <span class="ts-card__label">{{ g.role }}</span>
-                        <span v-for="l in g.leaders" :key="l.personId" class="ts-card__leiter-name">
-                            {{ l.fullName }}
-                        </span>
-                        <span v-if="!g.leaders.length" class="ts-card__vacant">
-                            {{ COPY.vacantRole }}
+                <div class="ts-card__leiter-list">
+                    <template v-if="isError">
+                        <span class="ts-card__label">{{ COPY.leiterStat }}</span>
+                        <span class="ts-card__leiter-name">?</span>
+                    </template>
+                    <template v-else>
+                        <template v-for="g in roleGroups" :key="g.role">
+                            <span class="ts-card__label">{{ g.role }}</span>
+                            <span
+                                v-for="l in g.leaders"
+                                :key="l.personId"
+                                class="ts-card__leiter-name"
+                            >
+                                {{ l.fullName }}
+                            </span>
+                            <span v-if="!g.leaders.length" class="ts-card__vacant">
+                                {{ COPY.vacantRole }}
+                            </span>
+                        </template>
+                        <span v-if="!roleGroups.length" class="ts-card__empty">
+                            Keine Leiter eingetragen.
                         </span>
                     </template>
-                    <span v-if="!roleGroups.length" class="ts-card__empty">
-                        Keine Leiter eingetragen.
-                    </span>
-                </template>
-            </div>
+                </div>
 
-            <div v-if="!props.teamsOnly" class="ts-card__stat-row">
-                <div class="ts-card__stat">
-                    <p class="ts-card__stat-label">{{ COPY.teamleiterStat }}</p>
-                    <p class="ts-card__stat-value">
-                        {{ isError ? '?' : node.leaderCount }}
-                    </p>
+                <div class="ts-card__stat-row">
+                    <div v-for="stat in stats" :key="stat.label" class="ts-card__stat">
+                        <p class="ts-card__stat-label">{{ stat.label }}</p>
+                        <p
+                            v-if="node.incomplete"
+                            class="ts-card__stat-value ts-card__stat-value--unknown"
+                            :aria-label="COPY.notComputable"
+                        >
+                            ?
+                        </p>
+                        <p v-else class="ts-card__stat-value">{{ stat.value }}</p>
+                    </div>
                 </div>
-                <div class="ts-card__stat">
-                    <p class="ts-card__stat-label">{{ COPY.mitgliederStat }}</p>
-                    <p class="ts-card__stat-value">
-                        {{ isError ? '?' : node.memberCount }}
-                    </p>
-                </div>
-                <div class="ts-card__stat">
-                    <p class="ts-card__stat-label">{{ COPY.gesamtStat }}</p>
-                    <p class="ts-card__stat-value">
-                        {{ isError ? '?' : node.leaderCount + node.memberCount }}
-                    </p>
-                </div>
-            </div>
+            </template>
 
             <div v-if="props.memberFieldName" class="ts-card__horizont-row">
                 <div class="ts-card__stat">
                     <p class="ts-card__stat-label">{{ props.memberFieldName }}</p>
-                    <p class="ts-card__stat-value">
-                        {{ isError ? '?' : node.horizontCount }}
+                    <p
+                        v-if="node.incomplete"
+                        class="ts-card__stat-value ts-card__stat-value--unknown"
+                        :aria-label="COPY.notComputable"
+                    >
+                        ?
                     </p>
+                    <p v-else class="ts-card__stat-value">{{ node.horizontCount }}</p>
                 </div>
             </div>
         </a>
 
         <section class="ts-card__teams">
             <p class="ts-card__subtitle">TEAMS</p>
-            <p v-if="isError" class="ts-card__empty">Teams konnten nicht geladen werden.</p>
+            <p v-if="node.childrenFailed" class="ts-card__empty">
+                Teams konnten nicht geladen werden.
+            </p>
             <template v-else>
                 <TeamChip
                     v-for="team in node.children"
@@ -257,6 +261,9 @@ const compactField = computed(() =>
     margin: 0;
     font-size: 18px;
     font-weight: 500;
+}
+.ts-card__stat-value--unknown {
+    color: var(--rr-error-fg);
 }
 .ts-card__teams {
     display: flex;
