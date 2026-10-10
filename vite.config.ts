@@ -33,7 +33,6 @@ function readCommit(): string {
 // https://vitejs.dev/config/
 export default ({ mode }: { mode: string }) => {
     const env = loadEnv(mode, process.cwd());
-    process.env = { ...process.env, ...env };
 
     const baseUrl = env.VITE_BASE_URL;
 

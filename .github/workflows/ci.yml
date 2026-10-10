@@ -16,11 +16,8 @@ jobs:
                   node-version: 22
                   cache: npm
             - run: npm ci
-            - run: npm run lint
-            - run: npm run typecheck
-            - run: npm run test
-            - run: npm run build
+            # One definition of "green": the same script developers run.
+            - run: npm run check
               env:
                   VITE_KEY: rr-dashboard
                   VITE_BASE_URL: https://example.church.tools
-            - run: npm run check:bundle

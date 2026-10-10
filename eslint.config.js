@@ -37,7 +37,7 @@ export default [
     },
     {
         name: 'app/files-to-ignore',
-        ignores: ['**/dist/**', '**/node_modules/**', '**/releases/**', 'src/shared/ct-types.d.ts'],
+        ignores: ['**/dist/**', '**/node_modules/**', '**/releases/**'],
     },
     ...pluginVue.configs['flat/recommended'],
     ...vueTsConfig(),

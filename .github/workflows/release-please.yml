@@ -44,6 +44,12 @@ jobs:
                   VITE_BASE_URL: https://placeholder.church.tools
               run: npm run deploy
 
+            # The guards CI applies to every PR — lazy export chunk, entry
+            # budget, no Worker — checked on the artefact actually shipped.
+            - name: Check bundle
+              if: ${{ steps.release.outputs.release_created }}
+              run: npm run check:bundle
+
             - name: Locate ZIP artefact
               id: pkg
               if: ${{ steps.release.outputs.release_created }}
