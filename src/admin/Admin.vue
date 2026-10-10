@@ -195,7 +195,7 @@ async function refreshChildren(id: number | null) {
         hauptstammChildren.value = rows.map((row) => ({
             id: Number(row.domainIdentifier),
             title: row.title,
-            groupTypeId: row.domainAttributes.groupTypeId,
+            groupTypeId: row.domainAttributes?.groupTypeId ?? -1,
             teilstammId: id,
         }));
     } catch (e) {

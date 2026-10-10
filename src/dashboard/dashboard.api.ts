@@ -1,4 +1,4 @@
-import { ct, fetchAllMembers } from '@/shared/api';
+import { ct, fetchAllMembers, withRetryOn429 } from '@/shared/api';
 import type { Group, GroupMember } from '@/shared/types';
 
 /**
@@ -9,16 +9,19 @@ import type { Group, GroupMember } from '@/shared/types';
 export type GroupChild = {
     title: string;
     domainIdentifier: string;
-    domainAttributes: { groupTypeId: number };
+    /** Optional: one odd row must not take the whole Teilstamm down with it. */
+    domainAttributes?: { groupTypeId?: number };
 };
 
 export async function getGroupChildren(groupId: number): Promise<GroupChild[]> {
-    return await ct.get<GroupChild[]>(`/groups/${groupId}/children`);
+    return await withRetryOn429(() => ct.get<GroupChild[]>(`/groups/${groupId}/children`));
 }
 
 /** Full group with role definitions and ChurchTools-computed member statistics. */
 export async function getGroup(groupId: number): Promise<Group> {
-    return await ct.get<Group>(`/groups/${groupId}?include[]=memberStatistics&include[]=roles`);
+    return await withRetryOn429(() =>
+        ct.get<Group>(`/groups/${groupId}?include[]=memberStatistics&include[]=roles`),
+    );
 }
 
 /**

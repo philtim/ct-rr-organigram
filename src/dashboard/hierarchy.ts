@@ -144,7 +144,7 @@ export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
             // count is configuration — the admin ticks them off a list of
             // what is actually there (docs/design/002-konfigurierbarkeit.md).
             const teamChildren = tsChildren.filter((c) =>
-                teamTypeIds.has(c.domainAttributes.groupTypeId),
+                teamTypeIds.has(c.domainAttributes?.groupTypeId ?? -1),
             );
 
             const teams: OrgNode[] = await Promise.all(
