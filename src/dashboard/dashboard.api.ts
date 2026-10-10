@@ -1,21 +1,6 @@
-import { ct, fetchAllMembers, withRetryOn429 } from '@/shared/api';
+import { ct, withRetryOn429 } from '@/shared/api';
+import { fetchActiveMembers } from '@/shared/groups.api';
 import type { Group, GroupMember } from '@/shared/types';
-
-/**
- * Shape of items returned by GET /groups/{id}/children — these are
- * "domain objects", not full Group objects (recon-confirmed):
- *   { title, domainIdentifier (numeric STRING), domainAttributes.groupTypeId, ... }
- */
-export type GroupChild = {
-    title: string;
-    domainIdentifier: string;
-    /** Optional: one odd row must not take the whole Teilstamm down with it. */
-    domainAttributes?: { groupTypeId?: number };
-};
-
-export async function getGroupChildren(groupId: number): Promise<GroupChild[]> {
-    return await withRetryOn429(() => ct.get<GroupChild[]>(`/groups/${groupId}/children`));
-}
 
 /** Full group with role definitions and ChurchTools-computed member statistics. */
 export async function getGroup(groupId: number): Promise<Group> {
@@ -24,15 +9,7 @@ export async function getGroup(groupId: number): Promise<Group> {
     );
 }
 
-/**
- * Members of a group (inlined person object — no extra /persons calls needed).
- *
- * Active only, which is the same filter the Beitragsabrechnung applies, so the
- * two tabs cannot count different people. Previously unfiltered: a `waiting`
- * or `requested` member was counted here and not there. Nobody on the live
- * instance holds such a status today — 463 memberships, all active — so this
- * closes a gap rather than changing a number.
- */
+/** Active members of a group, with the person object inlined. */
 export async function getGroupMembers(groupId: number): Promise<GroupMember[]> {
-    return await fetchAllMembers<GroupMember>(groupId, 'group_member_statuses[]=active&limit=200');
+    return await fetchActiveMembers<GroupMember>(groupId);
 }

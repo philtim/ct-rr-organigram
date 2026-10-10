@@ -1,7 +1,15 @@
-import { ct, fetchAllMembers, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
-import { personFieldsOf } from '@/shared/rr/rr.api';
+import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ageBucket, todayUtc } from '@/shared/dates';
+import {
+    fetchActiveMembers,
+    getChildGroups,
+    personFieldsOf,
+    personIdOf,
+    teamsAmong,
+} from '@/shared/groups.api';
 import { fetchLeaderRoleIds } from '@/shared/roles';
-import { ageBucket, genderOf, todayUtc } from './tally';
+import type { LeaderRoleIds } from '@/shared/roles';
+import { genderOf } from './tally';
 import type { RowDef, ScopedPerson } from './tally';
 import type { Settings } from '@/shared/settings';
 import type { GroupMember } from '@/shared/types';
@@ -13,12 +21,6 @@ import type { GroupMember } from '@/shared/types';
  */
 const PERSON_FIELDS = ['birthday', 'sexId'] as const;
 
-type GroupChildRow = {
-    title: string;
-    domainIdentifier: string;
-    domainAttributes?: { groupTypeId?: number };
-};
-
 export type ScopeLoad = {
     people: ScopedPerson[];
     /** One per configured Teilstamm, in the order ChurchTools lists them. */
@@ -28,18 +30,6 @@ export type ScopeLoad = {
     /** How many team groups the figures cover — the scope, made visible. */
     teamCount: number;
 };
-
-/**
- * Own calls rather than reuse of the organigram's `dashboard.api`: a feature
- * importing from another feature's folder inverts ADR-004's direction just as
- * surely as shared code doing it. The shape is small enough that a local copy
- * costs less than the coupling would.
- */
-async function getChildren(groupId: number): Promise<GroupChildRow[]> {
-    return (
-        (await withRetryOn429(() => ct.get<GroupChildRow[]>(`/groups/${groupId}/children`))) ?? []
-    );
-}
 
 /** A group's display name, for the row label. Null when it cannot be read. */
 async function getGroupTitle(groupId: number): Promise<string | null> {
@@ -52,33 +42,14 @@ async function getGroupTitle(groupId: number): Promise<string | null> {
     }
 }
 
-function memberQuery(): string {
-    const params = new URLSearchParams();
-    // The same filter both other tabs apply, so no view counts a person the
-    // others do not. A `waiting` or `requested` member belongs in none.
-    params.append('group_member_statuses[]', 'active');
-    for (const field of PERSON_FIELDS) params.append('personFields[]', field);
-    params.set('limit', '200');
-    return params.toString();
-}
-
-async function getMembers(groupId: number): Promise<GroupMember[]> {
-    return await fetchAllMembers<GroupMember>(groupId, memberQuery());
-}
-
 /** A soft fetch: a failure costs one group's members, not the whole table. */
 async function safeGetMembers(groupId: number): Promise<GroupMember[] | null> {
     try {
-        return await getMembers(groupId);
+        return await fetchActiveMembers<GroupMember>(groupId, PERSON_FIELDS);
     } catch (e) {
         console.error(`[rr-dashboard] Jahresmeldung: group ${groupId} failed to load:`, e);
         return null;
     }
-}
-
-function personIdOf(member: GroupMember): number | null {
-    const id = Number(member.person?.domainIdentifier);
-    return Number.isFinite(id) ? id : null;
 }
 
 /** ChurchTools' own person link, taken as given rather than constructed (ADR-013). */
@@ -96,27 +67,18 @@ function frontendUrlOf(member: GroupMember): string | null {
  * arrival, and the originals are not kept. This is the single place in the
  * feature that sees either, which is what makes ADR-013's boundary reviewable.
  */
-class PersonAccumulator {
-    private readonly byId = new Map<number, ScopedPerson>();
-    private readonly leaderRoleIds: ReadonlySet<number>;
-    private readonly today: Date;
+function createAccumulator(leaderRoleIds: LeaderRoleIds, today: Date) {
+    const byId = new Map<number, ScopedPerson>();
 
-    // Written out rather than declared as constructor parameter properties:
-    // tsconfig runs with `erasableSyntaxOnly`, which rules that shorthand out.
-    constructor(leaderRoleIds: ReadonlySet<number>, today: Date) {
-        this.leaderRoleIds = leaderRoleIds;
-        this.today = today;
-    }
-
-    add(members: GroupMember[], teilstammId: number | null, isTeam: boolean): void {
+    function add(members: GroupMember[], teilstammId: number | null, isTeam: boolean): void {
         for (const member of members) {
             const personId = personIdOf(member);
             if (personId === null) continue;
 
             const fields = personFieldsOf(member);
-            const leads = this.leaderRoleIds.has(member.groupTypeRoleId);
+            const leads = leaderRoleIds.has(member.groupTypeRoleId);
 
-            let person = this.byId.get(personId);
+            let person = byId.get(personId);
             if (!person) {
                 const { gender, genderGap } = genderOf(fields.sexId as number | null | undefined);
                 person = {
@@ -126,15 +88,15 @@ class PersonAccumulator {
                     gender,
                     genderGap,
                     isLeader: false,
-                    age: ageBucket(fields.birthday as string | null | undefined, this.today),
+                    age: ageBucket(fields.birthday as string | null | undefined, today),
                     teamTeilstammIds: [],
                     leaderTeilstammIds: [],
                 };
-                this.byId.set(personId, person);
+                byId.set(personId, person);
             }
 
             // Leading anywhere in scope makes someone a leader everywhere in
-            // it — the precedence `hierarchy.ts` already applies.
+            // it — the precedence the organigram's roll-up applies too.
             if (leads) person.isLeader = true;
 
             if (isTeam && teilstammId !== null) {
@@ -148,9 +110,7 @@ class PersonAccumulator {
         }
     }
 
-    all(): ScopedPerson[] {
-        return [...this.byId.values()];
-    }
+    return { add, all: () => [...byId.values()] };
 }
 
 /**
@@ -169,7 +129,6 @@ export async function loadJahresmeldung(
     const gateGroupId = settings.gateGroupId;
     if (gateGroupId === null) throw new Error('Keine Hauptstamm-Gruppe konfiguriert.');
 
-    const teamTypes = new Set(settings.teamGroupTypeIds);
     const leaderRoleIds = await fetchLeaderRoleIds(new Set(settings.extraLeaderRoleIds));
 
     // The Teilstämme are configured directly; their labels come from
@@ -179,7 +138,7 @@ export async function loadJahresmeldung(
         label: (await getGroupTitle(id)) ?? String(id),
     }));
 
-    const accumulator = new PersonAccumulator(leaderRoleIds, today);
+    const accumulator = createAccumulator(leaderRoleIds, today);
     let ohneTeamIncomplete = false;
 
     const hauptstammMembers = await safeGetMembers(gateGroupId);
@@ -191,7 +150,7 @@ export async function loadJahresmeldung(
 
         const [ownMembers, children] = await Promise.all([
             safeGetMembers(ts.id),
-            getChildren(ts.id).catch((e) => {
+            getChildGroups(ts.id).catch((e) => {
                 console.error(`[rr-dashboard] Jahresmeldung: children of ${ts.id} failed:`, e);
                 return null;
             }),
@@ -204,10 +163,7 @@ export async function loadJahresmeldung(
         const teamIds =
             children === null
                 ? []
-                : children
-                      .filter((c) => teamTypes.has(c.domainAttributes?.groupTypeId ?? -1))
-                      .map((c) => Number(c.domainIdentifier))
-                      .filter((id) => Number.isFinite(id));
+                : teamsAmong(children, settings.teamGroupTypeIds).map((c) => c.id);
         if (children === null) incomplete = true;
 
         const teams = await mapWithConcurrency(teamIds, 6, async (teamId) => ({

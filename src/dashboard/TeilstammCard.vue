@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 import TeamChip from './TeamChip.vue';
 import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';

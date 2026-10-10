@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 import { computed } from 'vue';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { countsLine, fieldLine } from './counts';

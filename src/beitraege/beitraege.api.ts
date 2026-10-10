@@ -1,4 +1,12 @@
-import { ct, fetchAllMembers, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ct, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import {
+    fetchActiveMembers,
+    getChildGroups,
+    personFieldsOf,
+    personIdOf,
+    teamsAmong,
+} from '@/shared/groups.api';
+import type { LeaderRoleIds } from '@/shared/roles';
 import type { GroupMember } from '@/shared/types';
 import type { Relationship, RrParticipant } from './types';
 
@@ -6,12 +14,6 @@ import type { Relationship, RrParticipant } from './types';
 const PERSON_FIELDS = ['birthday', 'street', 'zip', 'city'] as const;
 
 export type TeamRef = { groupId: number; name: string; stammName: string };
-
-type GroupChildRow = {
-    title: string;
-    domainIdentifier: string;
-    domainAttributes?: { groupTypeId?: number };
-};
 
 type GroupNameRow = { id?: number; name?: string };
 
@@ -25,38 +27,26 @@ type GroupNameRow = { id?: number; name?: string };
  * Teilstamm that is not selected — so adding that Teilstamm for the organigram
  * would silently widen the billing scope too. The view therefore shows how
  * many teams were resolved.
- *
- * Own call rather than reusing the dashboard's `getGroupChildren`: shared code
- * importing from a feature folder inverts ADR-004's direction.
  */
 export async function resolveTeams(
     teilstammIds: number[],
     teamGroupTypeIds: number[],
 ): Promise<TeamRef[]> {
-    const teamTypes = new Set(teamGroupTypeIds);
     const [stammNames, perTeilstamm] = await Promise.all([
         fetchGroupNames(teilstammIds),
-        mapWithConcurrency(teilstammIds, 4, async (teilstammId) => {
-            const children = await withRetryOn429(() =>
-                ct.get<GroupChildRow[]>(`/groups/${teilstammId}/children`),
-            );
-            return {
-                teilstammId,
-                teams: (children ?? []).filter((child) =>
-                    teamTypes.has(child.domainAttributes?.groupTypeId ?? -1),
-                ),
-            };
-        }),
+        mapWithConcurrency(teilstammIds, 4, async (teilstammId) => ({
+            teilstammId,
+            teams: teamsAmong(await getChildGroups(teilstammId), teamGroupTypeIds),
+        })),
     ]);
 
     const byId = new Map<number, TeamRef>();
     for (const { teilstammId, teams } of perTeilstamm) {
-        for (const child of teams) {
-            const groupId = Number(child.domainIdentifier);
-            if (!Number.isFinite(groupId) || byId.has(groupId)) continue;
-            byId.set(groupId, {
-                groupId,
-                name: child.title,
+        for (const team of teams) {
+            if (byId.has(team.id)) continue;
+            byId.set(team.id, {
+                groupId: team.id,
+                name: team.title,
                 stammName: stammNames.get(teilstammId) ?? '',
             });
         }
@@ -93,9 +83,6 @@ export type TeamMembers = {
     staffPersonIds: Set<number>;
 };
 
-/** Used by both tabs, so both answer "who leads" the same way (`shared/roles`). */
-export type LeaderRoleIds = ReadonlySet<number>;
-
 /**
  * Active members of the given team groups, one request per team, split into
  * participants and staff.
@@ -130,15 +117,13 @@ export async function fetchTeamMembers(
 
     const pages = await mapWithConcurrency(teams, 6, async (team) => ({
         team,
-        members: await fetchAllMembers<GroupMember>(team.groupId, memberQuery()),
+        members: await fetchActiveMembers<GroupMember>(team.groupId, PERSON_FIELDS),
     }));
 
     for (const { team, members } of pages) {
-        for (const member of members ?? []) {
-            // `member.personId` exists but is deprecated in favour of this;
-            // recon found `person.domainIdentifier` populated on every row.
-            const personId = Number(member.person?.domainIdentifier);
-            if (!Number.isFinite(personId)) continue;
+        for (const member of members) {
+            const personId = personIdOf(member);
+            if (personId === null) continue;
 
             if (leaderRoleIds.has(member.groupTypeRoleId)) {
                 staffPersonIds.add(personId);
@@ -164,16 +149,6 @@ export async function fetchTeamMembers(
     return { participants: [...byPerson.values()], staffPersonIds };
 }
 
-function memberQuery(): string {
-    const params = new URLSearchParams();
-    // Same filter the organigram applies, so neither tab counts a person the
-    // other does not. A `waiting` or `requested` member belongs in neither.
-    params.append('group_member_statuses[]', 'active');
-    for (const field of PERSON_FIELDS) params.append('personFields[]', field);
-    params.set('limit', '200');
-    return params.toString();
-}
-
 /**
  * Person ids with an active membership in any of the given groups — the
  * Teilstamm-MA groups and the Hauptstamm. Someone who is a Mitarbeiter at
@@ -188,13 +163,13 @@ export async function fetchStaffFromGroups(
 ): Promise<Set<number>> {
     const ids = new Set<number>();
     const pages = await mapWithConcurrency(groupIds, 4, (groupId) =>
-        fetchAllMembers<GroupMember>(groupId, 'group_member_statuses[]=active&limit=200'),
+        fetchActiveMembers<GroupMember>(groupId),
     );
     for (const members of pages) {
-        for (const member of members ?? []) {
+        for (const member of members) {
             if (!leaderRoleIds.has(member.groupTypeRoleId)) continue;
-            const personId = Number(member.person?.domainIdentifier);
-            if (Number.isFinite(personId)) ids.add(personId);
+            const personId = personIdOf(member);
+            if (personId !== null) ids.add(personId);
         }
     }
     return ids;
@@ -217,17 +192,6 @@ function toParticipant(personId: number, member: GroupMember, team: TeamRef): Rr
         teamNames: [team.name],
         stammNames: team.stammName ? [team.stammName] : [],
     };
-}
-
-/**
- * `personFields` is typed as an array but the live API answers with a plain
- * object (`{birthday, street, …}`). Accept either rather than depend on which.
- */
-export function personFieldsOf(member: GroupMember): Record<string, unknown> {
-    const raw = member.personFields as unknown;
-    if (Array.isArray(raw)) return Object.assign({}, ...raw) as Record<string, unknown>;
-    if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
-    return {};
 }
 
 function text(value: unknown): string | null {

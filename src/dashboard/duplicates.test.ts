@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { findDuplicateMembers, findPeopleWithoutTeam } from './duplicates';
 import { rollUpHauptstamm, rollUpTeilstamm } from './rollup';
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 
 function node(groupId: number, over: Partial<OrgNode> = {}): OrgNode {
     return {

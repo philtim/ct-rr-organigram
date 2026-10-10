@@ -1,4 +1,4 @@
-import type { Leader, OrgNode, Participant } from '@/shared/types';
+import type { Leader, OrgNode, Participant } from './types';
 
 /**
  * Unique people across several groups. Leader status takes precedence over

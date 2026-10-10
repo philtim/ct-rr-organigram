@@ -3,7 +3,7 @@ import { loadOrganigram } from './hierarchy';
 import { loadFailures } from './rollup';
 import type { LoadFailure } from './rollup';
 import type { Settings } from '@/shared/settings';
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 
 export type DashboardState =
     | { phase: 'idle' }

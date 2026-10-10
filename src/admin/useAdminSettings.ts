@@ -1,14 +1,13 @@
 import { ref } from 'vue';
 import {
-    findModule,
     getOrCreateModule,
     getCustomDataCategory,
     createCustomDataCategory,
     updateCustomDataCategory,
 } from '@/shared/kv-store';
 import { COPY, EXTENSION_KEY, KV_CATEGORY_SHORTY } from '@/shared/constants';
-import { EMPTY_SETTINGS, parseSettings } from '@/shared/settings';
 import type { Settings } from '@/shared/settings';
+import { useSettings } from '@/shared/useSettings';
 
 const MODULE_NAME = COPY.appTitle;
 const MODULE_DESCRIPTION =
@@ -17,58 +16,17 @@ const CATEGORY_NAME = 'Settings';
 const CATEGORY_DESCRIPTION = 'Persistierte Konfiguration der Extension.';
 
 /**
- * Reads and writes the configuration against the ChurchTools KV-Store.
- *
- * Read path is "soft": a missing module or category resolves to
- * `EMPTY_SETTINGS` instead of throwing, so somebody opening the dashboard
- * before any admin has configured it sees the configuration hint rather than
- * a stack trace. Write path uses getOrCreateModule and creates the category
- * on first save.
+ * The configuration, read as every view reads it, plus the write the admin
+ * form needs. The write creates the module and the category on first save.
  */
 export function useAdminSettings() {
-    const settings = ref<Settings>(EMPTY_SETTINGS);
-    const loading = ref(false);
-    const error = ref<string | null>(null);
-    /**
-     * True when the configuration could not be read at all — as opposed to
-     * being absent. The two must not be confused: treating a failed request
-     * as "nothing configured yet" would show the setup form to whoever is
-     * looking, and a save would overwrite a configuration that is merely
-     * unreachable.
-     */
-    const loadFailed = ref(false);
-
-    async function load(): Promise<void> {
-        loading.value = true;
-        error.value = null;
-        loadFailed.value = false;
-        try {
-            const module = await findModule(EXTENSION_KEY);
-            if (!module) {
-                // Not installed yet. A genuine first run: nothing is
-                // configured and there is nothing to fail at.
-                settings.value = EMPTY_SETTINGS;
-                return;
-            }
-            const cat = await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY, module.id);
-            // The kv-store helper merges the parsed JSON into the returned
-            // object alongside the category fields, so the settings live on
-            // the same object. `parseSettings` reads what is there and
-            // invents nothing for what is not (shared/settings.ts).
-            settings.value = cat ? parseSettings(cat) : EMPTY_SETTINGS;
-        } catch {
-            // No permission, a 5xx, a timeout. We do not know what is
-            // configured, so we must not act as though nothing is.
-            settings.value = EMPTY_SETTINGS;
-            loadFailed.value = true;
-        } finally {
-            loading.value = false;
-        }
-    }
+    const { settings, loadFailed, load } = useSettings();
+    const saving = ref(false);
+    const saveError = ref<string | null>(null);
 
     async function save(next: Settings): Promise<void> {
-        loading.value = true;
-        error.value = null;
+        saving.value = true;
+        saveError.value = null;
         try {
             const moduleObj = await getOrCreateModule(
                 EXTENSION_KEY,
@@ -113,12 +71,12 @@ export function useAdminSettings() {
             }
             settings.value = next;
         } catch (e) {
-            error.value = e instanceof Error ? e.message : 'Unbekannter Fehler beim Speichern.';
+            saveError.value = e instanceof Error ? e.message : 'Unbekannter Fehler beim Speichern.';
             throw e;
         } finally {
-            loading.value = false;
+            saving.value = false;
         }
     }
 
-    return { settings, loading, error, loadFailed, load, save };
+    return { settings, loadFailed, load, saving, saveError, save };
 }

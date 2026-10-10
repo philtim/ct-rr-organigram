@@ -12,7 +12,7 @@
  * ChurchTools. See `docs/design/001-jahresmeldung.md` for the full derivation.
  */
 
-export { ageBucket, todayUtc } from '@/shared/rr/dates';
+import type { AgeBucket } from '@/shared/dates';
 
 export const COLUMNS = [
     'jungen',
@@ -38,7 +38,7 @@ export type Gender = 'm' | 'w' | 'unassignable';
 export type GenderGap = 'not-maintained' | 'diverse';
 
 /** Leaders only: under 18 means Juniorleiter, 18 and over means Mitarbeiter. */
-export type Age = 'adult' | 'minor' | 'unknown';
+export type Age = AgeBucket;
 
 /** One person in scope, carrying nothing that could be rendered as detail. */
 export type ScopedPerson = {

@@ -1,5 +1,7 @@
+import { personIdOf } from '@/shared/groups.api';
 import { isLeaderRole, isLeadershipRole } from '@/shared/roles';
-import type { Group, GroupMember, Leader, LeaderRole, OrgNode, Participant } from '@/shared/types';
+import type { Group, GroupMember } from '@/shared/types';
+import type { Leader, LeaderRole, OrgNode, Participant } from './types';
 
 /** What the cards need to know about the role a member holds. */
 type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
@@ -37,14 +39,16 @@ export function splitMembers(
     const leaders: Leader[] = [];
     const participants: Participant[] = [];
     for (const m of members) {
+        const personId = personIdOf(m);
+        if (personId === null) continue;
         const info = infoByRoleId.get(m.groupTypeRoleId);
         const fullName = m.person?.title ?? '';
         if (!info) {
-            participants.push({ personId: personIdOf(m), fullName });
+            participants.push({ personId, fullName });
             continue;
         }
         leaders.push({
-            personId: personIdOf(m),
+            personId,
             fullName,
             initials: deriveInitials(m),
             imageUrl: imageUrlOf(m),
@@ -61,11 +65,6 @@ export function splitMembers(
 function imageUrlOf(m: GroupMember): string | null {
     const url = (m.person as unknown as { imageUrl?: string | null } | undefined)?.imageUrl;
     return typeof url === 'string' && url.length > 0 ? url : null;
-}
-
-function personIdOf(m: GroupMember): number {
-    const idStr = m.person?.domainIdentifier;
-    return idStr != null ? parseInt(idStr, 10) : (m.personId ?? 0);
 }
 
 /**

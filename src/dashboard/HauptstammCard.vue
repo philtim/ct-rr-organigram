@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Leader, OrgNode } from '@/shared/types';
+import type { Leader, OrgNode } from './types';
 import { COPY } from '@/shared/constants';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { leaderRoleRows } from './counts';
