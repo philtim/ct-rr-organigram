@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { onMounted } from 'vue';
 import { formatEuro, useBeitraege } from './useBeitraege';
-import { nextDueDate } from '@/shared/rr/dates';
 import { COPY } from '@/shared/constants';
 import type { Settings } from '@/shared/settings';
 
@@ -25,12 +24,11 @@ const dateFormat = new Intl.DateTimeFormat('de-DE', {
     timeStyle: 'short',
 });
 
-/** The date the file is about, named before the download rather than after. */
-const dueDateLabel = computed(() =>
-    new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', timeZone: 'UTC' }).format(
-        nextDueDate(new Date()),
-    ),
-);
+/**
+ * The date the file is about, named before the download rather than after —
+ * the one the figures were computed for, not today's.
+ */
+const dueDateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long', timeZone: 'UTC' });
 </script>
 
 <template>
@@ -195,7 +193,9 @@ const dueDateLabel = computed(() =>
                                 : COPY.feesExportButton
                         }}
                     </button>
-                    <p class="rr-fees__detail">{{ COPY.feesExportHint(dueDateLabel) }}</p>
+                    <p class="rr-fees__detail">
+                        {{ COPY.feesExportHint(dueDateFormat.format(state.result.dueDate)) }}
+                    </p>
                     <p class="rr-fees__detail rr-fees__detail--muted">
                         {{ COPY.feesExportPrivacy }}
                     </p>

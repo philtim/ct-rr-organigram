@@ -36,6 +36,12 @@ export type BeitraegeResult = {
     teamCount: number;
     families: number;
     loadedAt: Date;
+    /**
+     * The due date the figures were computed for. Fixed at load, so a tab
+     * left open past midnight on the due date shows, and exports, the date
+     * its Juniorleiter split was actually made against.
+     */
+    dueDate: Date;
 };
 
 export type BeitraegeState =
@@ -65,6 +71,7 @@ type ExportSnapshot = {
     totals: FeeTotals;
     quality: DataQuality;
     loadedAt: Date;
+    dueDate: Date;
 };
 
 /**
@@ -134,7 +141,8 @@ export function useBeitraege() {
             // is for, and it is the date the export's own "Alter am Stichtag"
             // column shows. Using today would bill somebody at the
             // Juniorleiter rate beside a column saying they are 18.
-            const dueDate = nextDueDate(new Date());
+            const loadedAt = new Date();
+            const dueDate = nextDueDate(loadedAt);
             const juniorLeaderPersonIds = new Set(
                 participants
                     .filter(
@@ -161,7 +169,6 @@ export function useBeitraege() {
 
             const totals = summarize(assignments, families, config.childCents.length);
             const quality = summarizeDataQuality(participants, relationships);
-            const loadedAt = new Date();
 
             snapshot = {
                 participants,
@@ -174,6 +181,7 @@ export function useBeitraege() {
                 totals,
                 quality,
                 loadedAt,
+                dueDate,
             };
 
             state.value = {
@@ -187,6 +195,7 @@ export function useBeitraege() {
                     teamCount: teams.length,
                     families: families.length,
                     loadedAt,
+                    dueDate,
                 },
             };
         } catch (e) {
@@ -221,7 +230,7 @@ export function useBeitraege() {
                     import('./xlsx'),
                 ]);
 
-            const dueDate = nextDueDate(new Date());
+            const dueDate = data.dueDate;
             const rows = buildExportRows(
                 data.participants,
                 data.assignments,
