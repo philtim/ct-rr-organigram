@@ -49,21 +49,20 @@ export async function getModule(
         throw new Error(`Module for extension key "${extensionkey}" not found.`);
     }
 
-    console.log(`Module ${extensionkey} found:`, module);
-
     return module;
 }
 
+/**
+ * Creates the module only when the lookup succeeded and found nothing. A
+ * failed lookup propagates: treating it as "absent" would create a second
+ * module next to the one we merely could not read.
+ */
 export async function getOrCreateModule(
     extensionkey: string,
     name: string,
     description: string,
 ): Promise<CustomModule> {
-    try {
-        return await getModule(extensionkey);
-    } catch {
-        return await createModule(extensionkey, name, description);
-    }
+    return (await findModule(extensionkey)) ?? createModule(extensionkey, name, description);
 }
 
 async function createModule(
@@ -125,7 +124,7 @@ export async function getCustomDataCategories<T extends object>(
 
     return categories.map((category) => {
         const { data, ...rest } = category;
-        const parsedData: T = safeParseJSON(data, {} as T);
+        const parsedData: T = data ? (JSON.parse(data) as T) : ({} as T);
 
         return {
             ...rest,
@@ -137,12 +136,16 @@ export async function getCustomDataCategories<T extends object>(
 /**
  * retrieve a single category
  * @param shorty short name of the extension - preferably matching extension name
+ * @param moduleId - optional module id - otherwise tries default
  * @returns the one category with matching name - if it exists
+ * @throws when the category's data is not valid JSON — an unreadable record
+ *   is not an empty one
  */
 export async function getCustomDataCategory<T extends object>(
     shorty: string,
-): Promise<CustomModuleDataCategory | undefined> {
-    const categories = await getCustomDataCategories<T>();
+    moduleId?: number,
+): Promise<(T & Omit<CustomModuleDataCategory, 'data'>) | undefined> {
+    const categories = await getCustomDataCategories<T>(moduleId);
     return categories.find((category) => category.shorty === shorty);
 }
 
