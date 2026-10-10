@@ -1,27 +1,30 @@
 import { isLeaderRole, isLeadershipRole } from '@/shared/roles';
-import type { Group, GroupMember, Leader, LeaderRole, Participant } from '@/shared/types';
+import type { Group, GroupMember, Leader, LeaderRole, OrgNode, Participant } from '@/shared/types';
 
 /** What the cards need to know about the role a member holds. */
 type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
 
 /**
- * Filter members to those whose role counts as a "leader" for the Leiter stat
- * tile. A role counts when ChurchTools flags it as leadership, or when the
- * admin added its id to `Settings.extraLeaderRoleIds` — see `shared/roles.ts`
- * for why the second half is configuration rather than a list of names.
+ * Split a group's members into leaders and participants. A role counts as
+ * leader when ChurchTools flags it as leadership, or when the admin added its
+ * id to `Settings.extraLeaderRoleIds` — see `shared/roles.ts` for why the
+ * second half is configuration rather than a list of names.
  *
- * Each returned Leader carries its role name and sort key, so the cards can
- * group by the role ChurchTools actually defines instead of squeezing
- * everything into fixed buckets.
+ * Each Leader carries its role name and sort key, so the cards can group by
+ * the role ChurchTools actually defines instead of squeezing everything into
+ * fixed buckets.
+ *
+ * A person can still be a participant here and a leader in another group of
+ * the same load; the roll-up (rollup.ts) gives leader status precedence
+ * across the tree.
  */
-export function leadersFromMembers(
+export function splitMembers(
     group: Group,
     members: GroupMember[],
     extraLeaderRoleIds: ReadonlySet<number>,
-): Leader[] {
-    const roles = group.roles ?? [];
+): { leaders: Leader[]; participants: Participant[] } {
     const infoByRoleId = new Map<number, RoleInfo>();
-    for (const r of roles) {
+    for (const r of group.roles ?? []) {
         if (isLeaderRole(r, extraLeaderRoleIds)) {
             infoByRoleId.set(r.groupTypeRoleId, {
                 name: (r.name ?? '').trim(),
@@ -31,51 +34,33 @@ export function leadersFromMembers(
         }
     }
 
-    return members
-        .filter((m) => infoByRoleId.has(m.groupTypeRoleId))
-        .map((m) => {
-            const info = infoByRoleId.get(m.groupTypeRoleId)!;
-            return {
-                personId: personIdOf(m),
-                fullName: m.person?.title ?? '',
-                initials: deriveInitials(m),
-                imageUrl: imageUrlOf(m),
-                roleId: m.groupTypeRoleId,
-                roleName: info.name,
-                roleSortKey: info.sortKey,
-                isPillRole: info.isPillRole,
-            };
+    const leaders: Leader[] = [];
+    const participants: Participant[] = [];
+    for (const m of members) {
+        const info = infoByRoleId.get(m.groupTypeRoleId);
+        const fullName = m.person?.title ?? '';
+        if (!info) {
+            participants.push({ personId: personIdOf(m), fullName });
+            continue;
+        }
+        leaders.push({
+            personId: personIdOf(m),
+            fullName,
+            initials: deriveInitials(m),
+            imageUrl: imageUrlOf(m),
+            roleId: m.groupTypeRoleId,
+            roleName: info.name,
+            roleSortKey: info.sortKey,
+            isPillRole: info.isPillRole,
         });
+    }
+    return { leaders, participants };
 }
 
 /** Pull the person's profile-picture URL from the member's inlined person object. */
 function imageUrlOf(m: GroupMember): string | null {
     const url = (m.person as unknown as { imageUrl?: string | null } | undefined)?.imageUrl;
     return typeof url === 'string' && url.length > 0 ? url : null;
-}
-
-/**
- * Return non-leader members with their personId and name — the rank-and-file
- * participants. "Leader" here uses the same rule as `leadersFromMembers`, so
- * a configured extra leader role is not double-classified into participants.
- *
- * Note: a person can still appear here for group A and as a leader for
- * group B in the same load — the per-Teilstamm and Hauptstamm
- * aggregations in `hierarchy.ts` resolve that by giving leader status
- * precedence over participant status across the tree.
- */
-export function participantsFromMembers(
-    group: Group,
-    members: GroupMember[],
-    extraLeaderRoleIds: ReadonlySet<number>,
-): Participant[] {
-    const roles = group.roles ?? [];
-    const leaderRoleIds = new Set(
-        roles.filter((r) => isLeaderRole(r, extraLeaderRoleIds)).map((r) => r.groupTypeRoleId),
-    );
-    return members
-        .filter((m) => !leaderRoleIds.has(m.groupTypeRoleId))
-        .map((m) => ({ personId: personIdOf(m), fullName: m.person?.title ?? '' }));
 }
 
 function personIdOf(m: GroupMember): number {
@@ -97,14 +82,6 @@ function deriveInitials(member: GroupMember): string {
     const f = attrs?.firstName?.[0] ?? '';
     const l = attrs?.lastName?.[0] ?? '';
     return `${f}${l}`.toUpperCase();
-}
-
-/**
- * Sum a numeric field across an array of nodes.
- * Used to roll counts up from teams to teilstamm to hauptstamm.
- */
-export function sumBy<T>(items: T[], field: (item: T) => number): number {
-    return items.reduce((acc, item) => acc + field(item), 0);
 }
 
 /**
@@ -183,4 +160,24 @@ export function leaderRolesOf(group: Group): LeaderRole[] {
             sortKey: r.sortKey ?? 0,
         }))
         .sort((a, b) => a.sortKey - b.sortKey);
+}
+
+/**
+ * The written-out counts of a compact card — the team chip, and the Teilstamm
+ * card on mobile. "?" wherever the node's figures are incomplete.
+ */
+export function countsLine(node: OrgNode): string {
+    if (node.incomplete) return '? Leiter · ? Teilnehmer';
+    return `${node.leaderCount} Leiter · ${node.memberCount} Teilnehmer`;
+}
+
+/**
+ * The configured member field's count, named after the field, or null when
+ * the Stamm keeps none — a hardcoded "0× Horizont" would read as an answer
+ * about something it does not do. An explicit "0×" is an answer: the team
+ * really ordered nothing.
+ */
+export function fieldLine(node: OrgNode, fieldName: string): string | null {
+    if (!fieldName) return null;
+    return `${node.incomplete ? '?' : node.horizontCount}× ${fieldName}`;
 }

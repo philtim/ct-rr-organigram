@@ -11,8 +11,8 @@ export type DuplicateEntry = {
  * `pickPeople(team).length > 0`, recording which teams they belong to.
  * Returns the entries with two or more teams, sorted by name.
  *
- * Errored Teilstämme and errored Teams are skipped — we don't have
- * reliable membership for them.
+ * Teams that failed to load are skipped — we don't have reliable
+ * membership for them.
  */
 function collect(
     root: OrgNode,
@@ -22,7 +22,6 @@ function collect(
     const map = new Map<number, Acc>();
 
     for (const ts of root.children) {
-        if (ts.error) continue;
         for (const team of ts.children) {
             if (team.error) continue;
             for (const p of pickPeople(team)) {
@@ -49,7 +48,7 @@ function collect(
         .sort((a, b) => a.fullName.localeCompare(b.fullName, 'de'));
 }
 
-/** Leaders (isLeader=true on a Team group) assigned to more than one team. */
+/** Team leaders (by the configured leader rule) assigned to more than one team. */
 export function findDuplicateLeaders(root: OrgNode): DuplicateEntry[] {
     return collect(root, (team) => team.leaders);
 }
@@ -126,9 +125,9 @@ export type WithoutTeamEntry = {
  * Teilstamm from the teams, so someone who is in no team got there by hand or
  * stayed behind when their team was dissolved.
  *
- * A Teilstamm with an errored team is skipped entirely — with incomplete team
- * membership we would accuse people of having no team when we simply could
- * not read one.
+ * A Teilstamm is skipped entirely when its own group or any of its teams
+ * could not be read — with incomplete team membership we would accuse people
+ * of having no team when we simply could not read one.
  */
 export function findPeopleWithoutTeam(root: OrgNode): {
     staff: WithoutTeamEntry[];
@@ -145,7 +144,7 @@ export function findPeopleWithoutTeam(root: OrgNode): {
     };
 
     for (const ts of root.children) {
-        if (ts.error || ts.children.some((team) => team.error)) continue;
+        if (ts.error || ts.incomplete) continue;
 
         const inTeams = new Set<number>();
         for (const team of ts.children) {

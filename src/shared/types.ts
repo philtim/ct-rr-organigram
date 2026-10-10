@@ -92,6 +92,17 @@ export type OrgNode = {
      */
     horizontCount: number;
     children: OrgNode[];
-    /** Set when this node failed to load — drives the "?" rendering of US-5. */
-    error?: 'fetch-failed' | 'forbidden';
+    /**
+     * Set when this group itself could not be read — its leaders are unknown
+     * and the card shows "?" in their place (US-5).
+     */
+    error?: 'fetch-failed';
+    /** Set on a Teilstamm whose list of teams could not be read. */
+    childrenFailed?: boolean;
+    /**
+     * True when the counts above are missing part of what they summarise — a
+     * team, a Teilstamm, or this group itself. The cards then show "?" in red
+     * instead of a number that would look right and be too low.
+     */
+    incomplete: boolean;
 };

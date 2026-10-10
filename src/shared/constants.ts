@@ -27,7 +27,15 @@ export const COPY = {
     refresh: 'Aktualisieren',
     timestampPrefix: 'Stand: ',
     accessDenied: 'Du hast keinen Zugriff auf das RR Mitarbeiter-Dashboard.',
-    partialErrorToast: 'Einige Daten konnten nicht geladen werden.',
+    partialErrorTitle:
+        'Nicht alle Gruppen konnten geladen werden. Die rot markierten Summen sind deshalb ' +
+        'nicht berechenbar — „Aktualisieren" versucht es erneut.',
+    failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
+    failedTeilstamm: (name: string) => `Teilstamm „${name}“`,
+    failedTeilstammTeams: (name: string) => `Teams von Teilstamm „${name}“`,
+    failedTeam: (name: string, teilstamm: string) => `Team „${name}“ (Teilstamm „${teilstamm}“)`,
+    /** Read out in place of a "?" that stands for a sum missing a part. */
+    notComputable: 'nicht berechenbar',
     loading: 'Lädt …',
     // Leader lists are labelled with the group role's own name, straight from
     // ChurchTools — see `groupLeadersByRole` in dashboard/counts.ts. The labels
