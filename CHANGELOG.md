@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.13.0](https://github.com/philtim/ct-rr-organigram/compare/v1.12.0...v1.13.0) (2026-10-10)
+
+
+### Features
+
+* **dashboard:** refuse a total over a partly loaded tree ([7af8300](https://github.com/philtim/ct-rr-organigram/commit/7af830054b12c46b086eea9d589c998472aab8e0))
+
+
+### Bug Fixes
+
+* **admin:** run the scope scan once when the form opens ([7d1f181](https://github.com/philtim/ct-rr-organigram/commit/7d1f1817906f4de151b36e49e9712bf9f7b790d4))
+* **api:** read every paginated list the same way, without truncating ([87d6ecd](https://github.com/philtim/ct-rr-organigram/commit/87d6ecda671f7110f53e94d5bd4535fd7ac9ae82))
+* **api:** stop at the last page the server reports ([55e1e2a](https://github.com/philtim/ct-rr-organigram/commit/55e1e2acc6f89824efe0502fa6d834fc774ee527))
+* **beitraege:** find the relationship types instead of assuming their ids ([a740bea](https://github.com/philtim/ct-rr-organigram/commit/a740beabca3d6fe6ffe79cdba57ff1278e538311))
+* **beitraege:** fix the due date once per load ([fcd48d5](https://github.com/philtim/ct-rr-organigram/commit/fcd48d52779f08100f64c28db6f6f15a2c13a496))
+* **dashboard:** retry rate-limited group reads ([ee8cf06](https://github.com/philtim/ct-rr-organigram/commit/ee8cf06200e726d3e2735bddcbcba615cbc04440))
+* **dev:** log in with a CSRF token so a stale session cannot blank the page ([a1dd353](https://github.com/philtim/ct-rr-organigram/commit/a1dd353a14a76410c09f8d954786c8bf9fc1eed0))
+* **kv-store:** let a save replace a record whose data no longer parses ([a65a2da](https://github.com/philtim/ct-rr-organigram/commit/a65a2da2aee4ce0b01cd993929e60f28ea3e84ac))
+* **kv-store:** treat an unreadable settings record as unreadable, not absent ([1029845](https://github.com/philtim/ct-rr-organigram/commit/102984550698843bb801f0b65ec6fceef039d191))
+* make npm run typecheck check the sources ([a744f43](https://github.com/philtim/ct-rr-organigram/commit/a744f4371023034a216ed6712de94aa4b04477eb))
+* say what could not be read instead of answering with nothing ([1307437](https://github.com/philtim/ct-rr-organigram/commit/13074377841328200d5ab3da6d42ab274a51b5d4))
+
 ## [1.12.0](https://github.com/philtim/ct-rr-organigram/compare/v1.11.0...v1.12.0) (2026-10-09)
 
 
