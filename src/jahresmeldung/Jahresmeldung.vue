@@ -67,13 +67,17 @@ async function copyValue(value: number) {
         <p v-else-if="state.phase === 'error'" class="jm__error" role="alert">
             {{ state.message }}
         </p>
+        <p v-else-if="state.phase === 'unconfigured'" class="jm__hint" role="alert">
+            {{ state.message }}
+        </p>
 
         <template v-else>
             <!--
-                  A banner, not a toast. A number that is quietly too low is the one failure mode of this view
-                  that survives all the way into a filing with the Bund, so it
-                  gets told in place, above the table it affects.
-                -->
+              A banner, not a toast. A number that is quietly too low is the
+              one failure mode of this view that survives all the way into a
+              filing with the Bund, so it gets told in place, above the table
+              it affects.
+            -->
             <p v-if="state.result.tally.incomplete" class="jm__warning" role="alert">
                 {{ COPY.jahresmeldungIncomplete }}
             </p>
@@ -133,6 +137,14 @@ async function copyValue(value: number) {
     border-left-width: 3px;
     border-radius: var(--rr-radius-md);
     padding: 10px 14px;
+}
+
+.jm__hint {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: var(--rr-bg-primary);
+    border: 0.5px solid var(--rr-border-tertiary);
+    border-radius: var(--rr-radius-md);
 }
 
 .jm__error {

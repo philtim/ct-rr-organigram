@@ -9,6 +9,7 @@ import {
 import type { LeaderRoleIds } from '@/shared/roles';
 import type { GroupMember } from '@/shared/types';
 import { participantEdges, resolveRelationshipTypes } from './relationships';
+import { COPY } from '@/shared/copy';
 import type { RelationshipRow, RelationshipTypeRow } from './relationships';
 import type { Relationship, RrParticipant } from './types';
 
@@ -218,9 +219,9 @@ export async function fetchRelationships(personIds: number[]): Promise<Relations
         ),
         withRetryOn429(() => ct.get<RelationshipRow[]>('/persons/relationships')),
     ]);
-    return participantEdges(
-        rows ?? [],
-        resolveRelationshipTypes(masterdata?.relationshipTypes ?? []),
-        new Set(personIds),
-    );
+    const types = resolveRelationshipTypes(masterdata?.relationshipTypes ?? []);
+    // Without it every family would rest on the address alone, and the total
+    // would come out too high while looking like an answer.
+    if (types.parentChild === null) throw new Error(COPY.relationshipTypesUnreadable);
+    return participantEdges(rows ?? [], types, new Set(personIds));
 }

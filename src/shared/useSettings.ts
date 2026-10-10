@@ -39,8 +39,8 @@ export function useSettings() {
             settings.value = stored ? parseSettings(stored.data) : EMPTY_SETTINGS;
         } catch {
             // No permission, a 5xx, a timeout, a record that does not parse.
-            // We do not know what is
-            // configured, so we must not act as though nothing is.
+            // We do not know what is configured, so we must not act as though
+            // nothing is.
             settings.value = EMPTY_SETTINGS;
             loadFailed.value = true;
         }

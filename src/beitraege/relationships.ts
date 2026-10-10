@@ -29,9 +29,11 @@ export type RelationshipTypeIds = { parentChild: number | null; sibling: number 
  * added one by hand has whatever name its admin typed. Both the built-in key
  * and the German name are accepted for it.
  *
- * A type that is absent yields null, and its edges are simply not there:
- * families then rest on shared parents and on the address signal, and the
- * data-quality panel names everyone without a relationship.
+ * Parent/child is a built-in type every installation has, so not finding it
+ * means the list could not be read as expected — the caller refuses to
+ * compute rather than bill every child as an only child. A sibling type is
+ * optional: without one, families rest on shared parents and the address
+ * signal, and the data-quality panel names everyone without a relationship.
  */
 export function resolveRelationshipTypes(types: RelationshipTypeRow[]): RelationshipTypeIds {
     const find = (matches: (t: RelationshipTypeRow) => boolean) =>

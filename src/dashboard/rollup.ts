@@ -43,6 +43,8 @@ export function rollUpTeilstamm(ts: OrgNode, teams: OrgNode[] | null): OrgNode {
         ),
         horizontCount: sumHorizont(loaded),
         children: teams,
+        // Replaces an errored own group's `incomplete: true`: these figures
+        // come from the teams alone. The Hauptstamm checks `ts.error` itself.
         incomplete: loaded.length < teams.length,
     };
 }
@@ -81,7 +83,11 @@ export function loadFailures(root: OrgNode): LoadFailure[] {
     const failures: LoadFailure[] = [];
     if (root.error) failures.push({ kind: 'hauptstamm', name: root.name });
     for (const ts of root.children) {
-        if (ts.error) failures.push({ kind: 'teilstamm', name: ts.name });
+        // A small Stamm names one group as both; it failed once, say so once.
+        const sameAsRoot = ts.groupId === root.groupId;
+        if (ts.error && !(sameAsRoot && root.error)) {
+            failures.push({ kind: 'teilstamm', name: ts.name });
+        }
         if (ts.childrenFailed) failures.push({ kind: 'teilstamm-teams', name: ts.name });
         for (const team of ts.children) {
             if (team.error) failures.push({ kind: 'team', name: team.name, teilstamm: ts.name });

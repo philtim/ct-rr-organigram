@@ -4,8 +4,9 @@
  * key; they do not carry text of their own.
  *
  * Not in here: the export file's content (beitraege/workbook.ts), which is a
- * document of its own, and console messages, which nobody using the
- * extension reads.
+ * document of its own; the module and category names the extension stores in
+ * ChurchTools (admin/useAdminSettings.ts), which are data; and console
+ * messages, which nobody using the extension reads.
  */
 const teamCount = (n: number) => `${n} ${n === 1 ? 'Team' : 'Teams'}`;
 
@@ -18,9 +19,12 @@ export const COPY = {
     configMissing:
         'Diese Ansicht ist noch nicht konfiguriert. Unter Admin → Extensions müssen ' +
         'Hauptstamm-Gruppe, Teilstämme und die Gruppentypen der Teams festgelegt werden.',
-    feesNoTeams:
+    noTeamsInScope:
         'Unter den konfigurierten Teilstämmen wurden keine Teams gefunden. Bitte die ' +
         'Teilstamm- und Team-Auswahl in der Konfiguration prüfen.',
+    relationshipTypesUnreadable:
+        'Die Beziehungsart „Elternteil/Kind" wurde in ChurchTools nicht gefunden. Ohne sie ' +
+        'lassen sich Geschwister nicht erkennen, und die Beiträge wären zu hoch.',
     feesNotConfigured:
         'Für die Beitragsabrechnung sind noch keine Beitragssätze hinterlegt. Die Staffel ' +
         'wird unter Admin → Extensions festgelegt.',
@@ -55,6 +59,9 @@ export const COPY = {
     // Hints below the organigram.
     hintsTitle: 'Hinweise',
     hintsNone: 'Keine Auffälligkeiten — niemand ist mehrfach zugewiesen oder ohne Team.',
+    hintsNoneSoFar:
+        'In den Gruppen, die geladen werden konnten, ist nichts aufgefallen. Die übrigen ' +
+        'sind oben genannt und wurden nicht geprüft.',
     hintsRule:
         'Personen mit Leiter-Rolle in mindestens einem Team werden in der Gesamtzählung immer ' +
         'als Leiter gewertet — auch wenn sie in anderen Teams als Mitglied geführt sind. ' +
@@ -300,6 +307,9 @@ export const COPY = {
     adminOnlyChildren: 'Nur Untergruppen des Hauptstamms anzeigen',
     adminNoChildren: 'Keine passenden Untergruppen — Haken entfernen, um alle Gruppen zu sehen.',
     adminOtherGroups: 'Weitere Gruppen',
+    adminChildrenUnavailable:
+        'Die Untergruppen des Hauptstamms konnten nicht gelesen werden — die Liste ist ' +
+        'deshalb leer, nicht weil es keine gäbe. Bitte die Seite neu laden.',
     adminTeamsLabel: 'Welche Gruppen sind Teams?',
     adminTeamsHelp:
         'Unter den gewählten Teilstämmen gefunden. Nur die angehakten Typen zählen als Team ' +

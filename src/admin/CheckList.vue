@@ -16,12 +16,16 @@ export type CheckSection = {
     empty?: string;
 };
 
-defineProps<{ sections: CheckSection[] }>();
+defineProps<{
+    sections: CheckSection[];
+    /** The list's name for assistive technology — the label shown above it. */
+    label: string;
+}>();
 const model = defineModel<number[]>({ required: true });
 </script>
 
 <template>
-    <ul class="check-list">
+    <ul class="check-list" role="group" :aria-label="label">
         <template v-for="(section, s) in sections" :key="s">
             <li v-if="section.heading" class="check-list__head">{{ section.heading }}</li>
             <li v-for="item in section.items" :key="item.id">

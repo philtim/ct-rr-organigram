@@ -36,6 +36,8 @@ export function useAdminForm() {
     const savedJustNow = ref(false);
 
     const hauptstammChildren = ref<ChildGroup[]>([]);
+    /** The Hauptstamm's children could not be read — not the same as "it has none". */
+    const childrenFailed = ref(false);
     const scan = ref<ScopeScan | null>(null);
     const scanning = ref(false);
 
@@ -112,25 +114,34 @@ export function useAdminForm() {
     async function refreshChildren(id: number | null) {
         const mine = ++childrenSequence;
         hauptstammChildren.value = [];
+        childrenFailed.value = false;
         if (id === null) return;
         try {
             const children = await listChildren(id);
             if (mine === childrenSequence) hauptstammChildren.value = children;
         } catch (e) {
             console.error('[rr-dashboard] children unavailable:', e);
+            if (mine === childrenSequence) childrenFailed.value = true;
         }
     }
 
     async function runScan() {
         const mine = ++scanSequence;
         if (draft.value.gateGroupId === null || draft.value.teilstammIds.length === 0) {
+            // Also ends a scan still in flight for the previous selection,
+            // whose own `finally` no longer owns the flag.
             scan.value = null;
+            scanning.value = false;
             return;
         }
         scanning.value = true;
         try {
             const result = await scanScope(draft.value.gateGroupId, draft.value.teilstammIds);
             if (mine === scanSequence) scan.value = result;
+        } catch (e) {
+            // No counts at all rather than the previous selection's.
+            console.error('[rr-dashboard] admin scan failed:', e);
+            if (mine === scanSequence) scan.value = null;
         } finally {
             if (mine === scanSequence) scanning.value = false;
         }
@@ -182,6 +193,7 @@ export function useAdminForm() {
         groups,
         hauptstamm,
         candidates,
+        childrenFailed,
         typeCounts,
         preview,
         leadershipRoles,

@@ -137,3 +137,10 @@ describe('loadFailures', () => {
         expect(loadFailures(rollUpHauptstamm(node(100), []))).toEqual([]);
     });
 });
+
+describe('loadFailures for a small Stamm', () => {
+    it('names a group that is both Hauptstamm and only Teilstamm once', () => {
+        const root = rollUpHauptstamm(failed(100), [rollUpTeilstamm(failed(100), [])]);
+        expect(loadFailures(root)).toEqual([{ kind: 'hauptstamm', name: 'G100' }]);
+    });
+});
