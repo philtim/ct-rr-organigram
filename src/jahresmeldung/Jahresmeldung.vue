@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import DatenqualitaetPanel from './DatenqualitaetPanel.vue';
 import JahresmeldungTable from './JahresmeldungTable.vue';
 import OhneTeamPanel from './OhneTeamPanel.vue';
 import { useJahresmeldung } from './useJahresmeldung';
-import Toast from '@/dashboard/Toast.vue';
-import { formatTimestamp } from '@/dashboard/useDashboard';
+import Toast from '@/shared/Toast.vue';
 import { COPY } from '@/shared/constants';
+import { formatTimestamp } from '@/shared/format';
+import { useToast } from '@/shared/useToast';
 import type { Settings } from '@/shared/settings';
 
 const props = defineProps<{ settings: Settings }>();
@@ -23,8 +24,7 @@ const stand = computed(() =>
     state.value.phase === 'ready' ? formatTimestamp(state.value.result.loadedAt) : null,
 );
 
-const toast = ref<string | null>(null);
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
+const toast = useToast();
 
 /**
  * Copy a single figure. Deliberately not "copy the whole table": the Bund's
@@ -34,18 +34,12 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 async function copyValue(value: number) {
     try {
         await navigator.clipboard.writeText(String(value));
-        showToast(COPY.jahresmeldungCopied(value));
+        toast.show(COPY.jahresmeldungCopied(value));
     } catch {
         // No clipboard permission, or an insecure context. Saying nothing is
         // right here — a success toast over a failed copy would be worse than
         // no feedback, because the user would paste the previous value.
     }
-}
-
-function showToast(message: string) {
-    toast.value = message;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (toast.value = null), 2000);
 }
 </script>
 
@@ -82,8 +76,7 @@ function showToast(message: string) {
 
             <template v-else>
                 <!--
-                  A banner, not just the toast the organigram uses. A number
-                  that is quietly too low is the one failure mode of this view
+                  A banner, not a toast. A number that is quietly too low is the one failure mode of this view
                   that survives all the way into a filing with the Bund, so it
                   gets told in place, above the table it affects.
                 -->
@@ -114,7 +107,7 @@ function showToast(message: string) {
                 </details>
             </template>
 
-            <Toast :visible="toast !== null" :message="toast ?? ''" />
+            <Toast :message="toast.message.value" @dismiss="toast.dismiss" />
         </div>
     </main>
 </template>

@@ -37,10 +37,3 @@ export function useDashboard() {
 
     return { state, load };
 }
-
-/** Format a Date as "HH:MM" (24h, leading zeros). */
-export function formatTimestamp(d: Date): string {
-    const hh = d.getHours().toString().padStart(2, '0');
-    const mm = d.getMinutes().toString().padStart(2, '0');
-    return `${hh}:${mm}`;
-}
