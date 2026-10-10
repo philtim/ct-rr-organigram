@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import type { TabId } from './tabs';
 
-/**
- * Renders only the tabs the current user may open. Hiding a tab is
- * presentation only — the view behind it re-checks its own access rule
- * (ADR-008), so a hand-typed URL is still denied.
- *
- * With a single available tab the bar renders nothing: a one-tab tab bar is
- * chrome without information, and the organigram looked fine without it.
- */
+/** The views of the extension (ADR-007). Everyone past the gate sees all of them. */
 const props = defineProps<{
     tabs: { id: TabId; label: string }[];
     active: TabId;
@@ -18,7 +11,7 @@ const emit = defineEmits<{ select: [TabId] }>();
 </script>
 
 <template>
-    <nav v-if="props.tabs.length > 1" class="rr-tabs" aria-label="Ansichten">
+    <nav class="rr-tabs" aria-label="Ansichten">
         <button
             v-for="tab in props.tabs"
             :key="tab.id"

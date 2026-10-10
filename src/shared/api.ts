@@ -54,7 +54,8 @@ export async function withRetryOn429<T>(call: () => Promise<T>, attempts = 3): P
     }
 }
 
-function statusOf(e: unknown): number | undefined {
+/** The HTTP status of a failed request, from either shape the client throws. */
+export function statusOf(e: unknown): number | undefined {
     if (typeof e === 'object' && e !== null) {
         const maybe = e as { response?: { status?: number }; status?: number };
         return maybe.response?.status ?? maybe.status;
