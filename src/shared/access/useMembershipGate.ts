@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { ct, statusOf } from '@/shared/api';
+import { COPY } from '@/shared/copy';
 
 export type GateStatus =
     | { phase: 'idle' }
@@ -39,12 +40,7 @@ export function useMembershipGate() {
             status.value =
                 httpStatus === 404
                     ? { phase: 'denied' }
-                    : {
-                          phase: 'error',
-                          message: httpStatus
-                              ? `Der Gate-Check konnte nicht durchgeführt werden (HTTP ${httpStatus}).`
-                              : 'Der Gate-Check konnte nicht durchgeführt werden.',
-                      };
+                    : { phase: 'error', message: COPY.gateCheckFailed(httpStatus) };
         }
     }
 

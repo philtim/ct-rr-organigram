@@ -3,6 +3,7 @@
  * Feature-level API calls live in each feature's `*.api.ts` and import from here.
  */
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { COPY } from './copy';
 
 export const ct = churchtoolsClient;
 
@@ -111,7 +112,5 @@ export async function fetchAllPages<T>(url: string, limit: number): Promise<T[]>
         rows.push(...batch);
         if (batch.length < limit) return rows;
     }
-    throw new Error(
-        `${url} liefert mehr als ${MAX_PAGES * limit} Einträge — die Liste wäre unvollständig.`,
-    );
+    throw new Error(COPY.listTruncated(url, MAX_PAGES * limit));
 }

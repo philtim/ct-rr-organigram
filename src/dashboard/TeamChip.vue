@@ -3,6 +3,7 @@ import type { OrgNode } from './types';
 import { computed } from 'vue';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { countsLine, fieldLine } from './counts';
+import { COPY } from '@/shared/copy';
 
 const props = defineProps<{
     node: OrgNode;
@@ -19,11 +20,7 @@ const fieldText = computed(() => fieldLine(props.node, props.memberFieldName));
 </script>
 
 <template>
-    <a
-        class="team-chip"
-        :href="href"
-        :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
-    >
+    <a class="team-chip" :href="href" :aria-label="COPY.openGroup(node.name)">
         <div class="team-chip__row">
             <span class="team-chip__name">{{ node.name }}</span>
         </div>

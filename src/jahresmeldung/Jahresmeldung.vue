@@ -5,7 +5,8 @@ import JahresmeldungTable from './JahresmeldungTable.vue';
 import OhneTeamPanel from './OhneTeamPanel.vue';
 import { useJahresmeldung } from './useJahresmeldung';
 import Toast from '@/shared/Toast.vue';
-import { COPY } from '@/shared/constants';
+import ViewShell from '@/shared/ViewShell.vue';
+import { COPY } from '@/shared/copy';
 import { formatTimestamp } from '@/shared/format';
 import { useToast } from '@/shared/useToast';
 import type { Settings } from '@/shared/settings';
@@ -20,8 +21,10 @@ function reload() {
 
 onMounted(reload);
 
-const stand = computed(() =>
-    state.value.phase === 'ready' ? formatTimestamp(state.value.result.loadedAt) : null,
+const status = computed(() =>
+    state.value.phase === 'ready'
+        ? COPY.loadedAt(formatTimestamp(state.value.result.loadedAt))
+        : COPY.loading,
 );
 
 const toast = useToast();
@@ -44,135 +47,70 @@ async function copyValue(value: number) {
 </script>
 
 <template>
-    <main class="jm">
-        <div class="jm__inner">
-            <header class="jm__header">
-                <div class="jm__title-block">
-                    <h1 class="jm__title">{{ COPY.jahresmeldungTitle }}</h1>
-                    <p class="jm__subtitle">
-                        <template v-if="stand"> {{ COPY.timestampPrefix }}{{ stand }} </template>
-                        <template v-else>{{ COPY.loading }}</template>
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    class="jm__refresh"
-                    :disabled="state.phase === 'loading'"
-                    @click="reload"
-                >
-                    ↻ <span class="jm__refresh-label">{{ COPY.refresh }}</span>
-                </button>
-            </header>
+    <ViewShell
+        :title="COPY.jahresmeldungTitle"
+        :status="status"
+        refreshable
+        :loading="state.phase === 'loading'"
+        @refresh="reload"
+    >
+        <p class="jm__intro">{{ COPY.jahresmeldungIntro }}</p>
 
-            <p class="jm__intro">{{ COPY.jahresmeldungIntro }}</p>
+        <template v-if="state.phase === 'loading' || state.phase === 'idle'">
+            <JahresmeldungTable
+                :tally="null"
+                :skeleton-rows="settings.teilstammIds.length + 1"
+                @copy="copyValue"
+            />
+        </template>
 
-            <template v-if="state.phase === 'loading' || state.phase === 'idle'">
-                <JahresmeldungTable :tally="null" @copy="copyValue" />
-            </template>
+        <p v-else-if="state.phase === 'error'" class="jm__error" role="alert">
+            {{ state.message }}
+        </p>
 
-            <p v-else-if="state.phase === 'error'" class="jm__error" role="alert">
-                {{ state.message }}
-            </p>
-
-            <template v-else>
-                <!--
+        <template v-else>
+            <!--
                   A banner, not a toast. A number that is quietly too low is the one failure mode of this view
                   that survives all the way into a filing with the Bund, so it
                   gets told in place, above the table it affects.
                 -->
-                <p v-if="state.result.tally.incomplete" class="jm__warning" role="alert">
-                    {{ COPY.jahresmeldungIncomplete }}
+            <p v-if="state.result.tally.incomplete" class="jm__warning" role="alert">
+                {{ COPY.jahresmeldungIncomplete }}
+            </p>
+
+            <JahresmeldungTable
+                :tally="state.result.tally"
+                :skeleton-rows="settings.teilstammIds.length + 1"
+                @copy="copyValue"
+            />
+
+            <div class="jm__panels">
+                <OhneTeamPanel :tally="state.result.tally" />
+                <DatenqualitaetPanel :tally="state.result.tally" />
+            </div>
+
+            <details class="jm__method">
+                <summary class="jm__method-summary">
+                    {{ COPY.jahresmeldungMethodTitle }}
+                </summary>
+                <dl class="jm__method-list">
+                    <template v-for="entry in COPY.jahresmeldungMethod" :key="entry.term">
+                        <dt class="jm__method-term">{{ entry.term }}</dt>
+                        <dd class="jm__method-text">{{ entry.text }}</dd>
+                    </template>
+                </dl>
+                <p class="jm__method-scope">
+                    {{ COPY.jahresmeldungScope(state.result.teamCount) }}
                 </p>
+            </details>
+        </template>
 
-                <JahresmeldungTable :tally="state.result.tally" @copy="copyValue" />
-
-                <div class="jm__panels">
-                    <OhneTeamPanel :tally="state.result.tally" />
-                    <DatenqualitaetPanel :tally="state.result.tally" />
-                </div>
-
-                <details class="jm__method">
-                    <summary class="jm__method-summary">
-                        {{ COPY.jahresmeldungMethodTitle }}
-                    </summary>
-                    <dl class="jm__method-list">
-                        <template v-for="entry in COPY.jahresmeldungMethod" :key="entry.term">
-                            <dt class="jm__method-term">{{ entry.term }}</dt>
-                            <dd class="jm__method-text">{{ entry.text }}</dd>
-                        </template>
-                    </dl>
-                    <p class="jm__method-scope">
-                        {{ COPY.jahresmeldungScope(state.result.teamCount) }}
-                    </p>
-                </details>
-            </template>
-
-            <Toast :message="toast.message.value" @dismiss="toast.dismiss" />
-        </div>
-    </main>
+        <Toast :message="toast.message.value" @dismiss="toast.dismiss" />
+    </ViewShell>
 </template>
 
 <style scoped>
-/* Same two-layer shell as the organigram: full-width band for the background,
-   centred column capped at 1280px for the content. */
-.jm {
-    background: var(--rr-bg-tertiary);
-    color: var(--rr-text-primary);
-    font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-}
-
-.jm__inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
-}
-
-.jm__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    gap: 12px;
-}
-
-.jm__title-block {
-    min-width: 0;
-}
-
-.jm__title {
-    margin: 0 0 4px;
-    font-size: 22px;
-    font-weight: 500;
-}
-
-.jm__subtitle {
-    margin: 0;
-    font-size: 13px;
-    color: var(--rr-text-secondary);
-}
-
-.jm__refresh {
-    background: var(--rr-bg-primary);
-    border: 1px solid var(--rr-border-secondary);
-    border-radius: var(--rr-radius-md);
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--rr-text-primary);
-    flex-shrink: 0;
-}
-
-.jm__refresh:disabled {
-    opacity: 0.5;
-    cursor: progress;
-}
-
-.jm__refresh-label {
-    margin-left: 4px;
-}
+/* Layout only; the frame is ViewShell's. */
 
 .jm__intro {
     margin: 0 0 20px;
@@ -187,12 +125,12 @@ async function copyValue(value: number) {
     /* No warning pictograph: the default font stacks on Linux and in the
        ChurchTools host render U+26A0 as a tofu box. Colour and the heavier
        left edge carry it instead. */
-    border-left-width: 3px;
     font-size: 13px;
     line-height: 1.45;
     color: var(--rr-error-fg);
     background: var(--rr-error-bg);
     border: 0.5px solid var(--rr-error-border);
+    border-left-width: 3px;
     border-radius: var(--rr-radius-md);
     padding: 10px 14px;
 }
@@ -269,15 +207,6 @@ async function copyValue(value: number) {
 }
 
 @media (max-width: 767px) {
-    .jm__inner {
-        padding: 16px;
-    }
-    .jm__title {
-        font-size: 18px;
-    }
-    .jm__refresh-label {
-        display: none;
-    }
     .jm__method-list {
         grid-template-columns: minmax(0, 1fr);
         gap: 2px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { COPY } from './constants';
+import { COPY } from './copy';
 
 /**
  * A short confirmation in the corner. Controlled: the parent owns the message

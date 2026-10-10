@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { OrgNode } from './types';
 import TeamChip from './TeamChip.vue';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import { getGroupFrontendUrl } from '@/shared/api';
 import { countsLine, fieldLine, leaderRoleRows } from './counts';
 
@@ -37,10 +37,8 @@ const leaderText = computed(() =>
         .join(', '),
 );
 const summary = computed(() => {
-    if (props.node.childrenFailed) return 'Teams konnten nicht geladen werden';
-    const teamWord = props.node.children.length === 1 ? 'Team' : 'Teams';
-    const lead = leaderText.value || 'Keine Leiter eingetragen';
-    return `${lead} · ${props.node.children.length} ${teamWord}`;
+    if (props.node.childrenFailed) return COPY.teamsUnavailable;
+    return COPY.teilstammSummary(leaderText.value, props.node.children.length);
 });
 const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 // Written-out counts for the mobile compact view — Variante-C style,
@@ -57,11 +55,7 @@ const stats = computed(() => [
 
 <template>
     <article class="ts-card">
-        <a
-            class="ts-card__link"
-            :href="href"
-            :aria-label="`Zur ChurchTools-Gruppe von ${node.name} wechseln`"
-        >
+        <a class="ts-card__link" :href="href" :aria-label="COPY.openGroup(node.name)">
             <template v-if="!props.teamsOnly">
                 <!-- Compact mobile row (hidden on tablet+) -->
                 <div class="ts-card__compact-row">
@@ -77,7 +71,7 @@ const stats = computed(() => [
 
                 <!-- Full layout (hidden on mobile) -->
                 <header class="ts-card__head">
-                    <p class="ts-card__subtitle">TEILSTAMM</p>
+                    <p class="ts-card__subtitle">{{ COPY.levelTeilstamm }}</p>
                     <h3 class="ts-card__name">{{ node.name }}</h3>
                 </header>
 
@@ -100,9 +94,9 @@ const stats = computed(() => [
                                 {{ COPY.vacantRole }}
                             </span>
                         </template>
-                        <span v-if="!roleGroups.length" class="ts-card__empty">
-                            Keine Leiter eingetragen.
-                        </span>
+                        <span v-if="!roleGroups.length" class="ts-card__empty">{{
+                            COPY.noLeaders
+                        }}</span>
                     </template>
                 </div>
 
@@ -137,10 +131,8 @@ const stats = computed(() => [
         </a>
 
         <section class="ts-card__teams">
-            <p class="ts-card__subtitle">TEAMS</p>
-            <p v-if="node.childrenFailed" class="ts-card__empty">
-                Teams konnten nicht geladen werden.
-            </p>
+            <p class="ts-card__subtitle">{{ COPY.levelTeams }}</p>
+            <p v-if="node.childrenFailed" class="ts-card__empty">{{ COPY.teamsUnavailable }}</p>
             <template v-else>
                 <TeamChip
                     v-for="team in node.children"
@@ -148,7 +140,7 @@ const stats = computed(() => [
                     :node="team"
                     :member-field-name="props.memberFieldName"
                 />
-                <p v-if="!node.children.length" class="ts-card__empty">Keine Teams.</p>
+                <p v-if="!node.children.length" class="ts-card__empty">{{ COPY.noTeams }}</p>
             </template>
         </section>
     </article>

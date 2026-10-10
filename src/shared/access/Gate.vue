@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GateStatus } from './useMembershipGate';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 defineProps<{ status: GateStatus }>();
 </script>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { Issue, IssueReason, Tally } from './tally';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 /**
  * Names people whose record stopped the table from placing them, and links to

@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { loadJahresmeldung } from './jahresmeldung.api';
 import { tally } from './tally';
 import type { Tally } from './tally';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 
 export type JahresmeldungResult = {

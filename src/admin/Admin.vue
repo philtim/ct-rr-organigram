@@ -5,7 +5,7 @@ import type { CheckItem, CheckSection } from './CheckList.vue';
 import FeeLadderEditor from './FeeLadderEditor.vue';
 import HauptstammPicker from './HauptstammPicker.vue';
 import { useAdminForm } from './useAdminForm';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 /**
  * The one screen where this extension learns what Stamm it is running at.

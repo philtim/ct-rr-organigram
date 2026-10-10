@@ -1,3 +1,4 @@
+import { COPY } from '@/shared/copy';
 import { personIdOf } from '@/shared/groups.api';
 import { isLeaderRole, isLeadershipRole } from '@/shared/roles';
 import type { Group, GroupMember } from '@/shared/types';
@@ -163,8 +164,9 @@ export function leaderRolesOf(group: Group): LeaderRole[] {
  * card on mobile. "?" wherever the node's figures are incomplete.
  */
 export function countsLine(node: OrgNode): string {
-    if (node.incomplete) return '? Leiter · ? Teilnehmer';
-    return `${node.leaderCount} Leiter · ${node.memberCount} Teilnehmer`;
+    return node.incomplete
+        ? COPY.countsLine('?', '?')
+        : COPY.countsLine(node.leaderCount, node.memberCount);
 }
 
 /**
@@ -175,5 +177,5 @@ export function countsLine(node: OrgNode): string {
  */
 export function fieldLine(node: OrgNode, fieldName: string): string | null {
     if (!fieldName) return null;
-    return `${node.incomplete ? '?' : node.horizontCount}× ${fieldName}`;
+    return COPY.fieldLine(node.incomplete ? '?' : node.horizontCount, fieldName);
 }

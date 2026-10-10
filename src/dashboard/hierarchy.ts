@@ -5,6 +5,7 @@ import { mapWithConcurrency } from '@/shared/api';
 import { getChildGroups, teamsAmong } from '@/shared/groups.api';
 import type { ChildGroup } from '@/shared/groups.api';
 import { API_TIMEOUT_MS } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 import type { OrgNode } from './types';
 
@@ -34,7 +35,7 @@ function errorNode(groupId: number, fallbackName: string | undefined): OrgNode {
     return {
         groupId,
         // A name nobody can place is worse than the id the admin configured.
-        name: fallbackName ?? `Gruppe ${groupId}`,
+        name: fallbackName ?? COPY.groupFallbackName(groupId),
         leaders: [],
         leaderRoles: [],
         participants: [],
@@ -114,7 +115,7 @@ const CONCURRENCY = 6;
  */
 export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
     const rootGroupId = settings.gateGroupId;
-    if (rootGroupId === null) throw new Error('Keine Hauptstamm-Gruppe konfiguriert.');
+    if (rootGroupId === null) throw new Error(COPY.noHauptstamm);
 
     // The Teilstämme are configured directly, not derived from the
     // Hauptstamm's children. That is what lets a small Stamm name the same

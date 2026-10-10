@@ -11,7 +11,7 @@ import { useSettings } from '@/shared/useSettings';
 import { isDashboardConfigured, shouldShowAdmin } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 // Routing: the admin form is reachable via ?admin=1, the tabs via ?tab=
 // (shared/tabs.ts). No router: a query parameter each is all there is.

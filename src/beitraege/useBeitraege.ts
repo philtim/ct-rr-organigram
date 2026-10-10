@@ -15,7 +15,7 @@ import { fetchLeaderRoleIds } from '@/shared/roles';
 import { areFeesConfigured } from '@/shared/settings';
 import type { FeeConfig, Settings } from '@/shared/settings';
 import type { FeeAssignment, Relationship, RrParticipant } from './types';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 
 export type BeitraegeResult = {
     totals: FeeTotals;

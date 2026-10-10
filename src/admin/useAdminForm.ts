@@ -12,7 +12,7 @@ import {
     teamsInScope,
 } from './scope';
 import { useAdminSettings } from './useAdminSettings';
-import { COPY } from '@/shared/constants';
+import { COPY } from '@/shared/copy';
 import { EMPTY_SETTINGS, isDashboardConfigured } from '@/shared/settings';
 import type { Settings } from '@/shared/settings';
 import type { Group } from '@/shared/types';

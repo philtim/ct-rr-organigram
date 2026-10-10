@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { loadOrganigram } from './hierarchy';
 import { loadFailures } from './rollup';
 import type { LoadFailure } from './rollup';
+import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 import type { OrgNode } from './types';
 
@@ -30,7 +31,7 @@ export function useDashboard() {
             // unexpected blows up, surface it as a hard error.
             state.value = {
                 phase: 'error',
-                message: e instanceof Error ? e.message : 'Daten konnten nicht geladen werden.',
+                message: e instanceof Error ? e.message : COPY.dashboardLoadError,
             };
         }
     }
