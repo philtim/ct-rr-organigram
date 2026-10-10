@@ -25,19 +25,6 @@ const CATEGORY_DESCRIPTION = 'Persistierte Konfiguration der Extension.';
  * a stack trace. Write path uses getOrCreateModule and creates the category
  * on first save.
  */
-/**
- * The metadata `getCustomDataCategory` returns alongside the parsed settings.
- * All optional: the read path tolerates a category that predates these
- * fields, and the write path falls back to the constants above.
- */
-type ExistingCategory = {
-    id: number;
-    customModuleId?: number;
-    description?: string;
-    name?: string;
-    shorty?: string;
-};
-
 export function useAdminSettings() {
     const settings = ref<Settings>(EMPTY_SETTINGS);
     const loading = ref(false);
@@ -63,7 +50,7 @@ export function useAdminSettings() {
                 settings.value = EMPTY_SETTINGS;
                 return;
             }
-            const cat = await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY);
+            const cat = await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY, module.id);
             // The kv-store helper merges the parsed JSON into the returned
             // object alongside the category fields, so the settings live on
             // the same object. `parseSettings` reads what is there and
@@ -88,9 +75,10 @@ export function useAdminSettings() {
                 MODULE_NAME,
                 MODULE_DESCRIPTION,
             );
-            const existing = (await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY)) as
-                | (Settings & ExistingCategory)
-                | undefined;
+            const existing = await getCustomDataCategory<Settings>(
+                KV_CATEGORY_SHORTY,
+                moduleObj.id,
+            );
             const data = JSON.stringify(next);
 
             if (existing) {
@@ -98,7 +86,8 @@ export function useAdminSettings() {
                 // with the payload — sending `{ data }` alone fails with
                 // HTTP 400. The existing values are reused rather than
                 // overwritten with our constants, so a category someone
-                // renamed in ChurchTools keeps its name.
+                // renamed in ChurchTools keeps its name. The fallbacks cover
+                // a category that predates these fields.
                 await updateCustomDataCategory(
                     existing.id,
                     {
