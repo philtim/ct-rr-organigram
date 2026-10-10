@@ -10,7 +10,7 @@ import type { Group } from '@/shared/types';
  * client-side so the network cost is paid once at open time.
  */
 export async function listGroups(): Promise<Group[]> {
-    return await fetchAllPages<Group>('/groups', { limit: 200 });
+    return await fetchAllPages<Group>('/groups', 200);
 }
 
 export type GroupTypeRef = { id: number; name: string };

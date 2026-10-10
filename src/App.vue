@@ -6,24 +6,22 @@ import Beitraege from '@/beitraege/Beitraege.vue';
 import Jahresmeldung from '@/jahresmeldung/Jahresmeldung.vue';
 import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
-import { useAccessGate } from '@/shared/access/useAccessGate';
+import { useMembershipGate } from '@/shared/access/useMembershipGate';
 import { useSettings } from '@/shared/useSettings';
-import { membershipRule } from '@/shared/access/rules';
 import { isDashboardConfigured, shouldShowAdmin } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/constants';
 
-// Routing: a single SPA serving the dashboard and the admin form. The admin
-// form is reachable via ?admin=1; the dashboard is the default. (Vue Router
-// would be overkill for two routes with no history needs.)
+// Routing: the admin form is reachable via ?admin=1, the tabs via ?tab=
+// (shared/tabs.ts). No router: a query parameter each is all there is.
 const isAdminRoute = computed(() => {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('admin') === '1';
 });
 
 const { settings, loadFailed, load: loadSettings } = useSettings();
-const { status: gateStatus, check: runGate } = useAccessGate();
+const { status: gateStatus, check: runGate } = useMembershipGate();
 const ready = ref(false);
 
 // Active tab (ADR-007). Kept in the URL so views can be linked and the
@@ -39,15 +37,6 @@ function selectTab(tab: TabId) {
     activeTab.value = tab;
     writeTabToUrl(tab);
 }
-
-/**
- * One gate for the whole extension: membership in the configured Hauptstamm
- * group. There is no per-tab role check any more — who may open the extension
- * at all is the ChurchTools admin's call, through the custom module's own
- * `view` permission (see the ADR). The membership gate stays as a second,
- * cheap layer and because the group is the data root regardless.
- */
-const organigramRule = computed(() => membershipRule(settings.value.gateGroupId));
 
 const configured = computed(() => isDashboardConfigured(settings.value));
 
@@ -70,16 +59,16 @@ const showAdmin = computed(() =>
     }),
 );
 
-const availableTabs = computed<{ id: TabId; label: string }[]>(() => [
+const tabs: { id: TabId; label: string }[] = [
     { id: 'organigram', label: COPY.tabOrganigram },
     { id: 'beitraege', label: COPY.tabBeitraege },
     { id: 'jahresmeldung', label: COPY.tabJahresmeldung },
-]);
+];
 
 onMounted(async () => {
     window.addEventListener('popstate', syncTabFromUrl);
     await loadSettings();
-    await runGate(organigramRule.value);
+    await runGate(settings.value.gateGroupId);
     ready.value = true;
 });
 
@@ -92,7 +81,7 @@ onUnmounted(() => {
 // so the dashboard appears without a manual reload.
 async function handleSaved() {
     await loadSettings();
-    await runGate(organigramRule.value);
+    await runGate(settings.value.gateGroupId);
 }
 </script>
 
@@ -112,7 +101,7 @@ async function handleSaved() {
     </main>
     <Admin v-else-if="showAdmin" :first-run="!isAdminRoute && !configured" @saved="handleSaved" />
     <template v-else-if="gateStatus.phase === 'allowed'">
-        <TabBar :tabs="availableTabs" :active="activeTab" @select="selectTab" />
+        <TabBar :tabs="tabs" :active="activeTab" @select="selectTab" />
         <Dashboard v-if="activeTab === 'organigram'" :settings="settings" />
         <Jahresmeldung v-else-if="activeTab === 'jahresmeldung'" :settings="settings" />
         <Beitraege v-else :settings="settings" />

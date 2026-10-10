@@ -1,10 +1,5 @@
 import { ref } from 'vue';
-import {
-    getOrCreateModule,
-    getCustomDataCategory,
-    createCustomDataCategory,
-    updateCustomDataCategory,
-} from '@/shared/kv-store';
+import { getOrCreateModule, readCategory, writeCategory } from '@/shared/kv-store';
 import { COPY, EXTENSION_KEY, KV_CATEGORY_SHORTY } from '@/shared/constants';
 import type { Settings } from '@/shared/settings';
 import { useSettings } from '@/shared/useSettings';
@@ -28,47 +23,22 @@ export function useAdminSettings() {
         saving.value = true;
         saveError.value = null;
         try {
-            const moduleObj = await getOrCreateModule(
-                EXTENSION_KEY,
-                MODULE_NAME,
-                MODULE_DESCRIPTION,
+            const module = await getOrCreateModule(EXTENSION_KEY, MODULE_NAME, MODULE_DESCRIPTION);
+            const existing = (await readCategory(module.id, KV_CATEGORY_SHORTY))?.category;
+            // The existing metadata is reused rather than overwritten with our
+            // constants, so a category someone renamed in ChurchTools keeps
+            // its name. The fallbacks cover a category that predates a field.
+            await writeCategory(
+                module.id,
+                {
+                    customModuleId: module.id,
+                    data: JSON.stringify(next),
+                    description: existing?.description ?? CATEGORY_DESCRIPTION,
+                    name: existing?.name ?? CATEGORY_NAME,
+                    shorty: KV_CATEGORY_SHORTY,
+                },
+                existing?.id,
             );
-            const existing = await getCustomDataCategory<Settings>(
-                KV_CATEGORY_SHORTY,
-                moduleObj.id,
-            );
-            const data = JSON.stringify(next);
-
-            if (existing) {
-                // A PUT replaces the record, so the metadata has to travel
-                // with the payload — sending `{ data }` alone fails with
-                // HTTP 400. The existing values are reused rather than
-                // overwritten with our constants, so a category someone
-                // renamed in ChurchTools keeps its name. The fallbacks cover
-                // a category that predates these fields.
-                await updateCustomDataCategory(
-                    existing.id,
-                    {
-                        customModuleId: existing.customModuleId ?? moduleObj.id,
-                        data,
-                        description: existing.description ?? CATEGORY_DESCRIPTION,
-                        name: existing.name ?? CATEGORY_NAME,
-                        shorty: existing.shorty ?? KV_CATEGORY_SHORTY,
-                    },
-                    moduleObj.id,
-                );
-            } else {
-                await createCustomDataCategory(
-                    {
-                        customModuleId: moduleObj.id,
-                        data,
-                        description: CATEGORY_DESCRIPTION,
-                        name: CATEGORY_NAME,
-                        shorty: KV_CATEGORY_SHORTY,
-                    },
-                    moduleObj.id,
-                );
-            }
             settings.value = next;
         } catch (e) {
             saveError.value = e instanceof Error ? e.message : 'Unbekannter Fehler beim Speichern.';

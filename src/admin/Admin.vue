@@ -51,9 +51,7 @@ const groupById = computed(() => new Map(groups.value.map((g) => [g.id, g])));
 const typeNameById = computed(() => new Map(groupTypes.value.map((t) => [t.id, t.name])));
 
 function groupTypeOf(group: Group | undefined): number | null {
-    const id = (group as unknown as { information?: { groupTypeId?: number } } | undefined)
-        ?.information?.groupTypeId;
-    return typeof id === 'number' ? id : null;
+    return group?.information?.groupTypeId ?? null;
 }
 
 const hauptstamm = computed(() =>

@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { findModule, getCustomDataCategory } from './kv-store';
+import { findModule, readCategory } from './kv-store';
 import { EXTENSION_KEY, KV_CATEGORY_SHORTY } from './constants';
 import { EMPTY_SETTINGS, parseSettings } from './settings';
 import type { Settings } from './settings';
@@ -33,14 +33,13 @@ export function useSettings() {
                 settings.value = EMPTY_SETTINGS;
                 return;
             }
-            const cat = await getCustomDataCategory<Settings>(KV_CATEGORY_SHORTY, module.id);
-            // The kv-store helper merges the parsed JSON into the returned
-            // object alongside the category fields, so the settings live on
-            // the same object. `parseSettings` reads what is there and
-            // invents nothing for what is not (shared/settings.ts).
-            settings.value = cat ? parseSettings(cat) : EMPTY_SETTINGS;
+            const stored = await readCategory(module.id, KV_CATEGORY_SHORTY);
+            // `parseSettings` reads what is there and invents nothing for
+            // what is not (shared/settings.ts).
+            settings.value = stored ? parseSettings(stored.data) : EMPTY_SETTINGS;
         } catch {
-            // No permission, a 5xx, a timeout. We do not know what is
+            // No permission, a 5xx, a timeout, a record that does not parse.
+            // We do not know what is
             // configured, so we must not act as though nothing is.
             settings.value = EMPTY_SETTINGS;
             loadFailed.value = true;

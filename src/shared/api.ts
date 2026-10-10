@@ -54,7 +54,8 @@ export async function withRetryOn429<T>(call: () => Promise<T>, attempts = 3): P
     }
 }
 
-function statusOf(e: unknown): number | undefined {
+/** The HTTP status of a failed request, from either shape the client throws. */
+export function statusOf(e: unknown): number | undefined {
     if (typeof e === 'object' && e !== null) {
         const maybe = e as { response?: { status?: number }; status?: number };
         return maybe.response?.status ?? maybe.status;
@@ -88,86 +89,29 @@ export async function mapWithConcurrency<T, R>(
 }
 
 /**
- * Every page of a group's member list.
+ * Every page of a paginated endpoint.
  *
- * `limit=200` is the endpoint's cap, not the size of a group. Reading one
- * page silently truncates anything larger, and the figures built from it —
- * the organigram's tiles, the Beitragsabrechnung, the Jahresmeldung that goes
- * to the Bundesverband — come out too low with nothing to show for it. That
- * is the one failure mode this project treats as worse than an error.
- *
- * Throws when a page fails, so callers decide; they already mark the node or
- * the row as incomplete. It throws at the page cap too, rather than returning
- * a short list: 100 pages is 20,000 members and nobody should reach it, but
- * truncating in silence is the failure this function exists to remove.
+ * Reading one page silently truncates anything larger, and the figures built
+ * from it — the organigram's tiles, the Beitragsabrechnung, the Jahresmeldung
+ * that goes to the Bundesverband — come out too low with nothing to show for
+ * it. That is the one failure mode this project treats as worse than an
+ * error, so this throws when a page fails, and throws at the page cap rather
+ * than returning a short list.
  */
-const MEMBER_PAGE_LIMIT = 200;
-const MAX_MEMBER_PAGES = 100;
+const MAX_PAGES = 100;
 
-export async function fetchAllMembers<T>(groupId: number, query: string): Promise<T[]> {
+export async function fetchAllPages<T>(url: string, limit: number): Promise<T[]> {
+    const separator = url.includes('?') ? '&' : '?';
     const rows: T[] = [];
-    for (let page = 1; page <= MAX_MEMBER_PAGES; page++) {
+    for (let page = 1; page <= MAX_PAGES; page++) {
         const batch = await withRetryOn429(() =>
-            ct.get<T[]>(`/groups/${groupId}/members?${query}&page=${page}`),
+            ct.get<T[]>(`${url}${separator}limit=${limit}&page=${page}`),
         );
         if (!batch || batch.length === 0) return rows;
         rows.push(...batch);
-        if (batch.length < MEMBER_PAGE_LIMIT) return rows;
+        if (batch.length < limit) return rows;
     }
     throw new Error(
-        `Gruppe ${groupId} hat mehr als ${MAX_MEMBER_PAGES * MEMBER_PAGE_LIMIT} aktive ` +
-            'Mitglieder — die Liste wäre unvollständig.',
+        `${url} liefert mehr als ${MAX_PAGES * limit} Einträge — die Liste wäre unvollständig.`,
     );
-}
-
-/**
- * Single shared error type so the toast component can display
- * consistent messages regardless of which feature triggered it.
- */
-export class ChurchToolsApiError extends Error {
-    public readonly endpoint: string;
-    public readonly status: number;
-
-    constructor(endpoint: string, status: number, message: string) {
-        super(message);
-        this.name = 'ChurchToolsApiError';
-        this.endpoint = endpoint;
-        this.status = status;
-    }
-}
-
-/**
- * Fetch all pages of a paginated endpoint with safety guards.
- * Stops on empty page, on `maxPages`, or when the same first-item
- * signature reappears (defensive against pagination loops).
- *
- * Pass per-endpoint limits explicitly — different endpoints cap at
- * different sizes (groups: 200, members: 200, services: not paginated).
- */
-export async function fetchAllPages<T extends { id?: number | string }>(
-    url: string,
-    options: { limit?: number; maxPages?: number } = {},
-): Promise<T[]> {
-    const limit = options.limit ?? 100;
-    const maxPages = options.maxPages ?? 100;
-
-    const results: T[] = [];
-    let firstIdSignature: string | null = null;
-
-    for (let page = 1; page <= maxPages; page++) {
-        const sep = url.includes('?') ? '&' : '?';
-        const pageUrl = `${url}${sep}page=${page}&limit=${limit}`;
-        const items = await ct.get<T[]>(pageUrl);
-
-        if (!items || items.length === 0) break;
-
-        const sig = items[0]?.id != null ? String(items[0].id) : null;
-        if (sig !== null && sig === firstIdSignature) break;
-        firstIdSignature = sig;
-
-        results.push(...items);
-        if (items.length < limit) break;
-    }
-
-    return results;
 }

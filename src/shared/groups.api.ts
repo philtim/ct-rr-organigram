@@ -3,7 +3,7 @@
  * own copy of these with a comment promising to stay in step with the
  * others; the rule they share now lives in one place instead.
  */
-import { ct, fetchAllMembers, withRetryOn429 } from './api';
+import { ct, fetchAllPages, withRetryOn429 } from './api';
 
 /** A direct child of a group, as `/groups/{id}/children` describes it. */
 export type ChildGroup = {
@@ -61,8 +61,8 @@ export async function fetchActiveMembers<T>(
     const params = new URLSearchParams();
     params.append('group_member_statuses[]', 'active');
     for (const field of personFields) params.append('personFields[]', field);
-    params.set('limit', '200');
-    return await fetchAllMembers<T>(groupId, params.toString());
+    // 200 is the endpoint's page cap, not the size of a group.
+    return await fetchAllPages<T>(`/groups/${groupId}/members?${params}`, 200);
 }
 
 /**
