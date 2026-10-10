@@ -179,11 +179,19 @@ function selectHauptstamm(id: number) {
     searchText.value = '';
 }
 
+/**
+ * Same guard as `scanSequence` below: switching the Hauptstamm quickly must
+ * not let the previous one's children arrive last and win.
+ */
+let childrenSequence = 0;
+
 async function refreshChildren(id: number | null) {
+    const mine = ++childrenSequence;
     hauptstammChildren.value = [];
     if (id === null) return;
     try {
         const rows = await getGroupChildren(id);
+        if (mine !== childrenSequence) return;
         hauptstammChildren.value = rows.map((row) => ({
             id: Number(row.domainIdentifier),
             title: row.title,
@@ -299,9 +307,10 @@ onMounted(async () => {
             loadError.value = COPY.configUnreadable;
             return;
         }
+        // Seeding the draft triggers the watchers above, which load the
+        // children and run the scan — calling them here as well would send
+        // every scan request twice.
         draft.value = { ...settings.value, fees: { ...settings.value.fees } };
-        await refreshChildren(draft.value.gateGroupId);
-        await runScan();
     } catch (e) {
         loadError.value =
             e instanceof Error ? e.message : 'Konfiguration konnte nicht geladen werden.';
