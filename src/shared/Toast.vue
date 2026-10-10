@@ -1,26 +1,24 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { COPY } from './constants';
 
-const props = defineProps<{ message: string; visible: boolean }>();
-const dismissed = ref(false);
-
-// Reset on a new toast trigger so the user can re-see it after a refresh.
-watch(
-    () => props.visible,
-    (isVisible) => {
-        if (isVisible) dismissed.value = false;
-    },
-);
+/**
+ * A short confirmation in the corner. Controlled: the parent owns the message
+ * (see `useToast`), so closing it and showing the next one cannot get out of
+ * step — a dismissed toast used to swallow the next message until the
+ * previous one's timer ran out.
+ */
+defineProps<{ message: string | null }>();
+defineEmits<{ dismiss: [] }>();
 </script>
 
 <template>
-    <div v-if="visible && !dismissed" class="rr-toast" role="status" aria-live="polite">
+    <div v-if="message" class="rr-toast" role="status" aria-live="polite">
         <span class="rr-toast__message">{{ message }}</span>
         <button
             type="button"
             class="rr-toast__close"
-            aria-label="Schließen"
-            @click="dismissed = true"
+            :aria-label="COPY.close"
+            @click="$emit('dismiss')"
         >
             ×
         </button>

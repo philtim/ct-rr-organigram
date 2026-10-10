@@ -1,7 +1,6 @@
 /**
- * Date helpers for the Beitragsabrechnung. Separate from `export-rows` so the
- * view can name the due date without pulling the export path into the initial
- * bundle (ADR-010).
+ * Date helpers for the Beitragsabrechnung and the Jahresmeldung. Everything
+ * here works on UTC calendar dates, so no timezone can move a birthday.
  */
 
 /**
@@ -28,13 +27,20 @@ export function parseIsoDate(value: string | null): Date | null {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Completed years at `dueDate`. Informational — no fee depends on age. */
+function completedYears(born: Date, reference: Date): number {
+    let age = reference.getUTCFullYear() - born.getUTCFullYear();
+    const monthDiff = reference.getUTCMonth() - born.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && reference.getUTCDate() < born.getUTCDate())) {
+        age -= 1;
+    }
+    return age;
+}
+
+/** Completed years at `dueDate`, for the export's age column. */
 export function ageAt(birthday: string | null, dueDate: Date): number | null {
     const born = parseIsoDate(birthday);
     if (!born) return null;
-    let age = dueDate.getUTCFullYear() - born.getUTCFullYear();
-    const monthDiff = dueDate.getUTCMonth() - born.getUTCMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && dueDate.getUTCDate() < born.getUTCDate())) age -= 1;
+    const age = completedYears(born, dueDate);
     return age >= 0 ? age : null;
 }
 
@@ -50,31 +56,21 @@ export function todayUtc(now: Date = new Date()): Date {
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 }
 
+export type AgeBucket = 'adult' | 'minor' | 'unknown';
+
 /**
  * Which side of 18 somebody is on, on a given day.
  *
- * Separate from `ageAt` above, which answers "how many completed years" for
- * the export. This one answers the only question the figures need, and reads
- * both sides in UTC — the birthday as written, the reference date as a UTC
- * calendar date — so no timezone can move somebody's 18th birthday. That
- * matters because the answer decides whether they are reported to the Bund as
- * a Juniorleiter or as a Mitarbeiter, and which rate they are billed.
+ * The answer decides whether somebody is reported to the Bund as a
+ * Juniorleiter or as a Mitarbeiter, and which rate they are billed — so both
+ * sides are read in UTC: the birthday as written, the reference date as a UTC
+ * calendar date.
  *
  * Anything unparseable is `unknown`, never `adult` — a silent misfiling into
  * Mitarbeiter is exactly the error the Jahresmeldung exists to surface.
  */
-export function ageBucket(
-    birthday: string | null | undefined,
-    reference: Date,
-): 'adult' | 'minor' | 'unknown' {
+export function ageBucket(birthday: string | null | undefined, reference: Date): AgeBucket {
     const born = parseIsoDate(birthday ?? null);
     if (!born) return 'unknown';
-
-    let age = reference.getUTCFullYear() - born.getUTCFullYear();
-    const monthDiff = reference.getUTCMonth() - born.getUTCMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && reference.getUTCDate() < born.getUTCDate())) {
-        age -= 1;
-    }
-
-    return age >= 18 ? 'adult' : 'minor';
+    return completedYears(born, reference) >= 18 ? 'adult' : 'minor';
 }

@@ -1,11 +1,12 @@
-import type { GroupChild } from './dashboard.api';
-import { getGroup, getGroupChildren, getGroupMembers } from './dashboard.api';
+import { getGroup, getGroupMembers } from './dashboard.api';
 import { horizontCountFromMembers, leaderRolesOf, splitMembers } from './counts';
 import { rollUpHauptstamm, rollUpTeilstamm } from './rollup';
 import { mapWithConcurrency } from '@/shared/api';
+import { getChildGroups, teamsAmong } from '@/shared/groups.api';
+import type { ChildGroup } from '@/shared/groups.api';
 import { API_TIMEOUT_MS } from '@/shared/constants';
 import type { Settings } from '@/shared/settings';
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 
 /**
  * Wrap any promise in a 30-second hard deadline (US-5 NFR). The PRD says
@@ -87,9 +88,9 @@ async function safeLoadGroupNode(
 }
 
 /** Soft children fetch — returns null on failure so caller can short-circuit. */
-async function safeGetChildren(groupId: number): Promise<GroupChild[] | null> {
+async function safeGetChildren(groupId: number): Promise<ChildGroup[] | null> {
     try {
-        return await withTimeout(getGroupChildren(groupId));
+        return await withTimeout(getChildGroups(groupId));
     } catch (e) {
         console.error(`[rr-dashboard] failed to load children of group ${groupId}:`, e);
         return null;
@@ -119,8 +120,7 @@ export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
     // Hauptstamm's children. That is what lets a small Stamm name the same
     // group as Hauptstamm and as its only Teilstamm — a group is not its own
     // child, so a children-based lookup comes back empty for them.
-    const teamTypeIds = new Set(settings.teamGroupTypeIds);
-
+    //
     // Deduplicated: the admin's picker cannot produce a repeat, but a
     // hand-edited KV entry can, and it would render the same card twice under
     // a colliding key.
@@ -139,15 +139,10 @@ export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
             // Maßnahmen or Merkmale alongside the actual teams. Which types
             // count is configuration — the admin ticks them off a list of
             // what is actually there (docs/design/002-konfigurierbarkeit.md).
-            const teamChildren = tsChildren.filter((c) =>
-                teamTypeIds.has(c.domainAttributes?.groupTypeId ?? -1),
-            );
-            const teams = await mapWithConcurrency(teamChildren, CONCURRENCY, (teamChild) =>
-                safeLoadGroupNode(
-                    parseInt(teamChild.domainIdentifier, 10),
-                    settings,
-                    teamChild.title,
-                ),
+            const teams = await mapWithConcurrency(
+                teamsAmong(tsChildren, settings.teamGroupTypeIds),
+                CONCURRENCY,
+                (team) => safeLoadGroupNode(team.id, settings, team.title),
             );
             return rollUpTeilstamm(ts, teams);
         }),

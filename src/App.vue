@@ -6,8 +6,8 @@ import Beitraege from '@/beitraege/Beitraege.vue';
 import Jahresmeldung from '@/jahresmeldung/Jahresmeldung.vue';
 import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
-import { useAdminSettings } from '@/admin/useAdminSettings';
 import { useAccessGate } from '@/shared/access/useAccessGate';
+import { useSettings } from '@/shared/useSettings';
 import { membershipRule } from '@/shared/access/rules';
 import { isDashboardConfigured, shouldShowAdmin } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
@@ -22,7 +22,7 @@ const isAdminRoute = computed(() => {
     return new URLSearchParams(window.location.search).get('admin') === '1';
 });
 
-const { settings, loadFailed, load: loadSettings } = useAdminSettings();
+const { settings, loadFailed, load: loadSettings } = useSettings();
 const { status: gateStatus, check: runGate } = useAccessGate();
 const ready = ref(false);
 

@@ -1,4 +1,4 @@
-import { ct } from '@/shared/api';
+import { ct, withRetryOn429 } from '@/shared/api';
 
 /**
  * One definition of "leader", shared by all three tabs.
@@ -16,7 +16,10 @@ import { ct } from '@/shared/api';
  * notices the figures are low.
  */
 
-export type RoleDefinition = {
+/** The role ids that count as leading — every tab classifies people by this one set. */
+export type LeaderRoleIds = ReadonlySet<number>;
+
+type RoleDefinition = {
     id: number;
     groupTypeId?: number;
     name?: string;
@@ -30,7 +33,7 @@ export type RoleDefinition = {
  * or from `GET /group/roles` (`id`). The two are the same number space:
  * `groupTypeRoleId` is unique installation-wide.
  */
-export type RoleLike = {
+type RoleLike = {
     groupTypeRoleId?: number;
     id?: number;
     name?: string;
@@ -72,8 +75,8 @@ export function isLeaderRole(role: RoleLike, extraLeaderRoleIds: ReadonlySet<num
  */
 export async function fetchLeaderRoleIds(
     extraLeaderRoleIds: ReadonlySet<number>,
-): Promise<Set<number>> {
-    const roles = await ct.get<RoleDefinition[]>('/group/roles');
+): Promise<LeaderRoleIds> {
+    const roles = await withRetryOn429(() => ct.get<RoleDefinition[]>('/group/roles'));
     const ids = new Set<number>();
     for (const role of roles ?? []) {
         if (typeof role.id === 'number' && isLeaderRole(role, extraLeaderRoleIds)) ids.add(role.id);

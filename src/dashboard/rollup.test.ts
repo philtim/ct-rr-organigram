@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadFailures, rollUpHauptstamm, rollUpTeilstamm, uniqueHeadcount } from './rollup';
-import type { Leader, OrgNode } from '@/shared/types';
+import type { Leader, OrgNode } from './types';
 
 function leader(personId: number): Leader {
     return {

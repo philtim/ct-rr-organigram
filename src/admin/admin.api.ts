@@ -1,10 +1,5 @@
-import {
-    ct,
-    fetchAllMembers,
-    fetchAllPages,
-    mapWithConcurrency,
-    withRetryOn429,
-} from '@/shared/api';
+import { ct, fetchAllPages, mapWithConcurrency } from '@/shared/api';
+import { fetchActiveMembers, getChildGroups, personIdOf } from '@/shared/groups.api';
 import { isLeadershipRole } from '@/shared/roles';
 import type { Group } from '@/shared/types';
 
@@ -17,10 +12,6 @@ import type { Group } from '@/shared/types';
 export async function listGroups(): Promise<Group[]> {
     return await fetchAllPages<Group>('/groups', { limit: 200 });
 }
-
-/** Re-export so the Teilstamm picker can list a group's direct children. */
-export { getGroupChildren } from '@/dashboard/dashboard.api';
-export type { GroupChild } from '@/dashboard/dashboard.api';
 
 export type GroupTypeRef = { id: number; name: string };
 
@@ -117,35 +108,29 @@ type MemberRow = {
  */
 async function membersOf(groupId: number): Promise<MemberRow[] | null> {
     try {
-        return await fetchAllMembers<MemberRow>(
-            groupId,
-            'group_member_statuses[]=active&limit=200',
-        );
+        return await fetchActiveMembers<MemberRow>(groupId);
     } catch (e) {
         console.error(`[rr-dashboard] admin scan: members of ${groupId} unavailable:`, e);
         return null;
     }
 }
 
+/**
+ * A group's children as the admin screen lists them. A type-less row gets
+ * -1, which matches no group type, so it is listed but never picked up.
+ */
+export async function listChildren(groupId: number): Promise<ChildGroup[]> {
+    return (await getChildGroups(groupId)).map((c) => ({
+        id: c.id,
+        title: c.title,
+        groupTypeId: c.groupTypeId ?? -1,
+        teilstammId: groupId,
+    }));
+}
+
 async function childrenOf(groupId: number): Promise<ChildGroup[] | null> {
     try {
-        const rows = await withRetryOn429(() =>
-            ct.get<
-                Array<{
-                    title: string;
-                    domainIdentifier: string;
-                    domainAttributes?: { groupTypeId?: number };
-                }>
-            >(`/groups/${groupId}/children`),
-        );
-        return (rows ?? [])
-            .map((row) => ({
-                id: Number(row.domainIdentifier),
-                title: row.title,
-                groupTypeId: row.domainAttributes?.groupTypeId ?? -1,
-                teilstammId: groupId,
-            }))
-            .filter((c) => Number.isFinite(c.id));
+        return await listChildren(groupId);
     } catch (e) {
         console.error(`[rr-dashboard] admin scan: children of ${groupId} unavailable:`, e);
         return null;
@@ -185,8 +170,8 @@ export async function scanScope(
         if (members === null) incomplete = true;
         const persons = new Set<number>();
         for (const member of members ?? []) {
-            const personId = Number(member.person?.domainIdentifier);
-            if (!Number.isFinite(personId)) continue;
+            const personId = personIdOf(member);
+            if (personId === null) continue;
             persons.add(personId);
 
             const held = rolesByPerson.get(personId) ?? new Set<number>();

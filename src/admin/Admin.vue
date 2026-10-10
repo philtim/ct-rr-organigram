@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import {
-    getGroupChildren,
+    listChildren,
     listGroupTypes,
     listGroups,
     listRoles,
@@ -29,7 +29,7 @@ import { COPY } from '@/shared/constants';
 const props = defineProps<{ firstRun?: boolean }>();
 const emit = defineEmits<{ saved: [] }>();
 
-const { settings, loading: saving, error: saveError, loadFailed, load, save } = useAdminSettings();
+const { settings, loadFailed, load, saving, saveError, save } = useAdminSettings();
 
 /** The edited copy. Saved only on demand, so a half-made change cannot leak. */
 const draft = ref<Settings>({ ...EMPTY_SETTINGS, fees: { ...EMPTY_SETTINGS.fees } });
@@ -190,14 +190,8 @@ async function refreshChildren(id: number | null) {
     hauptstammChildren.value = [];
     if (id === null) return;
     try {
-        const rows = await getGroupChildren(id);
-        if (mine !== childrenSequence) return;
-        hauptstammChildren.value = rows.map((row) => ({
-            id: Number(row.domainIdentifier),
-            title: row.title,
-            groupTypeId: row.domainAttributes?.groupTypeId ?? -1,
-            teilstammId: id,
-        }));
+        const children = await listChildren(id);
+        if (mine === childrenSequence) hauptstammChildren.value = children;
     } catch (e) {
         console.error('[rr-dashboard] children unavailable:', e);
     }

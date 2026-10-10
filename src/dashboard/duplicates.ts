@@ -1,4 +1,4 @@
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 
 export type DuplicateEntry = {
     personId: number;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { Leader } from '@/shared/types';
+import type { Leader } from './types';
 
 const props = defineProps<{ leader: Leader }>();
 

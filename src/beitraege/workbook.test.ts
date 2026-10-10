@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildSheets, exportFileName } from './workbook';
 import type { ExportMeta, ExportSheet } from './workbook';
-import type { ExportRow } from '@/shared/rr/export-rows';
+import type { ExportRow } from './export-rows';
 
 type AnyCell =
     | {

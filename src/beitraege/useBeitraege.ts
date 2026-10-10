@@ -4,19 +4,19 @@ import {
     fetchStaffFromGroups,
     fetchTeamMembers,
     resolveTeams,
-} from '@/shared/rr/rr.api';
+} from './beitraege.api';
 import { getInstanceOrigin } from '@/shared/api';
 import { fetchLeaderRoleIds } from '@/shared/roles';
-import { groupFamilies } from '@/shared/rr/families';
-import { assignFees, summarize } from '@/shared/rr/fee-tiers';
-import { dataQualityFlags, summarizeDataQuality } from '@/shared/rr/data-quality';
-import { nextDueDate } from '@/shared/rr/dates';
-import type { DataQuality } from '@/shared/rr/data-quality';
-import type { FeeTotals } from '@/shared/rr/fee-tiers';
-import { ageBucket } from '@/shared/rr/dates';
+import { groupFamilies } from './families';
+import { assignFees, summarize } from './fee-tiers';
+import { dataQualityFlags, summarizeDataQuality } from './data-quality';
+import { nextDueDate } from '@/shared/dates';
+import type { DataQuality } from './data-quality';
+import type { FeeTotals } from './fee-tiers';
+import { ageBucket } from '@/shared/dates';
 import { areFeesConfigured } from '@/shared/settings';
 import type { FeeConfig, Settings } from '@/shared/settings';
-import type { FeeAssignment, Relationship, RrParticipant } from '@/shared/rr/types';
+import type { FeeAssignment, Relationship, RrParticipant } from './types';
 import { COPY } from '@/shared/constants';
 
 export type BeitraegeResult = {
@@ -225,7 +225,7 @@ export function useBeitraege() {
         try {
             const [{ buildExportRows }, { buildSheets, exportFileName }, { downloadWorkbook }] =
                 await Promise.all([
-                    import('@/shared/rr/export-rows'),
+                    import('./export-rows'),
                     import('./workbook'),
                     import('./xlsx'),
                 ]);

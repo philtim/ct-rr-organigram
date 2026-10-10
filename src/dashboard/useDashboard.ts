@@ -3,7 +3,7 @@ import { loadOrganigram } from './hierarchy';
 import { loadFailures } from './rollup';
 import type { LoadFailure } from './rollup';
 import type { Settings } from '@/shared/settings';
-import type { OrgNode } from '@/shared/types';
+import type { OrgNode } from './types';
 
 export type DashboardState =
     | { phase: 'idle' }
@@ -36,11 +36,4 @@ export function useDashboard() {
     }
 
     return { state, load };
-}
-
-/** Format a Date as "HH:MM" (24h, leading zeros). */
-export function formatTimestamp(d: Date): string {
-    const hh = d.getHours().toString().padStart(2, '0');
-    const mm = d.getMinutes().toString().padStart(2, '0');
-    return `${hh}:${mm}`;
 }

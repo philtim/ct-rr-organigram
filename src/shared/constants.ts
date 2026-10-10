@@ -37,6 +37,7 @@ export const COPY = {
     /** Read out in place of a "?" that stands for a sum missing a part. */
     notComputable: 'nicht berechenbar',
     loading: 'Lädt …',
+    close: 'Schließen',
     // Leader lists are labelled with the group role's own name, straight from
     // ChurchTools — see `groupLeadersByRole` in dashboard/counts.ts. The labels
     // below are only for the stat tiles and the "?" error state.
