@@ -5,22 +5,29 @@ import type { Family, Relationship, RrParticipant } from './types';
  * good enough on real ChurchTools data:
  *
  *  1. Relationships — a shared parent, or an explicit Geschwister link.
- *     Survives differing spellings and a sibling who has moved out, but is
- *     only as good as the data entry. On the live instance twelve sibling
- *     pairs had no relationship recorded at all.
+ *     Survives differing spellings, but is only as good as the data entry. On
+ *     the live instance twelve sibling pairs had no relationship recorded at
+ *     all.
  *
  *  2. Same address *and* same surname. Catches those twelve, and the surname
  *     test is what keeps it honest: address alone merges unrelated families
  *     in a shared building — Hauptstr. 67/1 in 72227 houses two of them.
  *
- * Union of both signals. Over-merging costs a family real money, so the
- * surname condition is not optional.
+ * Union of both signals, under one household rule: **two people at different
+ * known addresses are never one family**, whatever links them. A family is the
+ * household that pays together — a sibling who lives with the other parent, or
+ * a married daughter, is a relative and still a household of their own. A
+ * relationship to someone without an address still counts, since there is no
+ * address to contradict it.
+ *
+ * Over-merging costs a family real money, so the surname condition is not
+ * optional.
  */
 export function groupFamilies(
     participants: RrParticipant[],
     relationships: Relationship[],
 ): Family[] {
-    const ids = new Set(participants.map((p) => p.personId));
+    const homes = new Map(participants.map((p) => [p.personId, homeOf(p)]));
     const parent = new Map<number, number>();
 
     const find = (x: number): number => {
@@ -36,6 +43,10 @@ export function groupFamilies(
         return root;
     };
     const union = (a: number, b: number) => {
+        if (!homes.has(a) || !homes.has(b)) return;
+        const ha = homes.get(a);
+        const hb = homes.get(b);
+        if (ha !== null && hb !== null && ha !== hb) return; // the household rule
         const ra = find(a);
         const rb = find(b);
         if (ra !== rb) parent.set(ra, rb);
@@ -44,12 +55,14 @@ export function groupFamilies(
     for (const p of participants) parent.set(p.personId, p.personId);
 
     // Signal 1a: an explicit sibling link, when both ends are participants.
-    // Signal 1b: everyone sharing a parent is a sibling.
+    // Signal 1b: everyone sharing a parent is a sibling. Every pair is offered,
+    // not just each to the first: with the household rule a link can be
+    // refused, and the first child may be the one who lives elsewhere.
     const childrenByParent = new Map<number, number[]>();
     for (const rel of relationships) {
-        if (!ids.has(rel.personId)) continue;
+        if (!homes.has(rel.personId)) continue;
         if (rel.kind === 'sibling') {
-            if (ids.has(rel.relativeId)) union(rel.personId, rel.relativeId);
+            union(rel.personId, rel.relativeId);
             continue;
         }
         const siblings = childrenByParent.get(rel.relativeId) ?? [];
@@ -57,15 +70,17 @@ export function groupFamilies(
         childrenByParent.set(rel.relativeId, siblings);
     }
     for (const siblings of childrenByParent.values()) {
-        for (let i = 1; i < siblings.length; i++) union(siblings[0], siblings[i]);
+        for (let i = 0; i < siblings.length; i++) {
+            for (let j = i + 1; j < siblings.length; j++) union(siblings[i], siblings[j]);
+        }
     }
 
     // Signal 2: same normalized address AND same normalized surname.
     const byAddress = new Map<string, number[]>();
     for (const p of participants) {
-        const street = normalizeStreet(p.street);
-        if (!street) continue; // No address is no evidence — never merge on blanks.
-        const key = `${normalizeText(p.zip)}|${street}|${normalizeText(p.lastName)}`;
+        const home = homes.get(p.personId);
+        if (!home) continue; // No address is no evidence — never merge on blanks.
+        const key = `${home}|${normalizeText(p.lastName)}`;
         const bucket = byAddress.get(key) ?? [];
         bucket.push(p.personId);
         byAddress.set(key, bucket);
@@ -85,9 +100,39 @@ export function groupFamilies(
     // Deterministic keys: clusters ordered by their lowest person id, so the
     // same input always yields the same family numbering.
     return [...clusters.values()]
+        .flatMap((members) => splitByHome(members, homes))
         .map((personIds) => [...personIds].sort((a, b) => a - b))
         .sort((a, b) => a[0] - b[0])
         .map((personIds, index) => ({ key: `F${String(index + 1).padStart(3, '0')}`, personIds }));
+}
+
+/**
+ * The household rule, for the one case `union` cannot see: a person without
+ * an address linked to relatives at two different addresses joins the two
+ * clusters through themselves. Each address then becomes its own family, and
+ * the person who bridged them stands alone — billed as an only child, the
+ * direction an error here should point.
+ */
+function splitByHome(members: number[], homes: ReadonlyMap<number, string | null>): number[][] {
+    const known = new Set(members.map((id) => homes.get(id)).filter((h) => h !== null));
+    if (known.size <= 1) return [members];
+    const byHome = new Map<string, number[]>();
+    const alone: number[][] = [];
+    for (const id of members) {
+        const home = homes.get(id);
+        if (home === null || home === undefined) {
+            alone.push([id]);
+            continue;
+        }
+        byHome.set(home, [...(byHome.get(home) ?? []), id]);
+    }
+    return [...byHome.values(), ...alone];
+}
+
+/** Postcode and normalized street, or null when there is no street to compare. */
+function homeOf(p: RrParticipant): string | null {
+    const street = normalizeStreet(p.street);
+    return street ? `${normalizeText(p.zip)}|${street}` : null;
 }
 
 /** Lowercased, whitespace-collapsed. */
@@ -97,10 +142,11 @@ export function normalizeText(value: string | null | undefined): string {
 
 /**
  * Street names differ by spelling far more often than by substance:
- * "Weiler Str. 78" and "Weilerstraße 78" are the same door. Fold the common
- * German variants together; house numbers are left alone, because 12 and 12/1
- * are genuinely different addresses — in the live data they hold two sets of
- * cousins.
+ * "Weiler Str. 78", "Weilerstraße 78" and "Weilerstraße78" are the same door.
+ * Fold the common German variants together and drop all whitespace — the
+ * live data has house numbers both with and without a space before them.
+ * House numbers themselves are left alone, because 12 and 12/1 are genuinely
+ * different addresses — in the live data they hold two sets of cousins.
  */
 export function normalizeStreet(value: string | null | undefined): string {
     const base = normalizeText(value);
@@ -113,8 +159,7 @@ export function normalizeStreet(value: string | null | undefined): string {
             // "paulinenstr." the "str" is preceded by a word character, so
             // \bstr would never match and the dot would survive.
             .replace(/str\./g, 'str')
-            // "weiler str 78" → "weilerstr 78", so the separately written form
-            // folds onto the compound one.
-            .replace(/\s+str\b/g, 'str')
+            // "weiler str 78" → "weilerstr78", "goethestr 35" → "goethestr35".
+            .replace(/\s+/g, '')
     );
 }
