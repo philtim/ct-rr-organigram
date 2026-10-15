@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue';
 import { listChildren, listGroupTypes, listGroups, listRoles, scanScope } from './admin.api';
 import type { ChildGroup, GroupTypeRef, PickableRole, ScopeScan } from './admin.api';
 import {
+    applyTickedRoles,
     childCandidates,
     childTypeCounts,
     otherCandidates,
@@ -10,10 +11,11 @@ import {
     rolesInScope,
     stammTypeIds,
     teamsInScope,
+    tickedRoleIds,
 } from './scope';
 import { useAdminSettings } from './useAdminSettings';
 import { COPY } from '@/shared/copy';
-import { EMPTY_SETTINGS, isDashboardConfigured } from '@/shared/settings';
+import { EMPTY_SETTINGS, hasAnySetting, isDashboardConfigured } from '@/shared/settings';
 import type { Settings } from '@/shared/settings';
 import type { Group } from '@/shared/types';
 
@@ -75,10 +77,31 @@ export function useAdminForm() {
             groupTypes.value,
         ),
     );
-    /** Roles ChurchTools itself calls leadership — they always count. */
-    const leadershipRoles = computed(() => scopedRoles.value.filter((r) => r.isLeadership));
-    /** Participant roles the Stamm may additionally treat as Mitarbeiter. */
-    const participantRoles = computed(() => scopedRoles.value.filter((r) => !r.isLeadership));
+    /** The roles counted as Mitarbeiter, as one list the admin ticks (`applyTickedRoles`). */
+    const mitarbeiterRoleIds = computed<number[]>({
+        get: () => tickedRoleIds(scopedRoles.value, draft.value),
+        set: (ids) => {
+            draft.value = {
+                ...draft.value,
+                ...applyTickedRoles(scopedRoles.value, ids, draft.value),
+            };
+        },
+    });
+
+    /**
+     * Positions a Teilstamm card can show as vacant: the counted leadership
+     * roles of the Teilstamm group types — the rows those cards list. A team's
+     * "Co-Leiter" is never a row on a Teilstamm card.
+     */
+    const vacancyRoles = computed(() => {
+        const excluded = new Set(draft.value.excludedLeaderRoleIds);
+        return rolesInScope(roles.value, teilstammTypes.value, groupTypes.value).filter(
+            (r) => r.isLeadership && !excluded.has(r.id),
+        );
+    });
+
+    /** A started or older setup was found — the form says it took it over. */
+    const takenOver = ref(false);
 
     function roleHolders(roleId: number): number {
         return scan.value === null ? 0 : personsWithRole(scan.value, roleId);
@@ -165,6 +188,7 @@ export function useAdminForm() {
             }
             // Seeding the draft triggers the watchers above, which load the
             // children and run the scan.
+            takenOver.value = hasAnySetting(settings.value);
             draft.value = { ...settings.value, fees: { ...settings.value.fees } };
         } catch (e) {
             loadError.value = e instanceof Error ? e.message : COPY.adminLoadError;
@@ -196,8 +220,10 @@ export function useAdminForm() {
         childrenFailed,
         typeCounts,
         preview,
-        leadershipRoles,
-        participantRoles,
+        scopedRoles,
+        mitarbeiterRoleIds,
+        vacancyRoles,
+        takenOver,
         roleHolders,
         scan,
         scanning,

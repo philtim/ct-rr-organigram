@@ -36,6 +36,9 @@ export const COPY = {
         'Nicht alle Gruppen konnten geladen werden. Die rot markierten Summen sind deshalb ' +
         'nicht berechenbar — „Aktualisieren" versucht es erneut.',
     failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
+    memberFieldMissing: (name: string) =>
+        `Das Mitgliederfeld „${name}“ gibt es in keiner der Gruppen. Die Zahlen dazu ` +
+        `stehen deshalb auf 0 — bitte in der Konfiguration ein vorhandenes Feld wählen.`,
     failedTeilstamm: (name: string) => `Teilstamm „${name}“`,
     failedTeilstammTeams: (name: string) => `Teams von Teilstamm „${name}“`,
     failedTeam: (name: string, teilstamm: string) => `Team „${name}“ (Teilstamm „${teilstamm}“)`,
@@ -288,6 +291,7 @@ export const COPY = {
     jahresmeldungQualityShowAll: (rest: number) => `Alle anzeigen (${rest} weitere)`,
     // Configuration screen.
     adminFirstRun: 'Erstmaliges Setup',
+    adminResume: 'Einrichtung fortsetzen',
     adminConfiguration: 'Konfiguration',
     adminLead:
         'Diese Extension kennt keinen Stamm. Alles, was sie über euren wissen muss, steht ' +
@@ -296,14 +300,17 @@ export const COPY = {
     adminSectionStructure: 'Struktur',
     adminHauptstammLabel: 'Hauptstamm-Gruppe',
     adminHauptstammHelp:
-        'Zugangstor, Hero-Karte im Organigramm, und eine der beiden Quellen für ' +
-        '„Mitarbeiter ohne Team".',
+        'Wähle die oberste Gruppe eures Stammes – die Gruppe, unter der eure Teilstämme ' +
+        'hängen, oder bei einem Stamm ohne Teilstämme direkt eure Teams. Nur Mitglieder ' +
+        'dieser Gruppe können das Dashboard öffnen.',
     adminSearchPlaceholder: 'Gruppe suchen (Name oder ID)…',
     adminNoGroupFound: 'Keine Gruppe gefunden.',
     adminGroupId: (id: number) => `ID ${id}`,
     adminTeilstaemmeLabel: 'Teilstämme',
-    adminTeilstaemmeHelp:
-        'Ein kleiner Stamm trägt hier dieselbe Gruppe ein wie oben — dafür den Haken entfernen.',
+    adminTeilstaemmeHelpWith: 'Mit Teilstämmen: Wähle die Gruppen eurer Teilstämme.',
+    adminTeilstaemmeHelpWithout:
+        'Ohne Teilstämme: Wähle die Hauptstamm-Gruppe von oben selbst aus.',
+    adminHauptstammItself: (id: number) => `Hauptstamm · ID ${id}`,
     adminOnlyChildren: 'Nur Untergruppen des Hauptstamms anzeigen',
     adminNoChildren: 'Keine passenden Untergruppen — Haken entfernen, um alle Gruppen zu sehen.',
     adminOtherGroups: 'Weitere Gruppen',
@@ -325,32 +332,44 @@ export const COPY = {
     adminPreviewTeams: 'Teams',
     adminPreviewPersons: 'Personen',
     adminSectionRules: 'Zählregeln',
-    adminLeadersLabel: 'Wer zählt als Leiter?',
+    adminLeadersLabel: 'Wer ist Mitarbeiter?',
     adminLeadersHelp:
-        'Was ChurchTools selbst als Leitung führt, zählt immer — auch eine Rolle, die ihr ' +
-        'später anlegt. Darunter die Teilnehmer-Rollen, die euer Stamm zusätzlich als ' +
-        'Mitarbeiter wertet.',
+        'Jedes Teammitglied zählt entweder als Mitarbeiter oder als Kind. Hake die Rollen an, ' +
+        'die bei euch Mitarbeiter sind – alle anderen zählen als Kinder. Das bestimmt die ' +
+        'Zahlen im Organigramm, wer in der Beitragsabrechnung den Mitarbeiter-Satz zahlt, ' +
+        'und die Jahresmeldung.',
     adminPersonCount: (n: number) => `${n} Personen`,
-    adminAlwaysCounts: (n: number) => `immer · ${n} Personen`,
-    adminVacancyLabel: 'Unbesetzte Positionen sichtbar lassen',
-    adminVacancyHelp: 'Erscheint auf der Teilstamm-Karte als „nicht besetzt", statt zu fehlen.',
-    adminMemberFieldLabel: 'Mitgliederfeld für die Horizont-Kachel',
+    adminLeadershipRole: (n: number) => `in ChurchTools als Leitung markiert · ${n} Personen`,
+    adminNoRoles: 'Für die gewählten Gruppen sind keine Rollen bekannt.',
+    adminSectionDisplay: 'Darstellung',
+    adminVacancyLabel: 'Offene Positionen anzeigen',
+    adminVacancyHelp:
+        'Ist eine dieser Rollen in einem Teilstamm nicht besetzt, zeigt die Karte ' +
+        '„nicht besetzt", statt die Rolle wegzulassen – so fällt eine fehlende Stammleitung auf.',
+    adminMemberFieldLabel: 'Horizont-Kachel',
     adminMemberFieldHelp:
-        'Leer lassen, wenn euer Stamm keine solche Bestellung führt — dann entfällt die Kachel.',
-    adminMemberFieldFound: (names: string[]) => `Gefunden: ${names.join(', ')}.`,
-    adminMemberFieldPlaceholder: 'z. B. Horizont',
+        'Die Kachel zeigt, wie viele Mitglieder bei diesem Feld einen Haken haben. Führt euer ' +
+        'Stamm keine Horizont-Bestellung, wähle „Keine Horizont-Kachel".',
+    adminMemberFieldNone: 'Keine Horizont-Kachel',
+    adminMemberFieldNoScope: 'Die Felder werden angeboten, sobald Teilstämme gewählt sind.',
+    adminMemberFieldMissing: (name: string) => `${name} (nicht mehr gefunden)`,
     adminSectionFees: 'Beiträge',
     adminFeesHelp:
-        'Die letzte Zeile gilt für alle weiteren Kinder. „Ab dem dritten beitragsfrei" ist ' +
-        'also eine Staffel aus drei Zeilen, deren letzte 0,00 € ist.',
+        'Der Betrag in der letzten Zeile gilt für jedes weitere Kind derselben Familie. Ist bei ' +
+        'euch ab dem 3. Kind kein Beitrag fällig, trag dort 0,00 € ein.',
     adminRung: (n: number) => `${n}. Kind`,
     adminRungFrom: (n: number) => `ab ${n}. Kind`,
     adminNoLadder: 'Noch keine Staffel — ohne sie bleibt die Beitragsabrechnung ungenutzt.',
-    adminAddRung: '+ Weitere Position',
-    adminRemoveRung: '✕ letzte entfernen',
+    adminAddRung: '+ Weiteres Kind',
+    adminRemoveRung: (label: string) => `Betrag für „${label}" entfernen`,
+    adminRungRemoved: (label: string) => `Entfernt. Die letzte Zeile gilt jetzt ${label}.`,
+    adminStaffFeesHeading: 'Eigene Sätze',
     adminStaffFee: 'Mitarbeiter',
     adminJuniorLeaderFee: 'Juniorleiter',
     adminJuniorLeaderNote: 'Leiter unter 18',
+    adminTakenOver:
+        'Hier sind bereits Einstellungen aus einer früheren Einrichtung gespeichert. Bitte ' +
+        'prüfe sie und ergänze, was fehlt.',
     adminSave: 'Speichern',
     adminSaving: 'Speichert …',
     adminSaved: 'Gespeichert.',

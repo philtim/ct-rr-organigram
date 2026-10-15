@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    applyTickedRoles,
     childCandidates,
     childTypeCounts,
     fromEuro,
@@ -10,6 +11,7 @@ import {
     rungLabel,
     searchGroups,
     stammTypeIds,
+    tickedRoleIds,
     toEuro,
 } from './scope';
 import type { ChildGroup, ScopeScan } from './admin.api';
@@ -122,7 +124,8 @@ describe('scope counts', () => {
             [10, new Set([2, 3])],
             [11, new Set([4])],
         ]),
-        memberFieldNames: [],
+        checkboxFieldNames: [],
+        fieldsIncomplete: false,
         incomplete: false,
     };
 
@@ -140,7 +143,9 @@ describe('scope counts', () => {
 
 describe('fee input', () => {
     it('round-trips euro and cents exactly', () => {
-        expect(toEuro(8050)).toBe('80.50');
+        expect(toEuro(8050)).toBe('80,50');
+        expect(toEuro(0)).toBe('0,00');
+        expect(fromEuro(toEuro(12345))).toBe(12345);
         expect(fromEuro('80,5')).toBe(8050);
         expect(fromEuro('0.10')).toBe(10);
     });
@@ -149,10 +154,54 @@ describe('fee input', () => {
         expect(fromEuro('')).toBe(0);
         expect(fromEuro('abc')).toBe(0);
         expect(fromEuro('-5')).toBe(0);
+        expect(fromEuro('12abc')).toBe(0);
+    });
+
+    it('reads what people type into a German money field', () => {
+        expect(fromEuro('80')).toBe(8000);
+        expect(fromEuro('80 €')).toBe(8000);
+        expect(fromEuro('1.234,50')).toBe(123450);
+        expect(fromEuro(' 60,00 ')).toBe(6000);
     });
 
     it('labels the last rung as applying to every further child', () => {
         expect([0, 1, 2].map((i) => rungLabel(i, 3))).toEqual(['1. Kind', '2. Kind', 'ab 3. Kind']);
         expect(rungLabel(0, 1)).toBe('ab 1. Kind');
+    });
+});
+
+describe('the Mitarbeiter role list', () => {
+    const role = (id: number, isLeadership: boolean) => ({
+        id,
+        name: `Rolle ${id}`,
+        groupTypeId: 2,
+        isLeadership,
+    });
+    // 16 Leiter, 17 Co-Leiter (leadership); 15 Mitarbeiter, 38 Teilnehmer.
+    const roles = [role(16, true), role(17, true), role(15, false), role(38, false)];
+    const none = { extraLeaderRoleIds: [], excludedLeaderRoleIds: [] };
+
+    it('arrives with the leadership roles ticked and the rest unticked', () => {
+        expect(tickedRoleIds(roles, none)).toEqual([16, 17]);
+    });
+
+    it('stores an unticked leadership role as excluded and a ticked participant role as extra', () => {
+        expect(applyTickedRoles(roles, [16, 15], none)).toEqual({
+            excludedLeaderRoleIds: [17],
+            extraLeaderRoleIds: [15],
+        });
+    });
+
+    it('reads back what it stored', () => {
+        const stored = applyTickedRoles(roles, [16, 15], none);
+        expect(tickedRoleIds(roles, stored)).toEqual([16, 15]);
+    });
+
+    it('keeps ids of roles that are not on screen', () => {
+        const stored = { extraLeaderRoleIds: [99], excludedLeaderRoleIds: [98] };
+        expect(applyTickedRoles(roles, [16, 17], stored)).toEqual({
+            excludedLeaderRoleIds: [98],
+            extraLeaderRoleIds: [99],
+        });
     });
 });

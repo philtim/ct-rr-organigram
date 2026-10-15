@@ -85,6 +85,12 @@ export type Settings = {
      * ChurchTools selbst als `type: 'leader'` führt. Leer ist gültig.
      */
     extraLeaderRoleIds: number[];
+    /**
+     * Rollen, die ChurchTools als `type: 'leader'` führt, die der Stamm aber
+     * nicht als Mitarbeiter zählt. Als Ausschluss gespeichert, damit eine
+     * später angelegte Leitungsrolle von selbst mitzählt. Leer ist gültig.
+     */
+    excludedLeaderRoleIds: number[];
     /** Positionen, die auf einer Teilstamm-Karte unbesetzt sichtbar bleiben. */
     alwaysShownRoleIds: number[];
     /** Mitgliederfeld der Horizont-Kachel. Leer = Kachel entfällt. */
@@ -106,8 +112,9 @@ Variante `membership`, und `roleRule` verschwindet aus
 | `gateGroupId`, `teilstammIds`, `teamGroupTypeIds` | **Pflicht.** Alle Tabs zeigen den Konfigurationshinweis statt Zahlen |
 | `fees.childCents` leer | Beitragsabrechnung zeigt den Hinweis; die anderen Tabs laufen |
 | `extraLeaderRoleIds` leer | nur `type: 'leader'` zählt als Leiter — eine gültige Regel, kein Platzhalter |
+| `excludedLeaderRoleIds` leer | jede `type: 'leader'`-Rolle zählt als Mitarbeiter |
 | `alwaysShownRoleIds` leer | keine unbesetzten Positionen auf den Karten |
-| `horizontFieldName` leer | Kachel entfällt |
+| `horizontFieldName` leer | Kachel entfällt; ein gesetzter Name, den keine Gruppe hat, wird im Dashboard als Hinweis gemeldet |
 | `fees.staffCents`, `juniorLeaderCents` | 0 — die neutrale Null, keine Annahme über den Stamm |
 
 Eine unvollständige Konfiguration rendert **nie eine Tabelle voller Nullen**.
@@ -224,7 +231,7 @@ Vitest, pure Logik (ADR-009). Keine Komponententests, wie gehabt.
 |---|---|
 | `settings.ts` — Validierung | vollständig; jede Pflichtangabe einzeln fehlend; Müll in Feldern; Leerwerte als gültige Aussage |
 | `fee-tiers.ts` | Staffel kürzer als die Familie (letzte Position greift); Staffel mit 0 am Ende; Mitarbeiter und Juniorleiter mit und ohne eigenen Satz; beide belegen keine Geschwisterposition |
-| `roles.ts` | `type: 'leader'` zählt immer; `extraLeaderRoleIds` ergänzt; leere Liste ist gültig |
+| `roles.ts` | `type: 'leader'` zählt, außer in `excludedLeaderRoleIds`; `extraLeaderRoleIds` ergänzt; der Ausschluss gewinnt; leere Listen sind gültig |
 | `tally.ts` | unverändert — die Regeln ändern sich nicht, nur ihre Herkunft |
 
 Dazu ein Durchlauf gegen `rr-demo` mit einer frisch konfigurierten Installation

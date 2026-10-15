@@ -8,7 +8,7 @@ import {
     teamsAmong,
 } from '@/shared/groups.api';
 import { COPY } from '@/shared/copy';
-import { fetchLeaderRoleIds } from '@/shared/roles';
+import { fetchLeaderRoleIds, leaderRuleOf } from '@/shared/roles';
 import type { LeaderRoleIds } from '@/shared/roles';
 import { genderOf } from './tally';
 import type { RowDef, ScopedPerson } from './tally';
@@ -129,7 +129,7 @@ export async function loadJahresmeldung(
     const gateGroupId = settings.gateGroupId;
     if (gateGroupId === null) throw new Error(COPY.noHauptstamm);
 
-    const leaderRoleIds = await fetchLeaderRoleIds(new Set(settings.extraLeaderRoleIds));
+    const leaderRoleIds = await fetchLeaderRoleIds(leaderRuleOf(settings));
 
     // The Teilstämme are configured directly; their labels come from
     // ChurchTools, in the configured order. No group name is hardcoded.

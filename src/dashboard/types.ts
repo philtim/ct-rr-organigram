@@ -76,6 +76,8 @@ export type OrgNode = {
      *    intentionally count twice.
      */
     horizontCount: number;
+    /** This group's members carry the configured field at all — see `hasMemberField`. */
+    horizontFieldSeen?: boolean;
     children: OrgNode[];
     /**
      * Set when this group itself could not be read — its leaders are unknown

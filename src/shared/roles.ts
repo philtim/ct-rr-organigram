@@ -10,11 +10,30 @@ import { ct, withRetryOn429 } from '@/shared/api';
  * its Jahresmeldung. The names are gone; the admin ticks role ids instead
  * (`Settings.extraLeaderRoleIds`).
  *
- * What ChurchTools itself flags as leadership still counts unconditionally.
- * That half stays automatic on purpose: a role added to the group type later
- * is counted the day it appears, rather than going missing until somebody
- * notices the figures are low.
+ * What ChurchTools itself flags as leadership counts unless the admin took it
+ * out (`Settings.excludedLeaderRoleIds`). That half is stored as an exclusion
+ * on purpose: a role added to the group type later is counted the day it
+ * appears, rather than going missing until somebody notices the figures are
+ * low.
  */
+
+/** Which roles count as Mitarbeiter, as the admin configured it. */
+export type LeaderRule = {
+    /** Participant roles counted as Mitarbeiter. */
+    extra: ReadonlySet<number>;
+    /** Leadership roles not counted. */
+    excluded: ReadonlySet<number>;
+};
+
+export function leaderRuleOf(settings: {
+    extraLeaderRoleIds: readonly number[];
+    excludedLeaderRoleIds: readonly number[];
+}): LeaderRule {
+    return {
+        extra: new Set(settings.extraLeaderRoleIds),
+        excluded: new Set(settings.excludedLeaderRoleIds),
+    };
+}
 
 /** The role ids that count as leading — every tab classifies people by this one set. */
 export type LeaderRoleIds = ReadonlySet<number>;
@@ -58,13 +77,20 @@ export function isLeadershipRole(role: RoleLike): boolean {
 }
 
 /**
- * A role counts as leader iff ChurchTools flags it, or the admin added its id
- * to the configured extras.
+ * A role counts as leader iff ChurchTools flags it and the admin did not take
+ * it out, or the admin added it to the extras.
  */
-export function isLeaderRole(role: RoleLike, extraLeaderRoleIds: ReadonlySet<number>): boolean {
-    if (isLeadershipRole(role)) return true;
+export function isLeaderRole(role: RoleLike, rule: LeaderRule): boolean {
     const id = roleIdOf(role);
-    return id !== null && extraLeaderRoleIds.has(id);
+    if (id !== null && rule.excluded.has(id)) return false;
+    if (isLeadershipRole(role)) return true;
+    return id !== null && rule.extra.has(id);
+}
+
+/** A leadership role the Stamm counts — what a card lists as a position. */
+export function isCountedLeadershipRole(role: RoleLike, rule: LeaderRule): boolean {
+    const id = roleIdOf(role);
+    return isLeadershipRole(role) && !(id !== null && rule.excluded.has(id));
 }
 
 /**
@@ -73,13 +99,11 @@ export function isLeaderRole(role: RoleLike, extraLeaderRoleIds: ReadonlySet<num
  * collisions on live), so a flat set is enough and callers do not need each
  * group's own role list.
  */
-export async function fetchLeaderRoleIds(
-    extraLeaderRoleIds: ReadonlySet<number>,
-): Promise<LeaderRoleIds> {
+export async function fetchLeaderRoleIds(rule: LeaderRule): Promise<LeaderRoleIds> {
     const roles = await withRetryOn429(() => ct.get<RoleDefinition[]>('/group/roles'));
     const ids = new Set<number>();
     for (const role of roles ?? []) {
-        if (typeof role.id === 'number' && isLeaderRole(role, extraLeaderRoleIds)) ids.add(role.id);
+        if (typeof role.id === 'number' && isLeaderRole(role, rule)) ids.add(role.id);
     }
     return ids;
 }

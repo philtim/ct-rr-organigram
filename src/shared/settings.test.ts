@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     EMPTY_SETTINGS,
+    hasAnySetting,
     shouldShowAdmin,
     areFeesConfigured,
     isDashboardConfigured,
@@ -23,6 +24,7 @@ describe('parseSettings', () => {
             stammGroupTypeIds: [10],
             teamGroupTypeIds: [1],
             extraLeaderRoleIds: [15, 19],
+            excludedLeaderRoleIds: [17],
             alwaysShownRoleIds: [41],
             horizontFieldName: 'Horizont',
             fees: { childCents: [8000, 6000, 0], staffCents: 0, juniorLeaderCents: 0 },
@@ -197,5 +199,14 @@ describe('shouldShowAdmin', () => {
 
     it('stays out of the way once everything is configured', () => {
         expect(shouldShowAdmin(base)).toBe(false);
+    });
+});
+
+describe('hasAnySetting', () => {
+    it('is false for nothing stored, true for a half-finished or legacy record', () => {
+        expect(hasAnySetting(EMPTY_SETTINGS)).toBe(false);
+        expect(hasAnySetting(parseSettings(undefined))).toBe(false);
+        expect(hasAnySetting(parseSettings(LEGACY))).toBe(true);
+        expect(hasAnySetting(parseSettings({ horizontFieldName: 'Horizont' }))).toBe(true);
     });
 });

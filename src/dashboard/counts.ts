@@ -1,6 +1,7 @@
 import { COPY } from '@/shared/copy';
 import { personIdOf } from '@/shared/groups.api';
-import { isLeaderRole, isLeadershipRole } from '@/shared/roles';
+import { isCountedLeadershipRole, isLeaderRole } from '@/shared/roles';
+import type { LeaderRule } from '@/shared/roles';
 import type { Group, GroupMember } from '@/shared/types';
 import type { Leader, LeaderRole, OrgNode, Participant } from './types';
 
@@ -9,9 +10,8 @@ type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
 
 /**
  * Split a group's members into leaders and participants. A role counts as
- * leader when ChurchTools flags it as leadership, or when the admin added its
- * id to `Settings.extraLeaderRoleIds` — see `shared/roles.ts` for why the
- * second half is configuration rather than a list of names.
+ * leader when ChurchTools flags it as leadership and the admin did not take
+ * it out, or when the admin added it — see `shared/roles.ts`.
  *
  * Each Leader carries its role name and sort key, so the cards can group by
  * the role ChurchTools actually defines instead of squeezing everything into
@@ -24,15 +24,15 @@ type RoleInfo = { name: string; sortKey: number; isPillRole: boolean };
 export function splitMembers(
     group: Group,
     members: GroupMember[],
-    extraLeaderRoleIds: ReadonlySet<number>,
+    rule: LeaderRule,
 ): { leaders: Leader[]; participants: Participant[] } {
     const infoByRoleId = new Map<number, RoleInfo>();
     for (const r of group.roles ?? []) {
-        if (isLeaderRole(r, extraLeaderRoleIds)) {
+        if (isLeaderRole(r, rule)) {
             infoByRoleId.set(r.groupTypeRoleId, {
                 name: (r.name ?? '').trim(),
                 sortKey: r.sortKey ?? 0,
-                isPillRole: isLeadershipRole(r),
+                isPillRole: isCountedLeadershipRole(r, rule),
             });
         }
     }
@@ -111,6 +111,29 @@ export function horizontCountFromMembers(members: GroupMember[], fieldName: stri
 }
 
 /**
+ * Whether any member carries the field at all, ticked or not. A configured
+ * field that no group has is a misconfiguration — a renamed or deleted field
+ * — and the dashboard says so instead of showing a quiet 0.
+ */
+export function hasMemberField(members: GroupMember[], fieldName: string): boolean {
+    const wanted = fieldName.trim().toLowerCase();
+    if (!wanted) return false;
+    return members.some(
+        (m) =>
+            Array.isArray(m.fields) &&
+            m.fields.some((f) => {
+                const name = (f as { name?: unknown }).name;
+                return typeof name === 'string' && name.trim().toLowerCase() === wanted;
+            }),
+    );
+}
+
+/** Whether any group in the tree carries the configured field — see `hasMemberField`. */
+export function fieldSeenInTree(node: OrgNode): boolean {
+    return Boolean(node.horizontFieldSeen) || node.children.some(fieldSeenInTree);
+}
+
+/**
  * Build the rows a card renders: one per leadership role, in the group type's
  * own order, each with the people holding it.
  *
@@ -148,9 +171,11 @@ export function leaderRoleRows(
 }
 
 /** The leadership roles a group defines, skipping hidden and deactivated ones. */
-export function leaderRolesOf(group: Group): LeaderRole[] {
+export function leaderRolesOf(group: Group, rule: LeaderRule): LeaderRole[] {
     return (group.roles ?? [])
-        .filter((r) => isLeadershipRole(r) && r.isHidden !== true && r.isActive !== false)
+        .filter(
+            (r) => isCountedLeadershipRole(r, rule) && r.isHidden !== true && r.isActive !== false,
+        )
         .map((r) => ({
             id: r.groupTypeRoleId,
             name: (r.name ?? '').trim(),

@@ -109,6 +109,46 @@ export function rolesInScope(
         .sort((a, b) => byName(a.label, b.label));
 }
 
+/** The two stored lists behind "Wer ist Mitarbeiter?". */
+export type RoleSelection = { extraLeaderRoleIds: number[]; excludedLeaderRoleIds: number[] };
+
+/** The roles on screen that count as Mitarbeiter under a stored selection. */
+export function tickedRoleIds(roles: PickableRole[], selection: RoleSelection): number[] {
+    const excluded = new Set(selection.excludedLeaderRoleIds);
+    const extra = new Set(selection.extraLeaderRoleIds);
+    return roles
+        .filter((r) => (r.isLeadership ? !excluded.has(r.id) : extra.has(r.id)))
+        .map((r) => r.id);
+}
+
+/**
+ * The stored selection after the admin ticked `ticked` among `roles`.
+ *
+ * Leadership is stored as what was taken out and everything else as what was
+ * added, so a leadership role ChurchTools gains later counts and a new
+ * participant role does not. Ids of roles not on screen are kept as they are:
+ * another Teilstamm's type may come back into scope.
+ */
+export function applyTickedRoles(
+    roles: PickableRole[],
+    ticked: number[],
+    selection: RoleSelection,
+): RoleSelection {
+    const isTicked = new Set(ticked);
+    const onScreen = new Set(roles.map((r) => r.id));
+    const offScreen = (ids: number[]) => ids.filter((id) => !onScreen.has(id));
+    return {
+        excludedLeaderRoleIds: [
+            ...offScreen(selection.excludedLeaderRoleIds),
+            ...roles.filter((r) => r.isLeadership && !isTicked.has(r.id)).map((r) => r.id),
+        ],
+        extraLeaderRoleIds: [
+            ...offScreen(selection.extraLeaderRoleIds),
+            ...roles.filter((r) => !r.isLeadership && isTicked.has(r.id)).map((r) => r.id),
+        ],
+    };
+}
+
 /** How many people in scope hold a given role. Drives the hints in the picker. */
 export function personsWithRole(scan: ScopeScan, roleId: number): number {
     let count = 0;
@@ -149,13 +189,20 @@ export function rungLabel(index: number, total: number): string {
     return index === total - 1 ? COPY.adminRungFrom(index + 1) : COPY.adminRung(index + 1);
 }
 
-/** Euro with two decimals, from exact cents — what a fee input shows. */
+/** Euro with two decimals and a German comma, from exact cents — what a fee input shows. */
 export function toEuro(cents: number): string {
-    return (cents / 100).toFixed(2);
+    return (cents / 100).toFixed(2).replace('.', ',');
 }
 
-/** Exact cents from what was typed. Comma or point; anything unusable is 0. */
+/**
+ * Exact cents from what was typed. Comma or point as the decimal mark; with
+ * both, as in "1.234,50", the point is a thousands separator. A trailing "€"
+ * is ignored. Anything unusable is 0.
+ */
 export function fromEuro(value: string): number {
-    const parsed = Number.parseFloat(value.replace(',', '.'));
+    let text = value.replace(/€/g, '').replace(/\s+/g, '');
+    if (text.includes(',')) text = text.replace(/\./g, '').replace(',', '.');
+    if (!/^\d*\.?\d*$/.test(text) || !/\d/.test(text)) return 0;
+    const parsed = Number.parseFloat(text);
     return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : 0;
 }
