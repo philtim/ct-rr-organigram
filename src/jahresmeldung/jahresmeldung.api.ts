@@ -70,13 +70,19 @@ function frontendUrlOf(member: GroupMember): string | null {
 function createAccumulator(leaderRoleIds: LeaderRoleIds, today: Date) {
     const byId = new Map<number, ScopedPerson>();
 
-    function add(members: GroupMember[], teilstammId: number | null, isTeam: boolean): void {
+    /** `everyoneLeads`: a Sammelgruppe, whose members are Mitarbeiter whatever their role. */
+    function add(
+        members: GroupMember[],
+        teilstammId: number | null,
+        isTeam: boolean,
+        everyoneLeads = false,
+    ): void {
         for (const member of members) {
             const personId = personIdOf(member);
             if (personId === null) continue;
 
             const fields = personFieldsOf(member);
-            const leads = leaderRoleIds.has(member.groupTypeRoleId);
+            const leads = everyoneLeads || leaderRoleIds.has(member.groupTypeRoleId);
 
             let person = byId.get(personId);
             if (!person) {
@@ -144,6 +150,18 @@ export async function loadJahresmeldung(
     const hauptstammMembers = await safeGetMembers(gateGroupId);
     if (hauptstammMembers === null) ohneTeamIncomplete = true;
     else accumulator.add(hauptstammMembers, null, false);
+
+    // Sammelgruppen feed the "ohne Team" row as Mitarbeiter: the group is
+    // where a Stamm keeps its leaders who have no team.
+    const collections = await mapWithConcurrency(
+        [...new Set(settings.collectionGroupIds)],
+        4,
+        safeGetMembers,
+    );
+    for (const members of collections) {
+        if (members === null) ohneTeamIncomplete = true;
+        else accumulator.add(members, null, false, true);
+    }
 
     const loaded = await mapWithConcurrency(teilstaemme, 4, async (ts) => {
         let incomplete = false;

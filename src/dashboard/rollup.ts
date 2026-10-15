@@ -57,18 +57,32 @@ export function rollUpTeilstamm(ts: OrgNode, teams: OrgNode[] | null): OrgNode {
  * `incomplete` when any part of the tree is missing, including a Teilstamm's
  * own group, whose leaders count here.
  */
-export function rollUpHauptstamm(root: OrgNode, teilstaemme: OrgNode[]): OrgNode {
+export function rollUpHauptstamm(
+    root: OrgNode,
+    teilstaemme: OrgNode[],
+    collections: OrgNode[] = [],
+): OrgNode {
     const teams = teilstaemme.flatMap((ts) => ts.children).filter((t) => !t.error);
     return {
         ...root,
         ...uniqueHeadcount(
-            [root.leaders, ...teilstaemme.map((ts) => ts.leaders), ...teams.map((t) => t.leaders)],
+            [
+                root.leaders,
+                ...teilstaemme.map((ts) => ts.leaders),
+                ...teams.map((t) => t.leaders),
+                // Sammelgruppen: leaders without a team, counted once like
+                // everybody else (leader status already takes precedence).
+                ...collections.map((c) => c.leaders),
+            ],
             teams.map((t) => t.participants),
         ),
         horizontCount: sumHorizont(teams),
         children: teilstaemme,
+        collections,
         incomplete:
-            Boolean(root.error) || teilstaemme.some((ts) => Boolean(ts.error) || ts.incomplete),
+            Boolean(root.error) ||
+            teilstaemme.some((ts) => Boolean(ts.error) || ts.incomplete) ||
+            collections.some((c) => Boolean(c.error)),
     };
 }
 
@@ -76,7 +90,8 @@ export type LoadFailure =
     | { kind: 'hauptstamm'; name: string }
     | { kind: 'teilstamm'; name: string }
     | { kind: 'teilstamm-teams'; name: string }
-    | { kind: 'team'; name: string; teilstamm: string };
+    | { kind: 'team'; name: string; teilstamm: string }
+    | { kind: 'sammelgruppe'; name: string };
 
 /** Every part of the tree that could not be read, top-down, for the warning. */
 export function loadFailures(root: OrgNode): LoadFailure[] {
@@ -92,6 +107,9 @@ export function loadFailures(root: OrgNode): LoadFailure[] {
         for (const team of ts.children) {
             if (team.error) failures.push({ kind: 'team', name: team.name, teilstamm: ts.name });
         }
+    }
+    for (const c of root.collections ?? []) {
+        if (c.error) failures.push({ kind: 'sammelgruppe', name: c.name });
     }
     return failures;
 }

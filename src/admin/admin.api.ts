@@ -1,4 +1,4 @@
-import { ct, fetchAllPages, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
+import { ct, fetchAllPages, mapWithConcurrency, statusOf, withRetryOn429 } from '@/shared/api';
 import { fetchActiveMembers, getChildGroups, personIdOf } from '@/shared/groups.api';
 import { isLeadershipRole } from '@/shared/roles';
 import type { Group } from '@/shared/types';
@@ -60,6 +60,24 @@ export async function listRoles(): Promise<PickableRole[]> {
         }));
 }
 
+/**
+ * The signed-in person's role in a group, or null when they are not a member.
+ * Only a 404 means "not a member" — the gate's rule; anything else is an
+ * error the caller sees, rather than a lockout warning that is not true.
+ */
+export async function myRoleIn(groupId: number): Promise<number | null> {
+    const me = await ct.get<{ id: number }>('/whoami');
+    try {
+        const membership = await ct.get<{ groupTypeRoleId?: number }>(
+            `/groups/${groupId}/members/${me.id}`,
+        );
+        return typeof membership?.groupTypeRoleId === 'number' ? membership.groupTypeRoleId : null;
+    } catch (e) {
+        if (statusOf(e) === 404) return null;
+        throw e;
+    }
+}
+
 /** A candidate team: a child of some Teilstamm, with the type that decides it. */
 export type ChildGroup = {
     id: number;
@@ -81,8 +99,8 @@ export type ScopeScan = {
     children: ChildGroup[];
     /** personId → the role ids they hold anywhere in scope. */
     rolesByPerson: Map<number, Set<number>>;
-    /** groupId → the person ids active in it. */
-    personsByGroup: Map<number, Set<number>>;
+    /** groupId → personId → the role they hold in that group. */
+    membersByGroup: Map<number, Map<number, number>>;
     /**
      * Checkbox member fields defined on the groups in scope — the only kind
      * the Horizont tile can count, so the only kind the picker offers.
@@ -189,6 +207,7 @@ async function childrenOf(groupId: number): Promise<ChildGroup[] | null> {
 export async function scanScope(
     gateGroupId: number | null,
     teilstammIds: number[],
+    collectionGroupIds: number[] = [],
 ): Promise<ScopeScan> {
     let incomplete = false;
     const childLists = await mapWithConcurrency(teilstammIds, 4, childrenOf);
@@ -199,6 +218,7 @@ export async function scanScope(
         ...new Set([
             ...(gateGroupId === null ? [] : [gateGroupId]),
             ...teilstammIds,
+            ...collectionGroupIds,
             ...children.map((c) => c.id),
         ]),
     ];
@@ -209,7 +229,7 @@ export async function scanScope(
     });
 
     const rolesByPerson = new Map<number, Set<number>>();
-    const personsByGroup = new Map<number, Set<number>>();
+    const membersByGroup = new Map<number, Map<number, number>>();
     const fieldNames = new Set<string>();
 
     let fieldsIncomplete = false;
@@ -217,23 +237,23 @@ export async function scanScope(
         if (members === null) incomplete = true;
         if (checkboxFields === null) fieldsIncomplete = true;
         for (const name of checkboxFields ?? []) fieldNames.add(name);
-        const persons = new Set<number>();
+        const persons = new Map<number, number>();
         for (const member of members ?? []) {
             const personId = personIdOf(member);
             if (personId === null) continue;
-            persons.add(personId);
+            persons.set(personId, member.groupTypeRoleId);
 
             const held = rolesByPerson.get(personId) ?? new Set<number>();
             held.add(member.groupTypeRoleId);
             rolesByPerson.set(personId, held);
         }
-        personsByGroup.set(id, persons);
+        membersByGroup.set(id, persons);
     }
 
     return {
         children,
         rolesByPerson,
-        personsByGroup,
+        membersByGroup,
         fieldsIncomplete,
         checkboxFieldNames: [...fieldNames].sort((a, b) => a.localeCompare(b, 'de')),
         incomplete,

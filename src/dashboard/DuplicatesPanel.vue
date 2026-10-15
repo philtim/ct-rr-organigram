@@ -22,7 +22,8 @@ const hasAny = computed(
     () =>
         hasDuplicates.value ||
         withoutTeam.value.staff.length > 0 ||
-        withoutTeam.value.leadership.length > 0,
+        withoutTeam.value.leadership.length > 0 ||
+        withoutTeam.value.notCounted.length > 0,
 );
 </script>
 
@@ -68,6 +69,17 @@ const hasAny = computed(
                         <span class="dup__teams">{{
                             COPY.hintsMixedParticipant(e.participantTeams)
                         }}</span>
+                    </li>
+                </ul>
+            </article>
+
+            <article v-if="withoutTeam.notCounted.length" class="dup__group">
+                <h3 class="dup__group-title">{{ COPY.hintsNotCounted }}</h3>
+                <p class="dup__note">{{ COPY.hintsNotCountedNote }}</p>
+                <ul class="dup__list">
+                    <li v-for="e in withoutTeam.notCounted" :key="e.personId" class="dup__item">
+                        <span class="dup__name">{{ e.fullName }}</span>
+                        <span class="dup__teams">{{ e.teilstammNames.join(', ') }}</span>
                     </li>
                 </ul>
             </article>
@@ -140,6 +152,13 @@ const hasAny = computed(
     color: var(--rr-text-secondary);
     letter-spacing: 0.02em;
     text-transform: uppercase;
+}
+
+.dup__note {
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--rr-text-secondary);
 }
 
 .dup__list {

@@ -1,8 +1,16 @@
 import { computed, ref, watch } from 'vue';
-import { listChildren, listGroupTypes, listGroups, listRoles, scanScope } from './admin.api';
+import {
+    listChildren,
+    listGroupTypes,
+    listGroups,
+    listRoles,
+    myRoleIn,
+    scanScope,
+} from './admin.api';
 import type { ChildGroup, GroupTypeRef, PickableRole, ScopeScan } from './admin.api';
 import {
     applyTickedRoles,
+    countsAsMitarbeiter,
     childCandidates,
     childTypeCounts,
     otherCandidates,
@@ -61,12 +69,7 @@ export function useAdminForm() {
         teilstaemme: draft.value.teilstammIds.length,
         teams: scan.value ? teamsInScope(scan.value, draft.value.teamGroupTypeIds).length : 0,
         persons: scan.value
-            ? personsInScope(
-                  scan.value,
-                  draft.value.gateGroupId,
-                  draft.value.teilstammIds,
-                  draft.value.teamGroupTypeIds,
-              )
+            ? personsInScope(scan.value, draft.value, countsAsMitarbeiter(roles.value, draft.value))
             : 0,
     }));
 
@@ -100,6 +103,116 @@ export function useAdminForm() {
         );
     });
 
+    /**
+     * A group is a Teilstamm or a Sammelgruppe, never both: it would count
+     * its members once as a level and once as leaders without a team. Ticking
+     * it in one list takes it out of the other.
+     */
+    const teilstammModel = computed<number[]>({
+        get: () => draft.value.teilstammIds,
+        set: (ids) => {
+            const picked = new Set(ids);
+            draft.value = {
+                ...draft.value,
+                teilstammIds: ids,
+                collectionGroupIds: draft.value.collectionGroupIds.filter((id) => !picked.has(id)),
+            };
+        },
+    });
+    const collectionModel = computed<number[]>({
+        get: () => draft.value.collectionGroupIds,
+        set: (ids) => {
+            const picked = new Set(ids);
+            draft.value = {
+                ...draft.value,
+                collectionGroupIds: ids,
+                teilstammIds: draft.value.teilstammIds.filter((id) => !picked.has(id)),
+            };
+        },
+    });
+
+    /**
+     * Sammelgruppen on offer: the Hauptstamm's children of any type — such a
+     * group usually hangs there — plus whatever is already chosen elsewhere.
+     */
+    const collectionCandidates = computed(() => {
+        const own = draft.value.gateGroupId;
+        const children = hauptstammChildren.value
+            .filter((c) => c.id !== own)
+            .map((c) => ({ id: c.id, name: c.title }));
+        const listed = new Set(children.map((c) => c.id));
+        const chosenElsewhere = draft.value.collectionGroupIds
+            .filter((id) => !listed.has(id))
+            .map((id) => ({
+                id,
+                name: groups.value.find((g) => g.id === id)?.name ?? COPY.groupFallbackName(id),
+            }));
+        return [...children, ...chosenElsewhere].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    });
+
+    /** The roles of the Hauptstamm group's type — what may be allowed to configure. */
+    const hauptstammRoles = computed(() => {
+        const type = hauptstamm.value?.information?.groupTypeId;
+        if (type !== undefined) return rolesInScope(roles.value, [type], groupTypes.value);
+        // A group without a type on record: offer the roles its members
+        // actually hold, so the setup can still be saved.
+        const held = new Set(hauptstammMembers.value.values());
+        return rolesInScope(
+            roles.value.filter((r) => held.has(r.id)),
+            [...new Set(roles.value.filter((r) => held.has(r.id)).map((r) => r.groupTypeId ?? -1))],
+            groupTypes.value,
+        );
+    });
+
+    /** personId → role in the chosen Hauptstamm group, from the scan. */
+    const hauptstammMembers = computed(
+        () =>
+            (draft.value.gateGroupId !== null &&
+                scan.value?.membersByGroup.get(draft.value.gateGroupId)) ||
+            new Map<number, number>(),
+    );
+
+    /** How many members of the Hauptstamm group hold a role — who could configure. */
+    function hauptstammHolders(roleId: number): number {
+        let count = 0;
+        for (const held of hauptstammMembers.value.values()) if (held === roleId) count += 1;
+        return count;
+    }
+
+    /**
+     * The viewer's own role in the chosen Hauptstamm group: null when they are
+     * not a member, undefined while it is being read. Saving needs it — a
+     * selection that leaves out the person saving locks them out at once.
+     */
+    const myRoleId = ref<number | null | undefined>(undefined);
+    const myRoleFailed = ref(false);
+    let myRoleSequence = 0;
+    async function refreshMyRole(groupId: number | null) {
+        const mine = ++myRoleSequence;
+        myRoleId.value = undefined;
+        myRoleFailed.value = false;
+        if (groupId === null) return;
+        try {
+            const role = await myRoleIn(groupId);
+            if (mine === myRoleSequence) myRoleId.value = role;
+        } catch (e) {
+            console.error('[rr-dashboard] own role unavailable:', e);
+            if (mine === myRoleSequence) myRoleFailed.value = true;
+        }
+    }
+
+    /** Why saving is not possible yet, or null. */
+    const accessProblem = computed<string | null>(() => {
+        if (draft.value.gateGroupId === null) return null;
+        if (draft.value.adminRoleIds.length === 0) return COPY.adminAccessNoneChosen;
+        if (myRoleFailed.value) return COPY.adminAccessUnverifiable;
+        if (myRoleId.value === undefined) return COPY.adminAccessChecking;
+        if (myRoleId.value === null || !draft.value.adminRoleIds.includes(myRoleId.value)) {
+            return COPY.adminAccessWouldLockOut;
+        }
+        return null;
+    });
+
     /** A started or older setup was found — the form says it took it over. */
     const takenOver = ref(false);
 
@@ -107,7 +220,9 @@ export function useAdminForm() {
         return scan.value === null ? 0 : personsWithRole(scan.value, roleId);
     }
 
-    const canSave = computed(() => isDashboardConfigured(draft.value) && !saving.value);
+    const canSave = computed(
+        () => isDashboardConfigured(draft.value) && accessProblem.value === null && !saving.value,
+    );
 
     function selectHauptstamm(id: number) {
         if (draft.value.gateGroupId === id) return;
@@ -121,6 +236,9 @@ export function useAdminForm() {
             teilstammIds: [],
             teamGroupTypeIds: [],
             stammGroupTypeIds: [],
+            // The old Hauptstamm's children and its group type's roles.
+            collectionGroupIds: [],
+            adminRoleIds: [],
         };
     }
 
@@ -159,7 +277,11 @@ export function useAdminForm() {
         }
         scanning.value = true;
         try {
-            const result = await scanScope(draft.value.gateGroupId, draft.value.teilstammIds);
+            const result = await scanScope(
+                draft.value.gateGroupId,
+                draft.value.teilstammIds,
+                draft.value.collectionGroupIds,
+            );
             if (mine === scanSequence) scan.value = result;
         } catch (e) {
             // No counts at all rather than the previous selection's.
@@ -171,7 +293,11 @@ export function useAdminForm() {
     }
 
     watch(() => draft.value.gateGroupId, refreshChildren);
-    watch(() => draft.value.teilstammIds.join(','), runScan);
+    watch(
+        () => `${draft.value.teilstammIds.join(',')}|${draft.value.collectionGroupIds.join(',')}`,
+        runScan,
+    );
+    watch(() => draft.value.gateGroupId, refreshMyRole);
 
     async function boot() {
         try {
@@ -221,6 +347,12 @@ export function useAdminForm() {
         typeCounts,
         preview,
         scopedRoles,
+        teilstammModel,
+        collectionModel,
+        collectionCandidates,
+        hauptstammRoles,
+        hauptstammHolders,
+        accessProblem,
         mitarbeiterRoleIds,
         vacancyRoles,
         takenOver,

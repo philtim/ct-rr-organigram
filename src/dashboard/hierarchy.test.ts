@@ -129,6 +129,22 @@ describe('loadOrganigram', () => {
         expect(loadFailures(root)).toEqual([{ kind: 'hauptstamm', name: 'Gruppe 100' }]);
     });
 
+    it('counts every member of a Sammelgruppe as a leader, once, whatever their role', async () => {
+        // 6 holds a plain role; 2 already leads team 10 and must not count twice.
+        membersOf.set(500, [member(6), member(2)]);
+        const root = await loadOrganigram({ ...SETTINGS, collectionGroupIds: [500] });
+        expect(root.collections?.map((c) => c.leaders.map((l) => l.personId))).toEqual([[6, 2]]);
+        expect(root.children.map((ts) => ts.groupId)).toEqual([1, 2]);
+        // Leaders 1, 2, 6; participants 3, 4, 5.
+        expect(root).toMatchObject({ leaderCount: 3, memberCount: 3, incomplete: false });
+    });
+
+    it('marks the totals incomplete and names a Sammelgruppe that failed', async () => {
+        const root = await loadOrganigram({ ...SETTINGS, collectionGroupIds: [501] });
+        expect(root.incomplete).toBe(true);
+        expect(loadFailures(root)).toEqual([{ kind: 'sammelgruppe', name: 'Gruppe 501' }]);
+    });
+
     it('refuses to load without a configured Hauptstamm', async () => {
         await expect(loadOrganigram(EMPTY_SETTINGS)).rejects.toThrow();
         expect(api.getGroup).not.toHaveBeenCalled();

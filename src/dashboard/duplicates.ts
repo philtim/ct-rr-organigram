@@ -132,10 +132,36 @@ export type WithoutTeamEntry = {
 export function findPeopleWithoutTeam(root: OrgNode): {
     staff: WithoutTeamEntry[];
     leadership: WithoutTeamEntry[];
+    /**
+     * Members of the Hauptstamm or a Teilstamm group who count nowhere: no
+     * role counted as Mitarbeiter anywhere in the tree, and in no team. The
+     * totals leave them out, so the panel names them rather than letting
+     * them drop silently.
+     */
+    notCounted: WithoutTeamEntry[];
 } {
     type Acc = { fullName: string; teilstaemme: Set<string> };
     const staff = new Map<number, Acc>();
     const leadership = new Map<number, Acc>();
+    const notCounted = new Map<number, Acc>();
+
+    // Someone in a Sammelgruppe is without a team on purpose.
+    const inCollection = new Set(
+        (root.collections ?? []).flatMap((c) => c.leaders.map((l) => l.personId)),
+    );
+    // Tree-wide: a leader anywhere, or a child in some team anywhere. A
+    // child elsewhere is not "Mitarbeiter ohne Team", only somebody in no team.
+    const leadsSomewhere = new Set<number>(inCollection);
+    const childSomewhere = new Set<number>();
+    for (const l of root.leaders) leadsSomewhere.add(l.personId);
+    for (const ts of root.children) {
+        for (const l of ts.leaders) leadsSomewhere.add(l.personId);
+        for (const team of ts.children) {
+            for (const l of team.leaders) leadsSomewhere.add(l.personId);
+            for (const p of team.participants) childSomewhere.add(p.personId);
+        }
+    }
+    const counted = (id: number) => leadsSomewhere.has(id) || childSomewhere.has(id);
 
     const add = (map: Map<number, Acc>, personId: number, fullName: string, tsName: string) => {
         const existing = map.get(personId);
@@ -153,12 +179,23 @@ export function findPeopleWithoutTeam(root: OrgNode): {
         }
 
         for (const l of ts.leaders) {
-            if (inTeams.has(l.personId)) continue;
+            if (inTeams.has(l.personId) || inCollection.has(l.personId)) continue;
             add(l.isPillRole ? leadership : staff, l.personId, l.fullName, ts.name);
         }
         for (const p of ts.participants) {
-            if (inTeams.has(p.personId)) continue;
-            add(staff, p.personId, p.fullName, ts.name);
+            if (inTeams.has(p.personId) || inCollection.has(p.personId)) continue;
+            if (leadsSomewhere.has(p.personId)) add(staff, p.personId, p.fullName, ts.name);
+            else if (!childSomewhere.has(p.personId)) {
+                add(notCounted, p.personId, p.fullName, ts.name);
+            }
+        }
+    }
+
+    // The Hauptstamm group's own members, for the same reason — but only a
+    // complete tree can show that somebody is in no team.
+    if (!root.incomplete) {
+        for (const p of root.participants) {
+            if (!counted(p.personId)) add(notCounted, p.personId, p.fullName, root.name);
         }
     }
 
@@ -173,5 +210,8 @@ export function findPeopleWithoutTeam(root: OrgNode): {
             }))
             .sort((a, b) => a.fullName.localeCompare(b.fullName, 'de'));
 
-    return { staff: shape(staff), leadership: shape(leadership) };
+    // A Teilstamm skipped above may still have counted somebody listed here.
+    for (const id of notCounted.keys()) if (counted(id)) notCounted.delete(id);
+
+    return { staff: shape(staff), leadership: shape(leadership), notCounted: shape(notCounted) };
 }

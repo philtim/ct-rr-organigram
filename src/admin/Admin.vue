@@ -30,6 +30,12 @@ const {
     typeCounts,
     preview,
     scopedRoles,
+    teilstammModel,
+    collectionModel,
+    collectionCandidates,
+    hauptstammRoles,
+    hauptstammHolders,
+    accessProblem,
     mitarbeiterRoleIds,
     vacancyRoles,
     takenOver,
@@ -97,6 +103,22 @@ const mitarbeiterSections = computed<CheckSection[]>(() => [
                     ? COPY.adminLeadershipRole(roleHolders(r.id))
                     : COPY.adminPersonCount(roleHolders(r.id)),
             ),
+        ),
+        empty: COPY.adminNoRoles,
+    },
+]);
+
+const collectionSections = computed<CheckSection[]>(() => [
+    {
+        items: collectionCandidates.value.map((g) => item(g.id, g.name, COPY.adminGroupId(g.id))),
+        empty: COPY.adminNoCollectionCandidates,
+    },
+]);
+
+const accessSections = computed<CheckSection[]>(() => [
+    {
+        items: hauptstammRoles.value.map((r) =>
+            item(r.id, r.label, COPY.adminPersonCount(hauptstammHolders(r.id))),
         ),
         empty: COPY.adminNoRoles,
     },
@@ -177,9 +199,20 @@ function item(id: number, label: string, meta?: string): CheckItem {
                     {{ COPY.adminOnlyChildren }}
                 </label>
                 <CheckList
-                    v-model="draft.teilstammIds"
+                    v-model="teilstammModel"
                     :label="COPY.adminTeilstaemmeLabel"
                     :sections="teilstammSections"
+                    bounded
+                />
+
+                <p class="rr-admin__label rr-admin__label--gap">
+                    {{ COPY.adminCollectionsLabel }}
+                </p>
+                <p class="rr-admin__help">{{ COPY.adminCollectionsHelp }}</p>
+                <CheckList
+                    v-model="collectionModel"
+                    :label="COPY.adminCollectionsLabel"
+                    :sections="collectionSections"
                     bounded
                 />
 
@@ -248,6 +281,17 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 <FeeLadderEditor v-model="draft.fees" />
             </template>
 
+            <template v-if="draft.gateGroupId !== null">
+                <h2 class="rr-admin__section">{{ COPY.adminSectionAccess }}</h2>
+                <p class="rr-admin__label">{{ COPY.adminAccessLabel }}</p>
+                <p class="rr-admin__help">{{ COPY.adminAccessHelp }}</p>
+                <CheckList
+                    v-model="draft.adminRoleIds"
+                    :label="COPY.adminAccessLabel"
+                    :sections="accessSections"
+                />
+            </template>
+
             <div class="rr-admin__actions">
                 <button type="submit" class="rr-admin__button" :disabled="!canSave">
                     {{ saving ? COPY.adminSaving : COPY.adminSave }}
@@ -257,6 +301,9 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 </span>
                 <span v-if="saveError" class="rr-admin__error-inline" role="alert">
                     {{ saveError }}
+                </span>
+                <span v-else-if="accessProblem" class="rr-admin__help">
+                    {{ accessProblem }}
                 </span>
                 <span v-else-if="!canSave" class="rr-admin__help">
                     {{ COPY.adminSaveIncomplete }}

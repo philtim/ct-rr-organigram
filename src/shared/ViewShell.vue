@@ -3,7 +3,7 @@ import { COPY } from './copy';
 
 /**
  * The frame every tab shares: a full-width band carrying the background, a
- * centred column capped at 1280px, and a header with the title, a status line
+ * centred column capped at 1600px, and a header with the title, a status line
  * and, where the view can reload, the refresh button.
  */
 defineProps<{
@@ -53,7 +53,9 @@ defineEmits<{ refresh: [] }>();
 }
 
 .view__inner {
-    max-width: 1280px;
+    /* Wider than the 1280px it started at, so a Stamm with many Teilstämme
+       gets room on a large monitor; capped so lines stay readable. */
+    max-width: 1600px;
     margin: 0 auto;
     padding: 24px;
 }

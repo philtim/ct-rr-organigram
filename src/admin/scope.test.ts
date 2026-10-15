@@ -118,11 +118,18 @@ describe('scope counts', () => {
             [2, new Set([8, 9])],
             [3, new Set([9])],
         ]),
-        personsByGroup: new Map([
-            [100, new Set([1])],
-            [1, new Set([2])],
-            [10, new Set([2, 3])],
-            [11, new Set([4])],
+        membersByGroup: new Map([
+            [100, new Map([[1, 8]])],
+            [1, new Map([[2, 9]])],
+            [
+                10,
+                new Map([
+                    [2, 8],
+                    [3, 9],
+                ]),
+            ],
+            [11, new Map([[4, 9]])],
+            [50, new Map([[5, 9]])],
         ]),
         checkboxFieldNames: [],
         fieldsIncomplete: false,
@@ -135,9 +142,51 @@ describe('scope counts', () => {
     });
 
     it('counts unique people across Hauptstamm, Teilstämme and team-typed children', () => {
-        expect(personsInScope(scan, 100, [1], [4])).toBe(3);
-        expect(personsInScope(scan, 100, [1], [4, 7])).toBe(4);
-        expect(personsInScope(scan, null, [], [])).toBe(0);
+        // Role 8 counts as Mitarbeiter, 9 does not.
+        const counts = (roleId: number) => roleId === 8;
+        const scope = {
+            gateGroupId: 100,
+            teilstammIds: [1],
+            teamGroupTypeIds: [4],
+            collectionGroupIds: [],
+        };
+        // 1 leads the Hauptstamm, 2 and 3 are in team 10. Person 2 holds only
+        // an uncounted role in Teilstamm 1, but is in a team, so counted once.
+        expect(personsInScope(scan, scope, counts)).toBe(3);
+        expect(personsInScope(scan, { ...scope, teamGroupTypeIds: [4, 7] }, counts)).toBe(4);
+        expect(
+            personsInScope(
+                scan,
+                {
+                    gateGroupId: null,
+                    teilstammIds: [],
+                    teamGroupTypeIds: [],
+                    collectionGroupIds: [],
+                },
+                counts,
+            ),
+        ).toBe(0);
+    });
+
+    it('leaves out a Teilstamm member with an uncounted role and no team, as the dashboard does', () => {
+        const counts = () => false;
+        const scope = {
+            gateGroupId: 100,
+            teilstammIds: [1],
+            teamGroupTypeIds: [],
+            collectionGroupIds: [],
+        };
+        expect(personsInScope(scan, scope, counts)).toBe(0);
+    });
+
+    it('counts every member of a Sammelgruppe, whatever their role', () => {
+        const scope = {
+            gateGroupId: null,
+            teilstammIds: [],
+            teamGroupTypeIds: [],
+            collectionGroupIds: [50],
+        };
+        expect(personsInScope(scan, scope, () => false)).toBe(1);
     });
 });
 

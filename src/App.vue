@@ -7,7 +7,7 @@ import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
 import { useMembershipGate } from '@/shared/access/useMembershipGate';
 import { useSettings } from '@/shared/useSettings';
-import { isDashboardConfigured, shouldShowAdmin } from '@/shared/settings';
+import { isDashboardConfigured, mayConfigure, shouldShowAdmin } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/copy';
@@ -47,6 +47,13 @@ function selectTab(tab: TabId) {
 
 const configured = computed(() => isDashboardConfigured(settings.value));
 
+/** The viewer's role in the Hauptstamm group allows the setup (`mayConfigure`). */
+const canConfigure = computed(
+    () =>
+        gateStatus.value.phase === 'allowed' &&
+        mayConfigure(settings.value, gateStatus.value.roleId),
+);
+
 /**
  * The only case where the setup form may be shown without passing the gate:
  * no Hauptstamm group is configured, so there is nothing to check membership
@@ -62,6 +69,7 @@ const showAdmin = computed(() =>
         hasGateGroup: settings.value.gateGroupId !== null,
         configured: configured.value,
         gateAllowed: gateStatus.value.phase === 'allowed',
+        mayConfigure: canConfigure.value,
         isAdminRoute: isAdminRoute.value,
     }),
 );
@@ -109,7 +117,11 @@ async function handleSaved() {
     <Admin v-else-if="showAdmin" :first-run="!isAdminRoute && !configured" @saved="handleSaved" />
     <template v-else-if="gateStatus.phase === 'allowed'">
         <TabBar :tabs="tabs" :active="activeTab" @select="selectTab" />
-        <Dashboard v-if="activeTab === 'organigram'" :settings="settings" />
+        <Dashboard
+            v-if="activeTab === 'organigram'"
+            :settings="settings"
+            :can-configure="canConfigure"
+        />
         <Jahresmeldung v-else-if="activeTab === 'jahresmeldung'" :settings="settings" />
         <Beitraege v-else :settings="settings" />
     </template>

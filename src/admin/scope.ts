@@ -162,23 +162,61 @@ export function teamsInScope(scan: ScopeScan, teamGroupTypeIds: number[]): Child
     return scan.children.filter((c) => types.has(c.groupTypeId));
 }
 
-/** Unique people the current selection would cover. The preview line. */
+/** What the preview line counts over. */
+export type PreviewScope = {
+    gateGroupId: number | null;
+    teilstammIds: number[];
+    teamGroupTypeIds: number[];
+    collectionGroupIds: number[];
+};
+
+/**
+ * The people the organigram's "Gesamt" will show for this selection — by the
+ * organigram's own rule, so the setup cannot promise a number the dashboard
+ * does not keep:
+ *
+ *  - a Mitarbeiter: anyone holding a counted role in the Hauptstamm, a
+ *    Teilstamm or a team, and every member of a Sammelgruppe;
+ *  - a Teilnehmer: anyone else in a team.
+ *
+ * Somebody in the Hauptstamm or a Teilstamm with an uncounted role and no team
+ * is in neither — the dashboard names them under "Nicht mitgezählt".
+ */
 export function personsInScope(
     scan: ScopeScan,
-    gateGroupId: number | null,
-    teilstammIds: number[],
-    teamGroupTypeIds: number[],
+    scope: PreviewScope,
+    counts: (roleId: number) => boolean,
 ): number {
-    const groupIds = [
-        ...(gateGroupId === null ? [] : [gateGroupId]),
-        ...teilstammIds,
-        ...teamsInScope(scan, teamGroupTypeIds).map((c) => c.id),
+    const teamIds = teamsInScope(scan, scope.teamGroupTypeIds).map((c) => c.id);
+    const staffGroups = [
+        ...(scope.gateGroupId === null ? [] : [scope.gateGroupId]),
+        ...scope.teilstammIds,
+        ...teamIds,
     ];
     const persons = new Set<number>();
-    for (const id of groupIds) {
-        for (const personId of scan.personsByGroup.get(id) ?? []) persons.add(personId);
+    for (const id of staffGroups) {
+        for (const [personId, roleId] of scan.membersByGroup.get(id) ?? []) {
+            if (counts(roleId)) persons.add(personId);
+        }
+    }
+    for (const id of scope.collectionGroupIds) {
+        for (const personId of scan.membersByGroup.get(id)?.keys() ?? []) persons.add(personId);
+    }
+    for (const id of teamIds) {
+        for (const personId of scan.membersByGroup.get(id)?.keys() ?? []) persons.add(personId);
     }
     return persons.size;
+}
+
+/** Whether a role counts as Mitarbeiter under the admin's current selection. */
+export function countsAsMitarbeiter(
+    roles: PickableRole[],
+    selection: RoleSelection,
+): (roleId: number) => boolean {
+    const leadership = new Set(roles.filter((r) => r.isLeadership).map((r) => r.id));
+    const extra = new Set(selection.extraLeaderRoleIds);
+    const excluded = new Set(selection.excludedLeaderRoleIds);
+    return (id) => !excluded.has(id) && (leadership.has(id) || extra.has(id));
 }
 
 /** The label a fee rung carries. The last one applies to every further child. */
