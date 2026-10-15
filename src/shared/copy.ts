@@ -38,7 +38,6 @@ export const COPY = {
     failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
     failedSammelgruppe: (name: string) => `Sammelgruppe „${name}“`,
     collectionsTitle: 'Leiter ohne Team',
-    collectionCount: (n: number) => `${n} Leiter`,
     collectionEmpty: 'Niemand in dieser Gruppe.',
     collectionUnavailable: 'Die Gruppe konnte nicht gelesen werden.',
     collectionListLabel: (name: string) => `Mitglieder von ${name}`,
@@ -53,6 +52,8 @@ export const COPY = {
     // Organigram cards.
     levelHauptstamm: 'HAUPTSTAMM',
     levelTeilstamm: 'TEILSTAMM',
+    levelCollection: 'SAMMELGRUPPE',
+    collectionCompactCount: (n: number) => `${n} Leiter ohne Team`,
     levelTeams: 'TEAMS',
     noLeaders: 'Keine Leiter eingetragen.',
     noTeams: 'Keine Teams.',
