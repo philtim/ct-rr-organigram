@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.1](https://github.com/philtim/ct-rr-organigram/compare/v1.13.0...v1.13.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **beitraege:** ignore whitespace when comparing street addresses ([3a51d21](https://github.com/philtim/ct-rr-organigram/commit/3a51d21543d2311ce2aa114efb23ae90f3b2415a))
+* **beitraege:** never put people at different addresses in one family ([5092272](https://github.com/philtim/ct-rr-organigram/commit/50922728c4491bf69d0e3739916d0cabe3576a5e))
+
 ## [1.13.0](https://github.com/philtim/ct-rr-organigram/compare/v1.12.0...v1.13.0) (2026-10-10)
 
 
