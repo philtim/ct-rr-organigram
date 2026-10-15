@@ -11,7 +11,7 @@ import type { DataQuality } from './data-quality';
 import type { FeeTotals } from './fee-tiers';
 import { getInstanceOrigin } from '@/shared/api';
 import { nextDueDate } from '@/shared/dates';
-import { fetchLeaderRoleIds } from '@/shared/roles';
+import { fetchLeaderRoleIds, leaderRuleOf } from '@/shared/roles';
 import { areFeesConfigured } from '@/shared/settings';
 import type { FeeConfig, Settings } from '@/shared/settings';
 import type { FeeAssignment, Relationship, RrParticipant } from './types';
@@ -114,7 +114,7 @@ export function useBeitraege() {
                 return;
             }
 
-            const leaderRoleIds = await fetchLeaderRoleIds(new Set(settings.extraLeaderRoleIds));
+            const leaderRoleIds = await fetchLeaderRoleIds(leaderRuleOf(settings));
             const [{ participants, staffPersonIds }, groupLeaderIds] = await Promise.all([
                 fetchTeamMembers(teams, leaderRoleIds),
                 fetchStaffFromGroups([gateGroupId, ...teilstammIds], leaderRoleIds),

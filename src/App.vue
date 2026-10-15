@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import Admin from '@/admin/Admin.vue';
+import { computed, defineAsyncComponent, h, onMounted, onUnmounted, ref } from 'vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
 import Beitraege from '@/beitraege/Beitraege.vue';
 import Jahresmeldung from '@/jahresmeldung/Jahresmeldung.vue';
@@ -12,6 +11,14 @@ import { isDashboardConfigured, shouldShowAdmin } from '@/shared/settings';
 import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/copy';
+
+// Its own chunk: only whoever configures the extension ever opens the form,
+// and every viewer of the organigram would otherwise download it.
+const Admin = defineAsyncComponent({
+    loader: () => import('@/admin/Admin.vue'),
+    // A chunk that cannot be fetched says so, rather than leaving a first run blank.
+    errorComponent: { render: () => h('p', { role: 'alert' }, COPY.adminLoadError) },
+});
 
 // Routing: the admin form is reachable via ?admin=1, the tabs via ?tab=
 // (shared/tabs.ts). No router: a query parameter each is all there is.

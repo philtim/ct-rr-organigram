@@ -29,8 +29,10 @@ const {
     childrenFailed,
     typeCounts,
     preview,
-    leadershipRoles,
-    participantRoles,
+    scopedRoles,
+    mitarbeiterRoleIds,
+    vacancyRoles,
+    takenOver,
     roleHolders,
     scanning,
     booting,
@@ -53,17 +55,24 @@ async function onSave() {
 const onlyChildren = ref(true);
 
 const teilstammSections = computed<CheckSection[]>(() => {
+    const own = hauptstamm.value;
     const { children, others } = candidates.value;
-    const sections: CheckSection[] = [
-        {
-            items: children.map((c) => item(c.id, c.title, COPY.adminGroupId(c.id))),
-            empty: childrenFailed.value ? COPY.adminChildrenUnavailable : COPY.adminNoChildren,
-        },
-    ];
+    const sections: CheckSection[] = [];
+    // The Hauptstamm itself comes first: a Stamm without Teilstämme picks it
+    // here, without having to find it among every other group.
+    if (own) sections.push({ items: [item(own.id, own.name, COPY.adminHauptstammItself(own.id))] });
+    sections.push({
+        items: children
+            .filter((c) => c.id !== own?.id)
+            .map((c) => item(c.id, c.title, COPY.adminGroupId(c.id))),
+        empty: childrenFailed.value ? COPY.adminChildrenUnavailable : COPY.adminNoChildren,
+    });
     if (!onlyChildren.value) {
         sections.push({
             heading: COPY.adminOtherGroups,
-            items: others.map((g) => item(g.id, g.name, COPY.adminGroupId(g.id))),
+            items: others
+                .filter((g) => g.id !== own?.id)
+                .map((g) => item(g.id, g.name, COPY.adminGroupId(g.id))),
         });
     }
     return sections;
@@ -76,24 +85,46 @@ const teamTypeSections = computed<CheckSection[]>(() => [
     },
 ]);
 
-const leaderSections = computed<CheckSection[]>(() => [
+// One list: leadership roles arrive ticked and can be unticked, the rest
+// arrive unticked. Which is which stays visible in the row itself.
+const mitarbeiterSections = computed<CheckSection[]>(() => [
     {
-        fixed: true,
-        items: leadershipRoles.value.map((r) =>
-            item(r.id, r.label, COPY.adminAlwaysCounts(roleHolders(r.id))),
+        items: scopedRoles.value.map((r) =>
+            item(
+                r.id,
+                r.label,
+                r.isLeadership
+                    ? COPY.adminLeadershipRole(roleHolders(r.id))
+                    : COPY.adminPersonCount(roleHolders(r.id)),
+            ),
         ),
-    },
-    {
-        items: participantRoles.value.map((r) =>
-            item(r.id, r.label, COPY.adminPersonCount(roleHolders(r.id))),
-        ),
+        empty: COPY.adminNoRoles,
     },
 ]);
 
-/** Only roles that can actually appear as a vacancy are worth offering. */
 const vacancySections = computed<CheckSection[]>(() => [
-    { items: leadershipRoles.value.map((r) => item(r.id, r.label)) },
+    { items: vacancyRoles.value.map((r) => item(r.id, r.label)), empty: COPY.adminNoRoles },
 ]);
+
+/**
+ * The checkbox fields found in scope, plus a stored name that is no longer
+ * among them — shown as such rather than silently swapped for "none".
+ */
+const memberFieldOptions = computed(() => {
+    const found = scan.value?.checkboxFieldNames ?? [];
+    const stored = draft.value.horizontFieldName;
+    const options = found.map((name) => ({ value: name, label: name }));
+    if (stored && !found.includes(stored)) {
+        // "No longer found" only on a complete answer; before a scan, or after
+        // a partial one, the stored name may simply not have been seen yet.
+        const certain = scan.value !== null && !scan.value.fieldsIncomplete;
+        options.push({
+            value: stored,
+            label: certain ? COPY.adminMemberFieldMissing(stored) : stored,
+        });
+    }
+    return options;
+});
 
 function item(id: number, label: string, meta?: string): CheckItem {
     return { id, label, meta };
@@ -104,10 +135,19 @@ function item(id: number, label: string, meta?: string): CheckItem {
     <main class="rr-admin">
         <header class="rr-admin__header">
             <p class="rr-admin__subtitle">
-                {{ props.firstRun ? COPY.adminFirstRun : COPY.adminConfiguration }}
+                {{
+                    !props.firstRun
+                        ? COPY.adminConfiguration
+                        : takenOver
+                          ? COPY.adminResume
+                          : COPY.adminFirstRun
+                }}
             </p>
             <h1 class="rr-admin__title">{{ COPY.appTitle }}</h1>
             <p class="rr-admin__lead">{{ COPY.adminLead }}</p>
+            <p v-if="props.firstRun && takenOver" class="rr-admin__notice">
+                {{ COPY.adminTakenOver }}
+            </p>
         </header>
 
         <p v-if="booting" class="rr-admin__help">{{ COPY.loading }}</p>
@@ -128,7 +168,10 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 <p class="rr-admin__label rr-admin__label--gap">
                     {{ COPY.adminTeilstaemmeLabel }}
                 </p>
-                <p class="rr-admin__help">{{ COPY.adminTeilstaemmeHelp }}</p>
+                <p class="rr-admin__help">
+                    {{ COPY.adminTeilstaemmeHelpWith }}<br />
+                    {{ COPY.adminTeilstaemmeHelpWithout }}
+                </p>
                 <label class="rr-admin__toggle">
                     <input v-model="onlyChildren" type="checkbox" />
                     {{ COPY.adminOnlyChildren }}
@@ -137,6 +180,7 @@ function item(id: number, label: string, meta?: string): CheckItem {
                     v-model="draft.teilstammIds"
                     :label="COPY.adminTeilstaemmeLabel"
                     :sections="teilstammSections"
+                    bounded
                 />
 
                 <p class="rr-admin__label rr-admin__label--gap">{{ COPY.adminTeamsLabel }}</p>
@@ -152,7 +196,7 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 <p v-if="scan?.incomplete" class="rr-admin__error-inline" role="alert">
                     {{ COPY.adminScanIncomplete }}
                 </p>
-                <p class="rr-admin__preview">
+                <p v-if="draft.teilstammIds.length" class="rr-admin__preview">
                     {{ COPY.adminPreviewLead }}
                     <strong>{{ preview.teilstaemme }}</strong>
                     {{ COPY.adminPreviewTeilstaemme }} · <strong>{{ preview.teams }}</strong>
@@ -166,12 +210,14 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 <p class="rr-admin__label">{{ COPY.adminLeadersLabel }}</p>
                 <p class="rr-admin__help">{{ COPY.adminLeadersHelp }}</p>
                 <CheckList
-                    v-model="draft.extraLeaderRoleIds"
+                    v-model="mitarbeiterRoleIds"
                     :label="COPY.adminLeadersLabel"
-                    :sections="leaderSections"
+                    :sections="mitarbeiterSections"
                 />
 
-                <p class="rr-admin__label rr-admin__label--gap">{{ COPY.adminVacancyLabel }}</p>
+                <h2 class="rr-admin__section">{{ COPY.adminSectionDisplay }}</h2>
+
+                <p class="rr-admin__label">{{ COPY.adminVacancyLabel }}</p>
                 <p class="rr-admin__help">{{ COPY.adminVacancyHelp }}</p>
                 <CheckList
                     v-model="draft.alwaysShownRoleIds"
@@ -182,19 +228,20 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 <label class="rr-admin__label rr-admin__label--gap" for="rr-admin-member-field">
                     {{ COPY.adminMemberFieldLabel }}
                 </label>
-                <p class="rr-admin__help">
-                    {{ COPY.adminMemberFieldHelp }}
-                    <template v-if="scan?.memberFieldNames.length">
-                        {{ COPY.adminMemberFieldFound(scan.memberFieldNames) }}
-                    </template>
-                </p>
-                <input
+                <p class="rr-admin__help">{{ COPY.adminMemberFieldHelp }}</p>
+                <p v-if="scanning" class="rr-admin__help">{{ COPY.adminReading }}</p>
+                <p v-else-if="!scan" class="rr-admin__help">{{ COPY.adminMemberFieldNoScope }}</p>
+                <select
+                    v-if="!scanning"
                     id="rr-admin-member-field"
                     v-model="draft.horizontFieldName"
                     class="rr-admin__text"
-                    type="text"
-                    :placeholder="COPY.adminMemberFieldPlaceholder"
-                />
+                >
+                    <option value="">{{ COPY.adminMemberFieldNone }}</option>
+                    <option v-for="o in memberFieldOptions" :key="o.value" :value="o.value">
+                        {{ o.label }}
+                    </option>
+                </select>
 
                 <h2 class="rr-admin__section">{{ COPY.adminSectionFees }}</h2>
                 <p class="rr-admin__help">{{ COPY.adminFeesHelp }}</p>
@@ -244,6 +291,16 @@ function item(id: number, label: string, meta?: string): CheckItem {
     margin: 0.25rem 0 0.75rem;
     font-size: 1.5rem;
     font-weight: 600;
+}
+
+.rr-admin__notice {
+    margin: 1rem 0 0;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    background: var(--rr-accent-bg);
+    color: var(--rr-accent-fg);
+    border-radius: var(--rr-radius-md);
 }
 
 .rr-admin__lead {

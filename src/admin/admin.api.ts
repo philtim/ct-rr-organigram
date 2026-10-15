@@ -1,4 +1,4 @@
-import { ct, fetchAllPages, mapWithConcurrency } from '@/shared/api';
+import { ct, fetchAllPages, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import { fetchActiveMembers, getChildGroups, personIdOf } from '@/shared/groups.api';
 import { isLeadershipRole } from '@/shared/roles';
 import type { Group } from '@/shared/types';
@@ -83,8 +83,17 @@ export type ScopeScan = {
     rolesByPerson: Map<number, Set<number>>;
     /** groupId → the person ids active in it. */
     personsByGroup: Map<number, Set<number>>;
-    /** Member field names found on team memberships, for the member-field hint. */
-    memberFieldNames: string[];
+    /**
+     * Checkbox member fields defined on the groups in scope — the only kind
+     * the Horizont tile can count, so the only kind the picker offers.
+     */
+    checkboxFieldNames: string[];
+    /**
+     * True when some group's field definitions could not be read. The list
+     * above may then lack a field that exists, so nothing may be called
+     * "no longer found".
+     */
+    fieldsIncomplete: boolean;
     /**
      * True when at least one group could not be read. Every count derived
      * from this scan is then a lower bound, and the screen says so instead of
@@ -96,8 +105,40 @@ export type ScopeScan = {
 type MemberRow = {
     person?: { domainIdentifier?: string };
     groupTypeRoleId: number;
-    fields?: unknown;
 };
+
+type MemberFieldRow = { type?: string; field?: { name?: string; fieldTypeCode?: string } };
+
+/**
+ * Field definitions already read, by group id. The scan reruns on every
+ * Teilstamm ticked, and a group's fields do not change while the form is
+ * open; a field added meanwhile appears after reloading the page.
+ */
+const checkboxFieldCache = new Map<number, string[]>();
+
+/**
+ * The group's own checkbox member fields, by name. `type: 'person'` rows are
+ * person fields shown on the membership, not fields of the group, and carry
+ * no name of their own.
+ */
+async function checkboxFieldsOf(groupId: number): Promise<string[] | null> {
+    const cached = checkboxFieldCache.get(groupId);
+    if (cached) return cached;
+    try {
+        const rows = await withRetryOn429(() =>
+            ct.get<MemberFieldRow[]>(`/groups/${groupId}/memberfields`),
+        );
+        const names = (rows ?? [])
+            .filter((r) => r.type === 'group' && r.field?.fieldTypeCode === 'checkbox')
+            .map((r) => (r.field?.name ?? '').trim())
+            .filter((name) => name !== '');
+        checkboxFieldCache.set(groupId, names);
+        return names;
+    } catch (e) {
+        console.error(`[rr-dashboard] admin scan: member fields of ${groupId} unavailable:`, e);
+        return null;
+    }
+}
 
 /**
  * Active members of one group. Shares the paginating reader with the figures,
@@ -139,7 +180,11 @@ async function childrenOf(groupId: number): Promise<ChildGroup[] | null> {
 
 /**
  * One pass over the configured scope. Run on demand rather than on every
- * keystroke — it is one request per group, some thirty on a full Stamm.
+ * keystroke — one request per Teilstamm for its children, then per group its
+ * members and, the first time, its field definitions: some seventy requests
+ * on a full Stamm. The two reads of a group run one after the other, so no
+ * more than six are in flight — the pool size the organigram found the rate
+ * limit tolerates.
  */
 export async function scanScope(
     gateGroupId: number | null,
@@ -157,17 +202,21 @@ export async function scanScope(
             ...children.map((c) => c.id),
         ]),
     ];
-    const memberLists = await mapWithConcurrency(groupIds, 6, async (id) => ({
-        id,
-        members: await membersOf(id),
-    }));
+    const memberLists = await mapWithConcurrency(groupIds, 6, async (id) => {
+        const members = await membersOf(id);
+        const checkboxFields = await checkboxFieldsOf(id);
+        return { id, members, checkboxFields };
+    });
 
     const rolesByPerson = new Map<number, Set<number>>();
     const personsByGroup = new Map<number, Set<number>>();
     const fieldNames = new Set<string>();
 
-    for (const { id, members } of memberLists) {
+    let fieldsIncomplete = false;
+    for (const { id, members, checkboxFields } of memberLists) {
         if (members === null) incomplete = true;
+        if (checkboxFields === null) fieldsIncomplete = true;
+        for (const name of checkboxFields ?? []) fieldNames.add(name);
         const persons = new Set<number>();
         for (const member of members ?? []) {
             const personId = personIdOf(member);
@@ -177,13 +226,6 @@ export async function scanScope(
             const held = rolesByPerson.get(personId) ?? new Set<number>();
             held.add(member.groupTypeRoleId);
             rolesByPerson.set(personId, held);
-
-            if (Array.isArray(member.fields)) {
-                for (const field of member.fields) {
-                    const name = (field as { name?: unknown }).name;
-                    if (typeof name === 'string' && name.trim()) fieldNames.add(name.trim());
-                }
-            }
         }
         personsByGroup.set(id, persons);
     }
@@ -192,7 +234,8 @@ export async function scanScope(
         children,
         rolesByPerson,
         personsByGroup,
-        memberFieldNames: [...fieldNames].sort((a, b) => a.localeCompare(b, 'de')),
+        fieldsIncomplete,
+        checkboxFieldNames: [...fieldNames].sort((a, b) => a.localeCompare(b, 'de')),
         incomplete,
     };
 }

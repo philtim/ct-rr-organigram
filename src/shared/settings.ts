@@ -38,11 +38,18 @@ export type Settings = {
 
     // --- Zählregeln ---
     /**
-     * Roles that count as leaders *in addition* to the ones ChurchTools itself
-     * flags as `type: 'leader'`. Empty is a valid configuration, not a gap: it
-     * means only ChurchTools' own leadership roles count.
+     * Roles that count as Mitarbeiter *in addition* to the ones ChurchTools
+     * itself flags as `type: 'leader'`. Empty is a valid configuration, not a
+     * gap: it means only ChurchTools' own leadership roles count.
      */
     extraLeaderRoleIds: number[];
+    /**
+     * Roles ChurchTools flags as leadership that this Stamm does *not* count
+     * as Mitarbeiter. Stored as an exclusion rather than as the full list, so a
+     * leadership role added to a group type later counts from the day it
+     * appears instead of going missing until somebody ticks it.
+     */
+    excludedLeaderRoleIds: number[];
     /** Positions that stay visible on a Teilstamm card even when vacant. */
     alwaysShownRoleIds: number[];
     /** Member field behind the Horizont tile. Empty means the tile is off. */
@@ -59,6 +66,7 @@ export const EMPTY_SETTINGS: Settings = {
     stammGroupTypeIds: [],
     teamGroupTypeIds: [],
     extraLeaderRoleIds: [],
+    excludedLeaderRoleIds: [],
     alwaysShownRoleIds: [],
     horizontFieldName: '',
     fees: { childCents: [], staffCents: 0, juniorLeaderCents: 0 },
@@ -115,6 +123,7 @@ export function parseSettings(stored: unknown): Settings {
         stammGroupTypeIds: intList(stored.stammGroupTypeIds),
         teamGroupTypeIds: intList(stored.teamGroupTypeIds),
         extraLeaderRoleIds: intList(stored.extraLeaderRoleIds),
+        excludedLeaderRoleIds: intList(stored.excludedLeaderRoleIds),
         alwaysShownRoleIds: intList(stored.alwaysShownRoleIds),
         horizontFieldName: text(stored.horizontFieldName),
         fees: {
@@ -138,6 +147,15 @@ export function missingDashboardFields(settings: Settings): RequiredField[] {
 
 export function isDashboardConfigured(settings: Settings): boolean {
     return missingDashboardFields(settings).length === 0;
+}
+
+/**
+ * True when anything at all is stored — a setup that was started and not
+ * finished, or one written by an older version. The form then says that what
+ * it shows was taken over, rather than presenting it as a fresh start.
+ */
+export function hasAnySetting(settings: Settings): boolean {
+    return JSON.stringify(settings) !== JSON.stringify(EMPTY_SETTINGS);
 }
 
 /**

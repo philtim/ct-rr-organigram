@@ -1,5 +1,6 @@
 import { getGroup, getGroupMembers } from './dashboard.api';
-import { horizontCountFromMembers, leaderRolesOf, splitMembers } from './counts';
+import { hasMemberField, horizontCountFromMembers, leaderRolesOf, splitMembers } from './counts';
+import { leaderRuleOf } from '@/shared/roles';
 import { rollUpHauptstamm, rollUpTeilstamm } from './rollup';
 import { mapWithConcurrency } from '@/shared/api';
 import { getChildGroups, teamsAmong } from '@/shared/groups.api';
@@ -63,22 +64,20 @@ async function safeLoadGroupNode(
             withTimeout(getGroup(groupId)),
             withTimeout(getGroupMembers(groupId)),
         ]);
-        const { leaders, participants } = splitMembers(
-            group,
-            members,
-            new Set(settings.extraLeaderRoleIds),
-        );
+        const rule = leaderRuleOf(settings);
+        const { leaders, participants } = splitMembers(group, members, rule);
         return {
             groupId: group.id,
             name: group.name,
             leaders,
-            leaderRoles: leaderRolesOf(group),
+            leaderRoles: leaderRolesOf(group, rule),
             participants,
             // Team-level display values: this group's own counts. Higher
             // levels overwrite these with deduped unions (rollup.ts).
             leaderCount: leaders.length,
             memberCount: participants.length,
             horizontCount: horizontCountFromMembers(members, settings.horizontFieldName),
+            horizontFieldSeen: hasMemberField(members, settings.horizontFieldName),
             children: [],
             incomplete: false,
         };

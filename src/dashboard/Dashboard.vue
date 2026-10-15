@@ -5,6 +5,7 @@ import HauptstammCard from './HauptstammCard.vue';
 import SkeletonHero from './SkeletonHero.vue';
 import SkeletonTeilstamm from './SkeletonTeilstamm.vue';
 import TeilstammCard from './TeilstammCard.vue';
+import { fieldSeenInTree } from './counts';
 import { useDashboard } from './useDashboard';
 import ViewShell from '@/shared/ViewShell.vue';
 import { formatTimestamp } from '@/shared/format';
@@ -30,6 +31,20 @@ const teamsOnly = computed(
     () => teilstammIds.value.length === 1 && teilstammIds.value[0] === props.settings.gateGroupId,
 );
 const loaded = computed(() => (state.value.phase === 'ready' ? state.value : null));
+
+/**
+ * The configured member field exists in no group that loaded — renamed or
+ * deleted since the setup. The tiles would all read 0, which looks like an
+ * answer. Not claimed while part of the tree is missing: the field may be on
+ * exactly the groups that failed.
+ */
+const fieldMissing = computed(
+    () =>
+        Boolean(props.settings.horizontFieldName) &&
+        loaded.value !== null &&
+        !loaded.value.root.incomplete &&
+        !fieldSeenInTree(loaded.value.root),
+);
 
 const status = computed(() =>
     state.value.phase === 'ready'
@@ -80,6 +95,10 @@ const appCommit = __APP_COMMIT__;
                     <li v-for="(f, i) in loaded.failures" :key="i">{{ describe(f) }}</li>
                 </ul>
             </section>
+
+            <p v-if="fieldMissing" class="rr-dash__hint" role="alert">
+                {{ COPY.memberFieldMissing(settings.horizontFieldName) }}
+            </p>
 
             <HauptstammCard v-if="loaded" :node="loaded.root" />
             <SkeletonHero v-else />
