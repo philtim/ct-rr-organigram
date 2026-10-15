@@ -133,6 +133,14 @@ const grids = computed(() => {
                 <h2 class="rr-fees__section-title">{{ COPY.feesPeopleTitle }}</h2>
                 <StatGrid :stats="grids.people" />
                 <StatGrid :stats="grids.exempt" sub />
+                <p class="rr-fees__detail">
+                    {{
+                        COPY.feesParticipantsExplained(
+                            state.result.members,
+                            state.result.totals.participants - state.result.members,
+                        )
+                    }}
+                </p>
             </section>
 
             <section class="rr-fees__panel">
