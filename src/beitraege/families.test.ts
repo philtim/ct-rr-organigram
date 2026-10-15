@@ -53,16 +53,16 @@ describe('groupFamilies — relationship signal', () => {
     it('merges on an explicit sibling link', () => {
         const people = [
             person(1, 'Bauer', { street: 'Ahornweg 3' }),
-            person(2, 'Bauer', { street: 'Birkenweg 9' }),
+            person(2, 'Brandt', { street: 'Ahornweg 3' }),
         ];
         expect(membership(people, [{ personId: 1, relativeId: 2, kind: 'sibling' }])).toEqual([
             [1, 2],
         ]);
     });
 
-    it('keeps a sibling who has moved out in the family', () => {
-        // Live case: two adult siblings at different addresses, held together
-        // only by the relationship record.
+    it('separates siblings who share a parent but live at different addresses', () => {
+        // A family is the household that pays together; a sibling who has
+        // moved out, or lives with the other parent, is a household of their own.
         const people = [
             person(1, 'Vogel', { street: 'Johannesstr. 17', zip: '70000' }),
             person(2, 'Vogel', { street: 'Schlossbergstraße 3', zip: '70000' }),
@@ -71,7 +71,78 @@ describe('groupFamilies — relationship signal', () => {
             { personId: 1, relativeId: 900, kind: 'parent' },
             { personId: 2, relativeId: 900, kind: 'parent' },
         ];
+        expect(membership(people, rels)).toEqual([[1], [2]]);
+    });
+
+    it('separates an explicit sibling link across different addresses', () => {
+        const people = [
+            person(1, 'Bauer', { street: 'Ahornweg 3' }),
+            person(2, 'Bauer', { street: 'Birkenweg 9' }),
+        ];
+        expect(membership(people, [{ personId: 1, relativeId: 2, kind: 'sibling' }])).toEqual([
+            [1],
+            [2],
+        ]);
+    });
+
+    it('keeps a married daughter with her own household, not her parents', () => {
+        // Live case: the daughter is recorded as her parents' child and as
+        // her husband's spouse. Through her, the chain parent's other child →
+        // daughter → husband (same address, same married name) used to fold
+        // two households into one family.
+        const people = [
+            person(1, 'Kern', { street: 'Talweg 30' }), // younger child at home
+            person(2, 'Lang', { street: 'Rathausgasse 5' }), // married daughter
+            person(3, 'Lang', { street: 'Rathausgasse 5' }), // her husband
+        ];
+        const rels: Relationship[] = [
+            { personId: 1, relativeId: 900, kind: 'parent' },
+            { personId: 2, relativeId: 900, kind: 'parent' },
+        ];
+        expect(membership(people, rels)).toEqual([[1], [2, 3]]);
+    });
+
+    it('still links a sibling without an address through the relationship', () => {
+        // No address is nothing to contradict the record.
+        const people = [
+            person(1, 'Bauer', { street: 'Ahornweg 3' }),
+            person(2, 'Bauer', { street: null }),
+        ];
+        const rels: Relationship[] = [
+            { personId: 1, relativeId: 900, kind: 'parent' },
+            { personId: 2, relativeId: 900, kind: 'parent' },
+        ];
         expect(membership(people, rels)).toEqual([[1, 2]]);
+    });
+
+    it('does not let an address-less sibling join two households', () => {
+        // 2 has no address and shares a parent with both 1 and 3, who live
+        // apart. Each household stays itself; the bridge stands alone.
+        const people = [
+            person(1, 'Bauer', { street: 'Ahornweg 3' }),
+            person(2, 'Bauer', { street: null }),
+            person(3, 'Bauer', { street: 'Birkenweg 9' }),
+        ];
+        const rels: Relationship[] = [
+            { personId: 1, relativeId: 900, kind: 'parent' },
+            { personId: 2, relativeId: 900, kind: 'parent' },
+            { personId: 3, relativeId: 900, kind: 'parent' },
+        ];
+        expect(membership(people, rels)).toEqual([[1], [2], [3]]);
+    });
+
+    it('merges the siblings at home when the first-listed one lives elsewhere', () => {
+        const people = [
+            person(1, 'Krause', { street: 'Weit weg 1' }),
+            person(2, 'Kraus', { street: 'Lindenweg 4' }),
+            person(3, 'Krauss', { street: 'Lindenweg 4' }),
+        ];
+        const rels: Relationship[] = [
+            { personId: 1, relativeId: 900, kind: 'parent' },
+            { personId: 2, relativeId: 900, kind: 'parent' },
+            { personId: 3, relativeId: 900, kind: 'parent' },
+        ];
+        expect(membership(people, rels)).toEqual([[1], [2, 3]]);
     });
 
     it('ignores a relationship whose other end is not an RR participant', () => {
@@ -170,7 +241,7 @@ describe('groupFamilies — address signal', () => {
 });
 
 describe('groupFamilies — combination and determinism', () => {
-    it('bridges two address groups through a relationship', () => {
+    it('combines both signals within one address, but never across two', () => {
         const people = [
             person(1, 'Henne', { street: 'Paulinenstr. 6' }),
             person(2, 'Henne', { street: 'Paulinenstr. 6' }),
@@ -180,7 +251,7 @@ describe('groupFamilies — combination and determinism', () => {
             { personId: 1, relativeId: 900, kind: 'parent' },
             { personId: 3, relativeId: 900, kind: 'parent' },
         ];
-        expect(membership(people, rels)).toEqual([[1, 2, 3]]);
+        expect(membership(people, rels)).toEqual([[1, 2], [3]]);
     });
 
     it('assigns stable keys regardless of input order', () => {

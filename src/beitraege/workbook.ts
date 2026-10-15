@@ -465,6 +465,12 @@ function methodSheet(meta: ExportMeta): ExportSheet {
                     'ignoriert) UND gleicher Nachname.',
             ),
             entry(
+                'Haushaltsregel',
+                'Personen mit unterschiedlicher Adresse sind nie eine Familie, auch wenn eine ' +
+                    'Beziehung eingetragen ist — etwa ein Geschwisterkind, das beim anderen ' +
+                    'Elternteil wohnt. Ohne Adresse zählt die Beziehung allein.',
+            ),
+            entry(
                 'Warum beides',
                 'Das Beziehungsfeld allein übersieht Geschwisterpaare, bei denen die Beziehung ' +
                     'in ChurchTools nicht gepflegt ist. Die Adresse allein führt zu Fehltreffern ' +
