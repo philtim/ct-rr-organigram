@@ -97,10 +97,11 @@ export function normalizeText(value: string | null | undefined): string {
 
 /**
  * Street names differ by spelling far more often than by substance:
- * "Weiler Str. 78" and "Weilerstraße 78" are the same door. Fold the common
- * German variants together; house numbers are left alone, because 12 and 12/1
- * are genuinely different addresses — in the live data they hold two sets of
- * cousins.
+ * "Weiler Str. 78", "Weilerstraße 78" and "Weilerstraße78" are the same door.
+ * Fold the common German variants together and drop all whitespace — the
+ * live data has house numbers both with and without a space before them.
+ * House numbers themselves are left alone, because 12 and 12/1 are genuinely
+ * different addresses — in the live data they hold two sets of cousins.
  */
 export function normalizeStreet(value: string | null | undefined): string {
     const base = normalizeText(value);
@@ -113,8 +114,7 @@ export function normalizeStreet(value: string | null | undefined): string {
             // "paulinenstr." the "str" is preceded by a word character, so
             // \bstr would never match and the dot would survive.
             .replace(/str\./g, 'str')
-            // "weiler str 78" → "weilerstr 78", so the separately written form
-            // folds onto the compound one.
-            .replace(/\s+str\b/g, 'str')
+            // "weiler str 78" → "weilerstr78", "goethestr 35" → "goethestr35".
+            .replace(/\s+/g, '')
     );
 }

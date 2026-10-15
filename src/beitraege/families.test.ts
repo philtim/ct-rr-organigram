@@ -128,6 +128,21 @@ describe('groupFamilies — address signal', () => {
         expect(membership(people, [])).toEqual([[1, 2, 3]]);
     });
 
+    it('ignores the space before the house number', () => {
+        // Live case: "Gartenstraße3" and "Gartenstraße 3", "Goethestr.35" and
+        // "Goethestraße 35" — the same doors.
+        const people = [
+            person(1, 'Schmid', { street: 'Gartenstraße3', zip: '71296' }),
+            person(2, 'Schmid', { street: 'Gartenstraße 3', zip: '71296' }),
+            person(3, 'Wolf', { street: 'Goethestr.35', zip: '75395' }),
+            person(4, 'Wolf', { street: 'Goethestraße 35', zip: '75395' }),
+        ];
+        expect(membership(people, [])).toEqual([
+            [1, 2],
+            [3, 4],
+        ]);
+    });
+
     it('treats differing house numbers as different addresses', () => {
         // Hanfgartenweg 12 and 12/1 are two cousin families, not one.
         const people = [
@@ -197,6 +212,8 @@ describe('normalizeStreet', () => {
         ['Besenfelder Str. 5a', 'Besenfelder Straße 5a'],
         ['Alte Str. 8', 'Alte Straße 8'],
         ['  Paulinenstr.  6 ', 'Paulinenstraße 6'],
+        ['Gartenstraße3', 'Gartenstraße 3'],
+        ['Goethestr.35', 'Goethestraße 35'],
     ])('treats %s and %s as the same street', (a, b) => {
         expect(normalizeStreet(a)).toBe(normalizeStreet(b));
     });

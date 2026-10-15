@@ -461,8 +461,8 @@ function methodSheet(meta: ExportMeta): ExportSheet {
             ),
             entry(
                 'Signal 2',
-                'Gleiche Adresse (PLZ + Straße, schreibweisennormalisiert) UND gleicher ' +
-                    'Nachname.',
+                'Gleiche Adresse (PLZ + Straße, schreibweisennormalisiert, Leerzeichen ' +
+                    'ignoriert) UND gleicher Nachname.',
             ),
             entry(
                 'Warum beides',
