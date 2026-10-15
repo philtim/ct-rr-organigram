@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/philtim/ct-rr-organigram/compare/v1.16.0...v1.16.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* open every profile link in a new tab ([3df3be4](https://github.com/philtim/ct-rr-organigram/commit/3df3be48f9f30e7ae4a7b634b80529697d2b3aab))
+
 ## [1.16.0](https://github.com/philtim/ct-rr-organigram/compare/v1.15.1...v1.16.0) (2026-10-15)
 
 
