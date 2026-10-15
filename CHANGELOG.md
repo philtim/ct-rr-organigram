@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.2](https://github.com/philtim/ct-rr-organigram/compare/v1.16.1...v1.16.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* **dashboard:** give the Sammelgruppe card the Teilstamm card's design ([ce74eec](https://github.com/philtim/ct-rr-organigram/commit/ce74eecb9c850f29ae0599ace8ad6fd24b4bd383))
+
 ## [1.16.1](https://github.com/philtim/ct-rr-organigram/compare/v1.16.0...v1.16.1) (2026-10-15)
 
 
