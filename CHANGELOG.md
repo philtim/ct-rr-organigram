@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.14.0](https://github.com/philtim/ct-rr-organigram/compare/v1.13.1...v1.14.0) (2026-10-15)
+
+
+### Features
+
+* **admin:** make the setup screen say what to choose and why ([0c6ee87](https://github.com/philtim/ct-rr-organigram/commit/0c6ee87b19823e70d70d93516455ddce2d9c2b9b))
+
+
+### Bug Fixes
+
+* **dev:** log in with or without an existing session ([5f51e48](https://github.com/philtim/ct-rr-organigram/commit/5f51e48a51e0ef772623dbbb466976422ffecd57))
+
+
+### Performance Improvements
+
+* load the configuration screen only when it is opened ([fb3839a](https://github.com/philtim/ct-rr-organigram/commit/fb3839a1a269a066ddb1b0dc60d752680e5ce701))
+
 ## [1.13.1](https://github.com/philtim/ct-rr-organigram/compare/v1.13.0...v1.13.1) (2026-10-15)
 
 
