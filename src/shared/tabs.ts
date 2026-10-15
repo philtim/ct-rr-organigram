@@ -23,6 +23,21 @@ export function readTabFromUrl(search?: string): TabId {
 }
 
 /**
+ * The absolute address of the configuration form, from the current one.
+ *
+ * Absolute, because the host page sets `<base>` to the instance root: a relative
+ * `?admin=1` resolves against the instance's root and lands on the
+ * ChurchTools home page instead of this extension. The tab parameter goes —
+ * the form has none — and every other one stays.
+ */
+export function adminUrl(href?: string): string {
+    const url = new URL(href ?? window.location.href);
+    url.searchParams.delete('tab');
+    url.searchParams.set('admin', '1');
+    return url.toString();
+}
+
+/**
  * Reflect the active tab in the address bar so a view can be linked and the
  * browser's back button works. Every other query parameter is preserved —
  * the host may have put its own there.

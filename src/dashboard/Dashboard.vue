@@ -13,6 +13,7 @@ import ViewShell from '@/shared/ViewShell.vue';
 import { formatTimestamp } from '@/shared/format';
 import type { LoadFailure } from './rollup';
 import { COPY } from '@/shared/copy';
+import { adminUrl } from '@/shared/tabs';
 import type { Settings } from '@/shared/settings';
 
 const props = defineProps<{
@@ -156,7 +157,7 @@ const appCommit = __APP_COMMIT__;
         </template>
 
         <footer class="rr-dash__footer">
-            <a v-if="canConfigure" class="rr-dash__configure" href="?admin=1">
+            <a v-if="canConfigure" class="rr-dash__configure" :href="adminUrl()">
                 {{ COPY.openConfiguration }}
             </a>
             <span :title="COPY.buildInfo(appVersion, appCommit)">
