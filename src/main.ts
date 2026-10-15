@@ -25,13 +25,33 @@ churchtoolsClient.setBaseUrl(baseUrl);
 const username = import.meta.env.VITE_USERNAME;
 const password = import.meta.env.VITE_PASSWORD;
 if (import.meta.env.MODE === 'development' && username && password) {
-    // As FormData, because only then does the client fetch and send a CSRF
-    // token. A JSON login is refused with "CSRF-Token is invalid" as soon as
-    // the browser still holds a session cookie from an earlier run.
-    const credentials = new FormData();
-    credentials.append('username', username);
-    credentials.append('password', password);
-    await churchtoolsClient.post('/login', credentials);
+    await devLogin(username, password);
+}
+
+/**
+ * Two browser states need two logins. Without a session, ChurchTools refuses
+ * to hand out a CSRF token (401 on /csrftoken), so only a JSON login works.
+ * With a stale session cookie from an earlier run, a JSON login is refused
+ * with "CSRF-Token is invalid", and only FormData — for which the client
+ * fetches and sends a token — gets through. Try the one, then the other; and
+ * mount either way, so a failed login shows the app's own error rather than
+ * a blank page.
+ */
+async function devLogin(user: string, pass: string): Promise<void> {
+    try {
+        await churchtoolsClient.post('/login', { username: user, password: pass });
+        return;
+    } catch {
+        // Fall through to the CSRF-token login below.
+    }
+    try {
+        const credentials = new FormData();
+        credentials.append('username', user);
+        credentials.append('password', pass);
+        await churchtoolsClient.post('/login', credentials);
+    } catch (e) {
+        console.error('[rr-dashboard] dev login failed:', e);
+    }
 }
 
 createApp(App).mount('#rr-dashboard-app');
