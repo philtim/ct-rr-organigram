@@ -27,6 +27,8 @@ export type RrParticipant = {
      * export shows rather than picking one.
      */
     stammNames: string[];
+    /** ChurchTools' own link to the person (ADR-013), for the exempt list. */
+    frontendUrl?: string | null;
 };
 
 /** A sibling cluster. Members are RR participants only — siblings outside RR don't count. */

@@ -1,6 +1,6 @@
 # ADR-011: Personal data — aggregates on screen, detail only in the export
 
-- **Status:** Accepted
+- **Status:** Accepted, amended 2026-10-15 (see "Amendment: the exempt list")
 - **Date:** 2026-10-09
 - **Decided by:** [bitte ergänzen]
 
@@ -122,3 +122,20 @@ control is who receives it.
 **Keep the export server-side so the data never reaches the browser.** Rejected
 — there is no server, and the data reaches the browser anyway, because that is
 where it is computed.
+
+## Amendment: the exempt list (2026-10-15)
+
+The Stammleitung asked to see *who* pays nothing and why, without opening the
+export. Decided by the product owner, against this ADR's original line, and
+recorded here rather than added quietly:
+
+- **One list, closed by default.** "Wer ist beitragsfrei?" shows a button; the
+  names appear only after a click and disappear again when it is closed or the
+  tab reloads.
+- **Built on demand from the export snapshot** (`buildExemptList`), held in a
+  `ref` only while open. The figures stay `FeeAssignment`-only as before.
+- **Name, team and family id — nothing else.** No address, no birthday. The
+  same audience can already download the full export, so the list adds a
+  narrower view of data they hold, not a new audience.
+- **Everything else stays aggregates.** Per-family detail beyond the family id
+  is still the export's alone.

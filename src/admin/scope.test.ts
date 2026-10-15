@@ -74,10 +74,11 @@ describe('childCandidates / otherCandidates', () => {
 
 describe('childTypeCounts', () => {
     it('counts the types found, most frequent first, naming unknown ones by id', () => {
-        const children = [child(1, 'a', 4), child(2, 'b', 7), child(3, 'c', 7)];
+        const children = [child(1, 'a', 4), child(2, 'c', 7), child(3, 'b', 7)];
         expect(childTypeCounts(children, [{ id: 7, name: 'Team' }])).toEqual([
-            { id: 7, count: 2, name: 'Team' },
-            { id: 4, count: 1, name: 'Typ 4' },
+            // The groups behind each type, sorted, so the admin sees what a tick picks.
+            { id: 7, count: 2, name: 'Team', groupNames: ['b', 'c'] },
+            { id: 4, count: 1, name: 'Typ 4', groupNames: ['a'] },
         ]);
     });
 });

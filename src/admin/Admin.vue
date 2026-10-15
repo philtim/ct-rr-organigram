@@ -86,27 +86,43 @@ const teilstammSections = computed<CheckSection[]>(() => {
 
 const teamTypeSections = computed<CheckSection[]>(() => [
     {
-        items: typeCounts.value.map((t) => item(t.id, t.name, COPY.adminGroupCount(t.count))),
+        items: typeCounts.value.map((t) => ({
+            ...item(t.id, t.name, COPY.adminGroupCount(t.count)),
+            details: { summary: COPY.adminShowGroups, items: t.groupNames },
+        })),
         empty: COPY.adminNoSubgroups,
     },
 ]);
 
-// One list: leadership roles arrive ticked and can be unticked, the rest
-// arrive unticked. Which is which stays visible in the row itself.
-const mitarbeiterSections = computed<CheckSection[]>(() => [
-    {
-        items: scopedRoles.value.map((r) =>
-            item(
-                r.id,
-                r.label,
-                r.isLeadership
-                    ? COPY.adminLeadershipRole(roleHolders(r.id))
-                    : COPY.adminPersonCount(roleHolders(r.id)),
-            ),
-        ),
-        empty: COPY.adminNoRoles,
-    },
-]);
+// One list in two parts by level: the same role name ("Mitarbeiter") exists
+// for the teams and for the Stamm groups, and the level says which is which
+// better than a group type in brackets. Leadership roles arrive ticked and
+// can be unticked; the rest arrive unticked.
+const mitarbeiterSections = computed<CheckSection[]>(() => {
+    const teamTypes = new Set(draft.value.teamGroupTypeIds);
+    const roleItem = (r: (typeof scopedRoles.value)[number], label: string) =>
+        item(
+            r.id,
+            label,
+            r.isLeadership
+                ? COPY.adminLeadershipRole(roleHolders(r.id))
+                : COPY.adminPersonCount(roleHolders(r.id)),
+        );
+    const level = (inTeams: boolean) => {
+        const roles = scopedRoles.value.filter(
+            (r) => teamTypes.has(r.groupTypeId ?? -1) === inTeams,
+        );
+        // Within one level a name is usually unique; keep the type only where not.
+        const repeats = new Set(
+            roles.map((r) => r.name).filter((n, i, all) => all.indexOf(n) !== i),
+        );
+        return roles.map((r) => roleItem(r, repeats.has(r.name) ? r.label : r.name));
+    };
+    return [
+        { heading: COPY.adminRolesInStamm, items: level(false), empty: COPY.adminNoRoles },
+        { heading: COPY.adminRolesInTeams, items: level(true), empty: COPY.adminNoRoles },
+    ];
+});
 
 const collectionSections = computed<CheckSection[]>(() => [
     {

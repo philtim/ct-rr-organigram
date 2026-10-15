@@ -5,7 +5,16 @@
  *
  * Sections let one list carry a second, headed group of rows below the first.
  */
-export type CheckItem = { id: number; label: string; meta?: string };
+export type CheckItem = {
+    id: number;
+    label: string;
+    meta?: string;
+    /**
+     * What stands behind the row, shown on request below it — the groups of a
+     * group type. Outside the row's label, so opening it does not tick it.
+     */
+    details?: { summary: string; items: string[] };
+};
 export type CheckSection = {
     items: CheckItem[];
     heading?: string;
@@ -50,6 +59,12 @@ const model = defineModel<number[]>({ required: true });
                     <span class="check-list__label">{{ item.label }}</span>
                     <span v-if="item.meta" class="check-list__meta">{{ item.meta }}</span>
                 </label>
+                <details v-if="item.details" class="check-list__details">
+                    <summary class="check-list__summary">{{ item.details.summary }}</summary>
+                    <ul class="check-list__detail-list">
+                        <li v-for="(d, i) in item.details.items" :key="i">{{ d }}</li>
+                    </ul>
+                </details>
             </li>
             <li v-if="!section.items.length && section.empty" class="check-list__empty">
                 {{ section.empty }}
@@ -130,6 +145,25 @@ const model = defineModel<number[]>({ required: true });
 .check-list__row--selected .check-list__meta {
     color: var(--rr-accent-fg);
     opacity: 0.8;
+}
+
+.check-list__details {
+    padding: 0 0.875rem 0.5rem 2.625rem;
+    font-size: 0.8125rem;
+    color: var(--rr-text-secondary);
+}
+.check-list__summary {
+    cursor: pointer;
+    width: fit-content;
+}
+.check-list__summary:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 2px;
+}
+.check-list__detail-list {
+    margin: 0.25rem 0 0;
+    padding-left: 1rem;
+    line-height: 1.5;
 }
 
 .check-list__head {

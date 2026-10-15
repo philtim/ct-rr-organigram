@@ -41,6 +41,28 @@ defineProps<{ tally: Tally }>();
                 </li>
             </ul>
         </template>
+
+        <p v-if="tally.notCountedWithheld" class="jm-ot__hint">
+            {{ COPY.jahresmeldungNotCountedWithheld }}
+        </p>
+        <template v-else-if="tally.notCounted.length">
+            <h3 class="jm-ot__subtitle">{{ COPY.hintsNotCounted }}</h3>
+            <p class="jm-ot__hint">{{ COPY.jahresmeldungNotCountedHint }}</p>
+            <ul class="jm-ot__list">
+                <li v-for="entry in tally.notCounted" :key="entry.personId" class="jm-ot__item">
+                    <span class="jm-ot__name">{{ entry.name }}</span>
+                    <a
+                        v-if="entry.frontendUrl"
+                        class="jm-ot__link"
+                        :href="entry.frontendUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {{ COPY.jahresmeldungQualityPersonLink }} ↗
+                    </a>
+                </li>
+            </ul>
+        </template>
     </section>
 </template>
 
@@ -50,6 +72,14 @@ defineProps<{ tally: Tally }>();
     border: 0.5px solid var(--rr-border-tertiary);
     border-radius: var(--rr-radius-lg);
     padding: 16px 20px;
+}
+
+.jm-ot__subtitle {
+    margin: 16px 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--rr-text-secondary);
+    letter-spacing: 0.02em;
 }
 
 .jm-ot__title {

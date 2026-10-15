@@ -40,6 +40,8 @@ export type Leader = {
 export type Participant = {
     personId: number;
     fullName: string;
+    /** ChurchTools' own link to the person (ADR-013), when the API sent one. */
+    frontendUrl?: string | null;
 };
 
 /** A single organigram node — what each card on the dashboard renders from. */

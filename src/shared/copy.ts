@@ -86,6 +86,13 @@ export const COPY = {
     hintsStaffWithoutTeam: 'Mitarbeiter ohne Team',
     hintsLeadershipWithoutTeam: 'Stammleitung ohne Team',
     hintsNotCounted: 'Nicht mitgezählt',
+    jahresmeldungNotCountedWithheld:
+        'Wer nicht mitgezählt wird, lässt sich erst sagen, wenn alle Teams gelesen werden ' +
+        'konnten.',
+    jahresmeldungNotCountedHint:
+        'In keinem Team und mit einer Rolle, die nicht als Mitarbeiter gewählt ist – in ' +
+        'keiner Zeile der Tabelle enthalten, wie im Organigramm. Gehören sie dazu, die Rolle ' +
+        'in der Konfiguration anhaken oder sie einer Sammelgruppe zuordnen.',
     hintsNotCountedNote:
         'In keinem Team und mit einer Rolle, die nicht als Mitarbeiter gewählt ist. Gehören ' +
         'sie dazu, die Rolle in der Konfiguration unter „Wer ist Mitarbeiter?" anhaken oder ' +
@@ -117,17 +124,28 @@ export const COPY = {
     teamCount,
     beitraegeLoadError: 'Die Beitragsdaten konnten nicht geladen werden.',
     beitraegeAggregatesOnly:
-        'Diese Ansicht zeigt ausschließlich Summen. Namen, Geburtsdaten und Adressen ' +
-        'stehen nur in der Export-Datei.',
+        'Diese Ansicht zeigt Summen; Namen nur in der aufklappbaren Liste der ' +
+        'Beitragsfreien. Geburtsdaten und Adressen stehen nur in der Export-Datei.',
+    feesExemptListTitle: 'Wer ist beitragsfrei?',
+    feesExemptListShow: (n: number) => `${n} Personen anzeigen`,
+    feesExemptListHide: 'Liste schließen',
+    feesExemptListNone: 'Niemand ist beitragsfrei.',
+    feesExemptReason: {
+        juniorLeader: 'Juniorleiter – leiten selbst ein Team, unter 18',
+        staff: 'Mitarbeiter – leiten selbst ein Team oder sind Mitarbeiter',
+        ladder: 'Beitragsfrei laut Staffel – weiteres Kind derselben Familie',
+    },
+    feesExemptFamily: (key: string, size: number) => `Familie ${key} · ${size} RR-Kinder`,
     feesTotalLabel: 'Einzuziehender Gesamtbetrag',
     feesOrganigramTitle: 'Abgleich mit dem Organigramm',
     feesLeaders: 'Leiter',
     feesMembers: 'Mitglieder',
     feesReconciliation: (members: number, staffChildren: number, participants: number) =>
         `Dieselben Zahlen wie im Tab „Organigramm", aus denselben Daten nach denselben ` +
-        `Regeln. Die Abrechnung zählt zusätzlich die ${staffChildren} Mitarbeiter, die ` +
-        `selbst Teilnehmer sind: ${members} + ${staffChildren} = ${participants}. Im ` +
-        'Organigramm stehen sie bei den Leitern, hier als beitragsfreie Teilnehmer.',
+        `Regeln. Die Abrechnung zählt alle ${participants} Teilnehmer der Teams: ` +
+        `${members} davon sind Kinder, wie im Organigramm, die übrigen ${staffChildren} ` +
+        'leiten selbst ein Team oder sind Mitarbeiter. Im Organigramm stehen sie bei den ' +
+        'Leitern, hier zahlen sie den Satz für Mitarbeiter bzw. Juniorleiter.',
     feesPeopleTitle: 'Teilnehmer',
     feesParticipants: 'Teilnehmer gesamt',
     feesLiable: 'beitragspflichtig',
@@ -331,10 +349,14 @@ export const COPY = {
     adminChildrenUnavailable:
         'Die Untergruppen des Hauptstamms konnten nicht gelesen werden — die Liste ist ' +
         'deshalb leer, nicht weil es keine gäbe. Bitte die Seite neu laden.',
-    adminTeamsLabel: 'Welche Gruppen sind Teams?',
+    adminTeamsLabel: 'Welche Untergruppen sind eure Teams?',
     adminTeamsHelp:
-        'Unter den gewählten Teilstämmen gefunden. Nur die angehakten Typen zählen als Team ' +
-        'und fließen in die Zahlen ein.',
+        'Unter euren Teilstämmen hängen oft auch andere Gruppen, etwa Camps oder ' +
+        'Leitungsrunden. Wähle die Art Gruppe, die eure Teams sind – neue Teams dieser Art ' +
+        'zählen später automatisch mit.',
+    adminShowGroups: 'Gruppen anzeigen',
+    adminRolesInStamm: 'In Hauptstamm und Teilstämmen',
+    adminRolesInTeams: 'In den Teams',
     adminReading: 'Wird gelesen …',
     adminNoSubgroups: 'Unter den gewählten Teilstämmen liegen keine Untergruppen.',
     adminGroupCount: (n: number) => `${n} Gruppen`,
