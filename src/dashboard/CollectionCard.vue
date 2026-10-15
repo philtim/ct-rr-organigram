@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import type { OrgNode } from './types';
 import { COPY } from '@/shared/copy';
+import PersonLink from '@/shared/PersonLink.vue';
 import { getGroupFrontendUrl } from '@/shared/api';
 
 /**
@@ -46,9 +47,7 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
         >
             <ul class="col-card__people">
                 <li v-for="p in people" :key="p.personId" class="col-card__person">
-                    <a v-if="p.frontendUrl" :href="p.frontendUrl" class="col-card__person-link">
-                        {{ p.fullName }}
-                    </a>
+                    <PersonLink v-if="p.frontendUrl" :name="p.fullName" :href="p.frontendUrl" />
                     <span v-else>{{ p.fullName }}</span>
                 </li>
             </ul>
@@ -120,13 +119,6 @@ const href = computed(() => getGroupFrontendUrl(props.node.groupId));
 .col-card__person {
     padding: 3px 0;
     font-size: 13px;
-}
-.col-card__person-link {
-    color: inherit;
-    text-decoration: none;
-}
-.col-card__person-link:hover {
-    text-decoration: underline;
 }
 
 .col-card__empty {

@@ -43,6 +43,7 @@ export const COPY = {
     collectionUnavailable: 'Die Gruppe konnte nicht gelesen werden.',
     collectionListLabel: (name: string) => `Mitglieder von ${name}`,
     openConfiguration: 'Konfiguration',
+    openPersonInNewTab: (name: string) => `${name} – Profil in ChurchTools, öffnet neuen Tab`,
     memberFieldMissing: (name: string) =>
         `Das Mitgliederfeld „${name}“ gibt es in keiner der Gruppen. Die Zahlen dazu ` +
         `stehen deshalb auf 0 — bitte in der Konfiguration ein vorhandenes Feld wählen.`,

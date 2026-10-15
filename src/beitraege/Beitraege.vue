@@ -4,6 +4,7 @@ import StatGrid from './StatGrid.vue';
 import ViewShell from '@/shared/ViewShell.vue';
 import { formatEuro, useBeitraege } from './useBeitraege';
 import { COPY } from '@/shared/copy';
+import PersonLink from '@/shared/PersonLink.vue';
 import type { Settings } from '@/shared/settings';
 
 /**
@@ -168,13 +169,12 @@ const grids = computed(() => {
                                     :key="p.personId"
                                     class="rr-fees__exempt-item"
                                 >
-                                    <a
+                                    <PersonLink
                                         v-if="p.frontendUrl"
-                                        :href="p.frontendUrl"
                                         class="rr-fees__exempt-name"
-                                    >
-                                        {{ p.name }}
-                                    </a>
+                                        :name="p.name"
+                                        :href="p.frontendUrl"
+                                    />
                                     <span v-else class="rr-fees__exempt-name">{{ p.name }}</span>
                                     <span class="rr-fees__exempt-meta">
                                         {{
@@ -365,9 +365,6 @@ const grids = computed(() => {
     font-weight: 500;
     color: inherit;
     text-decoration: none;
-}
-a.rr-fees__exempt-name:hover {
-    text-decoration: underline;
 }
 .rr-fees__exempt-meta {
     font-size: 0.75rem;
