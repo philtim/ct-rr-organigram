@@ -149,6 +149,11 @@ export const COPY = {
         'leiten selbst ein Team oder sind Mitarbeiter. Im Organigramm stehen sie bei den ' +
         'Leitern, hier zahlen sie den Satz für Mitarbeiter bzw. Juniorleiter.',
     feesPeopleTitle: 'Teilnehmer',
+    feesParticipantsExplained: (children: number, leaders: number) =>
+        leaders === 0
+            ? `Teilnehmer gesamt: alle, die in einem Team Teilnehmer sind – alle ${children} sind Kinder.`
+            : `Teilnehmer gesamt: alle, die in einem Team Teilnehmer sind – ${children} Kinder ` +
+              `und ${leaders}, die selbst Mitarbeiter sind, meist weil sie ein anderes Team leiten.`,
     feesParticipants: 'Teilnehmer gesamt',
     feesLiable: 'beitragspflichtig',
     feesExempt: 'beitragsfrei',
