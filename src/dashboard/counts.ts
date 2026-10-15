@@ -49,7 +49,7 @@ export function splitMembers(
             (everyoneLeads ? { name: '', sortKey: 0, isPillRole: false } : undefined);
         const fullName = m.person?.title ?? '';
         if (!info) {
-            participants.push({ personId, fullName });
+            participants.push({ personId, fullName, frontendUrl: m.person?.frontendUrl ?? null });
             continue;
         }
         leaders.push({

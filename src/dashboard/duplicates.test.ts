@@ -4,6 +4,7 @@ import {
     findDuplicateMembers,
     findMixedAssignments,
     findPeopleWithoutTeam,
+    profileLinks,
 } from './duplicates';
 import { rollUpHauptstamm, rollUpTeilstamm } from './rollup';
 import type { Leader, OrgNode } from './types';
@@ -161,5 +162,27 @@ describe('findMixedAssignments', () => {
         expect(findMixedAssignments(root)).toEqual([
             { personId: 1, fullName: 'P1', leaderTeams: ['A'], participantTeams: ['B'] },
         ]);
+    });
+});
+
+describe('profileLinks', () => {
+    it('finds a link for anyone anywhere in the tree, Sammelgruppen included', () => {
+        const linked = (personId: number) => ({
+            ...p(personId),
+            frontendUrl: `https://ct.example/persons/${personId}`,
+        });
+        const root = rollUpHauptstamm(
+            node(100),
+            [rollUpTeilstamm(node(1), [node(10, { participants: [linked(1), p(2)] })])],
+            [
+                node(500, {
+                    leaders: [{ ...leader(3), frontendUrl: 'https://ct.example/persons/3' }],
+                }),
+            ],
+        );
+        const links = profileLinks(root);
+        expect(links.get(1)).toBe('https://ct.example/persons/1');
+        expect(links.get(3)).toBe('https://ct.example/persons/3');
+        expect(links.has(2)).toBe(false);
     });
 });

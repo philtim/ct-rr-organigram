@@ -60,17 +60,28 @@ export function otherCandidates(
         .sort((a, b) => byName(a.name, b.name));
 }
 
-export type TypeCount = { id: number; name: string; count: number };
+export type TypeCount = {
+    id: number;
+    name: string;
+    count: number;
+    /** The groups of this type, by name — what ticking the type actually picks. */
+    groupNames: string[];
+};
 
 /** The group types found under the chosen Teilstämme, most frequent first. */
 export function childTypeCounts(children: ChildGroup[], types: GroupTypeRef[]): TypeCount[] {
     const names = new Map(types.map((t) => [t.id, t.name]));
-    const counts = new Map<number, number>();
+    const groups = new Map<number, string[]>();
     for (const child of children) {
-        counts.set(child.groupTypeId, (counts.get(child.groupTypeId) ?? 0) + 1);
+        groups.set(child.groupTypeId, [...(groups.get(child.groupTypeId) ?? []), child.title]);
     }
-    return [...counts.entries()]
-        .map(([id, count]) => ({ id, count, name: names.get(id) ?? `Typ ${id}` }))
+    return [...groups.entries()]
+        .map(([id, titles]) => ({
+            id,
+            count: titles.length,
+            name: names.get(id) ?? `Typ ${id}`,
+            groupNames: [...new Set(titles)].sort(byName),
+        }))
         .sort((a, b) => b.count - a.count);
 }
 

@@ -7,6 +7,7 @@ import {
     findDuplicateMembers,
     findMixedAssignments,
     findPeopleWithoutTeam,
+    profileLinks,
 } from './duplicates';
 
 const props = defineProps<{ root: OrgNode }>();
@@ -15,6 +16,7 @@ const leaders = computed(() => findDuplicateLeaders(props.root));
 const members = computed(() => findDuplicateMembers(props.root));
 const mixed = computed(() => findMixedAssignments(props.root));
 const withoutTeam = computed(() => findPeopleWithoutTeam(props.root));
+const links = computed(() => profileLinks(props.root));
 const hasDuplicates = computed(
     () => leaders.value.length > 0 || members.value.length > 0 || mixed.value.length > 0,
 );
@@ -44,7 +46,14 @@ const hasAny = computed(
                 <h3 class="dup__group-title">{{ COPY.hintsLeadersInTeams }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in leaders" :key="e.personId" class="dup__item">
-                        <span class="dup__name">{{ e.fullName }}</span>
+                        <a
+                            v-if="links.get(e.personId)"
+                            :href="links.get(e.personId)"
+                            class="dup__name"
+                        >
+                            {{ e.fullName }}
+                        </a>
+                        <span v-else class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ e.teamNames.join(', ') }}</span>
                     </li>
                 </ul>
@@ -54,7 +63,14 @@ const hasAny = computed(
                 <h3 class="dup__group-title">{{ COPY.hintsMembersInTeams }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in members" :key="e.personId" class="dup__item">
-                        <span class="dup__name">{{ e.fullName }}</span>
+                        <a
+                            v-if="links.get(e.personId)"
+                            :href="links.get(e.personId)"
+                            class="dup__name"
+                        >
+                            {{ e.fullName }}
+                        </a>
+                        <span v-else class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ e.teamNames.join(', ') }}</span>
                     </li>
                 </ul>
@@ -64,7 +80,14 @@ const hasAny = computed(
                 <h3 class="dup__group-title">{{ COPY.hintsMixed }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in mixed" :key="e.personId" class="dup__item">
-                        <span class="dup__name">{{ e.fullName }}</span>
+                        <a
+                            v-if="links.get(e.personId)"
+                            :href="links.get(e.personId)"
+                            class="dup__name"
+                        >
+                            {{ e.fullName }}
+                        </a>
+                        <span v-else class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ COPY.hintsMixedLeader(e.leaderTeams) }}</span>
                         <span class="dup__teams">{{
                             COPY.hintsMixedParticipant(e.participantTeams)
@@ -78,7 +101,14 @@ const hasAny = computed(
                 <p class="dup__note">{{ COPY.hintsNotCountedNote }}</p>
                 <ul class="dup__list">
                     <li v-for="e in withoutTeam.notCounted" :key="e.personId" class="dup__item">
-                        <span class="dup__name">{{ e.fullName }}</span>
+                        <a
+                            v-if="links.get(e.personId)"
+                            :href="links.get(e.personId)"
+                            class="dup__name"
+                        >
+                            {{ e.fullName }}
+                        </a>
+                        <span v-else class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ e.teilstammNames.join(', ') }}</span>
                     </li>
                 </ul>
@@ -88,7 +118,14 @@ const hasAny = computed(
                 <h3 class="dup__group-title">{{ COPY.hintsStaffWithoutTeam }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in withoutTeam.staff" :key="e.personId" class="dup__item">
-                        <span class="dup__name">{{ e.fullName }}</span>
+                        <a
+                            v-if="links.get(e.personId)"
+                            :href="links.get(e.personId)"
+                            class="dup__name"
+                        >
+                            {{ e.fullName }}
+                        </a>
+                        <span v-else class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ e.teilstammNames.join(', ') }}</span>
                     </li>
                 </ul>
@@ -98,7 +135,14 @@ const hasAny = computed(
                 <h3 class="dup__group-title">{{ COPY.hintsLeadershipWithoutTeam }}</h3>
                 <ul class="dup__list">
                     <li v-for="e in withoutTeam.leadership" :key="e.personId" class="dup__item">
-                        <span class="dup__name">{{ e.fullName }}</span>
+                        <a
+                            v-if="links.get(e.personId)"
+                            :href="links.get(e.personId)"
+                            class="dup__name"
+                        >
+                            {{ e.fullName }}
+                        </a>
+                        <span v-else class="dup__name">{{ e.fullName }}</span>
                         <span class="dup__teams">{{ e.teilstammNames.join(', ') }}</span>
                     </li>
                 </ul>
@@ -184,6 +228,15 @@ const hasAny = computed(
 .dup__name {
     font-size: 13px;
     font-weight: 500;
+    color: inherit;
+    text-decoration: none;
+}
+a.dup__name:hover {
+    text-decoration: underline;
+}
+a.dup__name:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 2px;
 }
 
 .dup__teams {

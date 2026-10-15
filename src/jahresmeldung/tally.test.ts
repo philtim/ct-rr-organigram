@@ -282,9 +282,15 @@ describe('tally', () => {
         it('names the people it is made of, sorted', () => {
             const result = tally(
                 [
-                    person({ name: 'Zoe Zweit', teamTeilstammIds: [], leaderTeilstammIds: [] }),
+                    person({
+                        name: 'Zoe Zweit',
+                        isLeader: true,
+                        teamTeilstammIds: [],
+                        leaderTeilstammIds: [],
+                    }),
                     person({
                         name: 'Anna Erst',
+                        isLeader: true,
                         frontendUrl: 'https://ct.example/persons/7',
                         teamTeilstammIds: [],
                         leaderTeilstammIds: [],
@@ -300,6 +306,29 @@ describe('tally', () => {
         it('leaves out everyone who does have a team', () => {
             expect(tally([person()], ROWS).ohneTeam).toEqual([]);
         });
+
+        it('counts nobody without a counted role and without a team — it names them instead', () => {
+            // An adult with an uncounted role in the Hauptstamm group used to
+            // land in the Jungen column of this row.
+            const result = tally(
+                [person({ name: 'Dora Gruppe', teamTeilstammIds: [], leaderTeilstammIds: [] })],
+                ROWS,
+            );
+            expect(sumAll(result.total)).toBe(0);
+            expect(result.ohneTeam).toEqual([]);
+            expect(result.notCounted.map((p) => p.name)).toEqual(['Dora Gruppe']);
+        });
+
+        it('names nobody as not counted while a team could not be read', () => {
+            // Children of the failed team have no team here either.
+            const rows: RowDef[] = [{ ...ROWS[0], incomplete: true }, ...ROWS.slice(1)];
+            const result = tally(
+                [person({ name: 'Kind ohne Team', teamTeilstammIds: [], leaderTeilstammIds: [] })],
+                rows,
+            );
+            expect(result.notCounted).toEqual([]);
+            expect(result.notCountedWithheld).toBe(true);
+        });
     });
 
     it('places every person in exactly one cell, whatever their shape', () => {
@@ -311,14 +340,17 @@ describe('tally', () => {
             person({ isLeader: true, age: 'minor', gender: 'w' }),
             person({ isLeader: true, age: 'unknown' }),
             person({ gender: 'unassignable', genderGap: 'diverse' }),
-            person({ teamTeilstammIds: [], leaderTeilstammIds: [] }),
+            person({ isLeader: true, teamTeilstammIds: [], leaderTeilstammIds: [] }),
             person({ teamTeilstammIds: [ENTDECKER, PFADRANGER] }),
         ];
+        // Counted nowhere, and named instead: not part of the invariant.
+        const notCounted = person({ teamTeilstammIds: [], leaderTeilstammIds: [] });
 
-        const result = tally(people, ROWS);
+        const result = tally([...people, notCounted], ROWS);
 
         expect(sumAll(result.total)).toBe(people.length);
         expect(rowGesamt(result.total)).toBe(people.length);
+        expect(result.notCounted).toHaveLength(1);
     });
 
     describe('when a team could not be loaded', () => {

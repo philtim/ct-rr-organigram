@@ -111,6 +111,20 @@ export type Tally = {
      * carries, and nothing beyond a name and ChurchTools' own link (ADR-013).
      */
     ohneTeam: PersonRef[];
+    /**
+     * In the Hauptstamm or a Teilstamm group, but neither a Mitarbeiter by
+     * the configured roles nor in any team. Left out of every cell — counting
+     * them would put an adult in the Jungen/Mädchen columns of the "ohne
+     * Team" row — and named instead, exactly as the organigram's
+     * "Nicht mitgezählt" does.
+     */
+    notCounted: PersonRef[];
+    /**
+     * `notCounted` was not built, because part of the scope could not be read:
+     * a child of a team that failed has no team here either, and would be
+     * listed as somebody with no team. The table is incomplete then anyway.
+     */
+    notCountedWithheld: boolean;
     issues: Issue[];
     /** True when any team failed to load — every total becomes untrustworthy. */
     incomplete: boolean;
@@ -230,9 +244,10 @@ export function rowGesamt(cells: Cells): number {
 /**
  * Build the whole table from the people in scope.
  *
- * Every person lands in exactly one row and exactly one column, which is what
- * makes the Gesamt row an honest column sum rather than a second calculation
- * that can drift. `tally.test.ts` asserts that invariant directly.
+ * Every person lands in exactly one row and exactly one column — except those
+ * in `notCounted`, who land in none — which is what makes the Gesamt row an
+ * honest column sum rather than a second calculation that can drift.
+ * `tally.test.ts` asserts that invariant directly.
  */
 export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete = false): Tally {
     const order = rows.map((r) => r.teilstammId);
@@ -257,8 +272,19 @@ export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete
 
     const issues: Issue[] = [];
     const ohneTeam: PersonRef[] = [];
+    const notCounted: PersonRef[] = [];
+    const withheld = ohneTeamIncomplete || rows.some((r) => r.incomplete);
 
     for (const person of people) {
+        if (!person.isLeader && person.teamTeilstammIds.length === 0) {
+            if (withheld) continue;
+            notCounted.push({
+                personId: person.personId,
+                name: person.name,
+                frontendUrl: person.frontendUrl,
+            });
+            continue;
+        }
         const { key, ambiguous } = rowKeyOf(person, order);
         const row = byKey.get(key);
         if (!row) continue;
@@ -297,11 +323,14 @@ export function tally(people: ScopedPerson[], rows: RowDef[], ohneTeamIncomplete
     }
 
     ohneTeam.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    notCounted.sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
     return {
         rows: tallyRows,
         total,
         ohneTeam,
+        notCounted,
+        notCountedWithheld: withheld,
         issues,
         incomplete: ohneTeamIncomplete || rows.some((r) => r.incomplete),
         hasUnassigned: total.ohneZuordnung > 0,

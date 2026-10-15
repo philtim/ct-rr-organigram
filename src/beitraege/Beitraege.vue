@@ -17,7 +17,7 @@ import type { Settings } from '@/shared/settings';
  */
 const props = defineProps<{ settings: Settings }>();
 
-const { state, exportState, load, exportXlsx } = useBeitraege();
+const { state, exportState, exemptList, toggleExemptList, load, exportXlsx } = useBeitraege();
 
 function reload() {
     load(props.settings);
@@ -121,7 +121,7 @@ const grids = computed(() => {
                     {{
                         COPY.feesReconciliation(
                             state.result.members,
-                            state.result.totals.exemptStaff,
+                            state.result.totals.participants - state.result.members,
                             state.result.totals.participants,
                         )
                     }}
@@ -132,6 +132,62 @@ const grids = computed(() => {
                 <h2 class="rr-fees__section-title">{{ COPY.feesPeopleTitle }}</h2>
                 <StatGrid :stats="grids.people" />
                 <StatGrid :stats="grids.exempt" sub />
+            </section>
+
+            <section class="rr-fees__panel">
+                <h2 class="rr-fees__section-title">{{ COPY.feesExemptListTitle }}</h2>
+                <p v-if="!state.result.totals.exempt" class="rr-fees__detail">
+                    {{ COPY.feesExemptListNone }}
+                </p>
+                <template v-else>
+                    <button
+                        type="button"
+                        class="rr-fees__toggle"
+                        :aria-expanded="exemptList !== null"
+                        aria-controls="rr-fees-exempt"
+                        @click="toggleExemptList"
+                    >
+                        {{
+                            exemptList
+                                ? COPY.feesExemptListHide
+                                : COPY.feesExemptListShow(state.result.totals.exempt)
+                        }}
+                    </button>
+                    <div id="rr-fees-exempt" class="rr-fees__exempt" :hidden="!exemptList">
+                        <article
+                            v-for="g in exemptList ?? []"
+                            :key="g.reason"
+                            class="rr-fees__exempt-group"
+                        >
+                            <h3 class="rr-fees__exempt-title">
+                                {{ COPY.feesExemptReason[g.reason] }} · {{ g.people.length }}
+                            </h3>
+                            <ul class="rr-fees__exempt-list">
+                                <li
+                                    v-for="p in g.people"
+                                    :key="p.personId"
+                                    class="rr-fees__exempt-item"
+                                >
+                                    <a
+                                        v-if="p.frontendUrl"
+                                        :href="p.frontendUrl"
+                                        class="rr-fees__exempt-name"
+                                    >
+                                        {{ p.name }}
+                                    </a>
+                                    <span v-else class="rr-fees__exempt-name">{{ p.name }}</span>
+                                    <span class="rr-fees__exempt-meta">
+                                        {{
+                                            g.reason === 'ladder'
+                                                ? COPY.feesExemptFamily(p.familyKey, p.familySize)
+                                                : p.teams
+                                        }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </article>
+                    </div>
+                </template>
             </section>
 
             <section class="rr-fees__panel">
@@ -249,6 +305,73 @@ const grids = computed(() => {
     margin: 0.375rem 0 0;
     font-size: 0.875rem;
     line-height: 1.5;
+}
+
+.rr-fees__toggle {
+    padding: 0.375rem 0.75rem;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--rr-text-primary);
+    background: var(--rr-bg-primary);
+    border: 0.5px solid var(--rr-border-secondary);
+    border-radius: var(--rr-radius-md);
+    cursor: pointer;
+}
+.rr-fees__toggle:hover {
+    background: var(--rr-bg-hover-on-white);
+}
+.rr-fees__toggle:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 2px;
+}
+.rr-fees__exempt {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 1rem;
+}
+/* `display: grid` above would otherwise win over the hidden attribute. */
+.rr-fees__exempt[hidden] {
+    display: none;
+}
+.rr-fees__exempt-group {
+    min-width: 0;
+}
+.rr-fees__exempt-title {
+    margin: 0 0 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--rr-text-secondary);
+}
+.rr-fees__exempt-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.rr-fees__exempt-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    background: var(--rr-bg-secondary);
+    border-radius: var(--rr-radius-md);
+}
+.rr-fees__exempt-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: inherit;
+    text-decoration: none;
+}
+a.rr-fees__exempt-name:hover {
+    text-decoration: underline;
+}
+.rr-fees__exempt-meta {
+    font-size: 0.75rem;
+    color: var(--rr-text-secondary);
 }
 
 /* Same affordance as the admin form's primary button. */

@@ -1,5 +1,23 @@
 import type { OrgNode } from './types';
 
+/**
+ * Every person's profile link found anywhere in the tree, so each hint can
+ * link the name it shows — the list exists to be worked through in
+ * ChurchTools.
+ */
+export function profileLinks(root: OrgNode): Map<number, string> {
+    const links = new Map<number, string>();
+    const visit = (node: OrgNode) => {
+        for (const p of [...node.leaders, ...node.participants]) {
+            if (p.frontendUrl && !links.has(p.personId)) links.set(p.personId, p.frontendUrl);
+        }
+        node.children.forEach(visit);
+        node.collections?.forEach(visit);
+    };
+    visit(root);
+    return links;
+}
+
 export type DuplicateEntry = {
     personId: number;
     fullName: string;

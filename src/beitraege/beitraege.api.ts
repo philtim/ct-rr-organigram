@@ -188,6 +188,7 @@ function toParticipant(personId: number, member: GroupMember, team: TeamRef): Rr
         city: text(fields.city),
         teamNames: [team.name],
         stammNames: team.stammName ? [team.stammName] : [],
+        frontendUrl: member.person?.frontendUrl ?? null,
     };
 }
 

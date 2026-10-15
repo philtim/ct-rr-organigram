@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, h, onMounted, onUnmounted, ref } from 'vue';
+import type { Component } from 'vue';
 import Dashboard from '@/dashboard/Dashboard.vue';
-import Beitraege from '@/beitraege/Beitraege.vue';
-import Jahresmeldung from '@/jahresmeldung/Jahresmeldung.vue';
 import Gate from '@/shared/access/Gate.vue';
 import TabBar from '@/shared/TabBar.vue';
 import { useMembershipGate } from '@/shared/access/useMembershipGate';
@@ -12,13 +11,34 @@ import { readTabFromUrl, writeTabToUrl } from '@/shared/tabs';
 import type { TabId } from '@/shared/tabs';
 import { COPY } from '@/shared/copy';
 
-// Its own chunk: only whoever configures the extension ever opens the form,
-// and every viewer of the organigram would otherwise download it.
-const Admin = defineAsyncComponent({
-    loader: () => import('@/admin/Admin.vue'),
-    // A chunk that cannot be fetched says so, rather than leaving a first run blank.
-    errorComponent: { render: () => h('p', { role: 'alert' }, COPY.adminLoadError) },
-});
+/**
+ * Own chunks for everything but the organigram: the form only whoever
+ * configures opens, the two other tabs only who clicks them — and every
+ * viewer of the organigram would otherwise download all three. A chunk that
+ * cannot be fetched says so, rather than leaving the screen blank.
+ */
+const lazy = (loader: () => Promise<{ default: Component }>, failure: string) =>
+    defineAsyncComponent({
+        loader,
+        // After a short delay, so a fast load does not flash the line.
+        loadingComponent: {
+            // Inline style: App's scoped classes do not reach a render function's element.
+            render: () =>
+                h(
+                    'p',
+                    { style: 'padding: 24px; font-size: 13px; color: var(--rr-text-secondary)' },
+                    COPY.loading,
+                ),
+        },
+        delay: 200,
+        errorComponent: { render: () => h('p', { role: 'alert' }, failure) },
+    });
+const Admin = lazy(() => import('@/admin/Admin.vue'), COPY.adminLoadError);
+const Beitraege = lazy(() => import('@/beitraege/Beitraege.vue'), COPY.beitraegeLoadError);
+const Jahresmeldung = lazy(
+    () => import('@/jahresmeldung/Jahresmeldung.vue'),
+    COPY.jahresmeldungLoadError,
+);
 
 // Routing: the admin form is reachable via ?admin=1, the tabs via ?tab=
 // (shared/tabs.ts). No router: a query parameter each is all there is.

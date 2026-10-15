@@ -6,6 +6,8 @@ import {
     resolveTeams,
 } from './beitraege.api';
 import { computeBeitraege } from './compute';
+import { buildExemptList } from './exempt';
+import type { ExemptGroup } from './exempt';
 import { dataQualityFlags } from './data-quality';
 import type { DataQuality } from './data-quality';
 import type { FeeTotals } from './fee-tiers';
@@ -87,7 +89,18 @@ export function useBeitraege() {
     const exportState = ref<ExportState>({ phase: 'idle' });
     let snapshot: ExportSnapshot | null = null;
 
+    /**
+     * The exempt people by name, while the list is open, and null otherwise.
+     *
+     * The one place this view shows names (ADR-011, amended): built from the
+     * snapshot on demand rather than kept with the figures, dropped again
+     * when the list is closed or the tab reloads, and carrying a name, a team
+     * and a family id — no address, no birthday.
+     */
+    const exemptList = ref<ExemptGroup[] | null>(null);
+
     async function load(settings: Settings): Promise<void> {
+        exemptList.value = null;
         const gateGroupId = settings.gateGroupId;
         const teilstammIds = settings.teilstammIds;
         const config = settings.fees;
@@ -190,6 +203,14 @@ export function useBeitraege() {
      * The spreadsheet writer and the sheet construction are loaded on first
      * use (ADR-010): nobody who only looks at the figures downloads them.
      */
+
+    function toggleExemptList(): void {
+        exemptList.value =
+            exemptList.value === null && snapshot
+                ? buildExemptList(snapshot.participants, snapshot.assignments)
+                : null;
+    }
+
     async function exportXlsx(): Promise<void> {
         if (!snapshot || exportState.value.phase === 'working') return;
         const data = snapshot;
@@ -233,7 +254,7 @@ export function useBeitraege() {
         }
     }
 
-    return { state, exportState, load, exportXlsx };
+    return { state, exportState, exemptList, toggleExemptList, load, exportXlsx };
 }
 
 /** Euro with German separators, from exact cents. */
