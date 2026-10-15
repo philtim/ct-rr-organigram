@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/philtim/ct-rr-organigram/compare/v1.15.0...v1.15.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **dashboard:** link the configuration to this extension, not the home page ([ea95403](https://github.com/philtim/ct-rr-organigram/commit/ea95403f811b614530e929fdcfa388c419e81b56))
+
 ## [1.15.0](https://github.com/philtim/ct-rr-organigram/compare/v1.14.0...v1.15.0) (2026-10-15)
 
 
