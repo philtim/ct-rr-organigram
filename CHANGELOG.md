@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.3](https://github.com/philtim/ct-rr-organigram/compare/v1.16.2...v1.16.3) (2026-10-15)
+
+
+### Bug Fixes
+
+* **beitraege:** say what "Teilnehmer gesamt" counts ([7157f36](https://github.com/philtim/ct-rr-organigram/commit/7157f3662a908b335b556ce91092ffe90717496e))
+
 ## [1.16.2](https://github.com/philtim/ct-rr-organigram/compare/v1.16.1...v1.16.2) (2026-10-15)
 
 
