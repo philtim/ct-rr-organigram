@@ -117,9 +117,18 @@ export function useBeitraege() {
             const leaderRoleIds = await fetchLeaderRoleIds(leaderRuleOf(settings));
             const [{ participants, staffPersonIds }, groupLeaderIds] = await Promise.all([
                 fetchTeamMembers(teams, leaderRoleIds),
-                fetchStaffFromGroups([gateGroupId, ...teilstammIds], leaderRoleIds),
+                fetchStaffFromGroups([gateGroupId, ...teilstammIds], (roleId) =>
+                    leaderRoleIds.has(roleId),
+                ),
             ]);
             for (const id of groupLeaderIds) staffPersonIds.add(id);
+            // Every member of a Sammelgruppe is a Mitarbeiter: should one of
+            // them also take part in a team, the staff rate applies.
+            const collectionStaff = await fetchStaffFromGroups(
+                settings.collectionGroupIds,
+                () => true,
+            );
+            for (const id of collectionStaff) staffPersonIds.add(id);
 
             const relationships = await fetchRelationships(participants.map((p) => p.personId));
 

@@ -65,7 +65,15 @@ const emit = defineEmits<{ select: [TabId] }>();
 
 @media (max-width: 767px) {
     .rr-tabs {
-        padding: 0 1rem;
+        /* Three labels just exceed a 390px phone; tighter tabs fit, and the
+           bar scrolls itself rather than the page should a label grow. */
+        padding: 0 0.5rem;
+        gap: 0;
+        overflow-x: auto;
+    }
+    .rr-tabs__tab {
+        flex-shrink: 0;
+        padding: 0.75rem 0.625rem;
     }
 }
 </style>

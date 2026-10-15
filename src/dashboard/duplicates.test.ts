@@ -38,20 +38,61 @@ const leader = (personId: number, isPillRole = true): Leader => ({
 const failed = (groupId: number) => node(groupId, { error: 'fetch-failed', incomplete: true });
 
 describe('findPeopleWithoutTeam', () => {
-    it('names a Teilstamm member who is in none of its teams', () => {
+    it('names a Teilstamm member who is in none of its teams and counts nowhere', () => {
         const root = rollUpHauptstamm(node(100), [
             rollUpTeilstamm(node(1, { participants: [p(1), p(2)] }), [
                 node(10, { participants: [p(1)] }),
             ]),
         ]);
-        expect(findPeopleWithoutTeam(root).staff.map((e) => e.personId)).toEqual([2]);
+        const found = findPeopleWithoutTeam(root);
+        expect(found.notCounted.map((e) => e.personId)).toEqual([2]);
+        expect(found.staff).toEqual([]);
+    });
+
+    it('lists as staff without team somebody counted elsewhere in the tree', () => {
+        // 2 is a plain member of Teilstamm 1, but leads a team of Teilstamm 2.
+        const root = rollUpHauptstamm(node(100), [
+            rollUpTeilstamm(node(1, { participants: [p(2)] }), [node(10)]),
+            rollUpTeilstamm(node(2), [node(20, { leaders: [leader(2)] })]),
+        ]);
+        const found = findPeopleWithoutTeam(root);
+        expect(found.staff.map((e) => e.personId)).toEqual([2]);
+        expect(found.notCounted).toEqual([]);
+    });
+
+    it('lists nobody who is a child in a team elsewhere', () => {
+        const root = rollUpHauptstamm(node(100), [
+            rollUpTeilstamm(node(1, { participants: [p(2)] }), [node(10)]),
+            rollUpTeilstamm(node(2), [node(20, { participants: [p(2)] })]),
+        ]);
+        expect(findPeopleWithoutTeam(root)).toEqual({ staff: [], leadership: [], notCounted: [] });
+    });
+
+    it('names a Hauptstamm member who counts nowhere, but only over a complete tree', () => {
+        const teilstaemme = [rollUpTeilstamm(node(1), [node(10, { participants: [p(1)] })])];
+        const root = rollUpHauptstamm(node(100, { participants: [p(1), p(9)] }), teilstaemme);
+        expect(findPeopleWithoutTeam(root).notCounted.map((e) => e.personId)).toEqual([9]);
+
+        const partial = rollUpHauptstamm(node(100, { participants: [p(9)] }), [
+            rollUpTeilstamm(node(1), [failed(10)]),
+        ]);
+        expect(findPeopleWithoutTeam(partial).notCounted).toEqual([]);
+    });
+
+    it('leaves out members of a Sammelgruppe — they are without a team on purpose', () => {
+        const root = rollUpHauptstamm(
+            node(100, { participants: [p(7)] }),
+            [rollUpTeilstamm(node(1, { participants: [p(8)] }), [node(10)])],
+            [node(500, { leaders: [leader(7), leader(8)] })],
+        );
+        expect(findPeopleWithoutTeam(root)).toEqual({ staff: [], leadership: [], notCounted: [] });
     });
 
     it('accuses nobody when the list of teams could not be read', () => {
         const root = rollUpHauptstamm(node(100), [
             rollUpTeilstamm(node(1, { participants: [p(1), p(2)] }), null),
         ]);
-        expect(findPeopleWithoutTeam(root)).toEqual({ staff: [], leadership: [] });
+        expect(findPeopleWithoutTeam(root)).toEqual({ staff: [], leadership: [], notCounted: [] });
     });
 
     it('accuses nobody when one of the teams could not be read', () => {
@@ -61,7 +102,7 @@ describe('findPeopleWithoutTeam', () => {
                 failed(11),
             ]),
         ]);
-        expect(findPeopleWithoutTeam(root)).toEqual({ staff: [], leadership: [] });
+        expect(findPeopleWithoutTeam(root)).toEqual({ staff: [], leadership: [], notCounted: [] });
     });
 });
 
@@ -90,6 +131,7 @@ describe('findPeopleWithoutTeam — leaders', () => {
         expect(findPeopleWithoutTeam(root)).toEqual({
             leadership: [{ personId: 2, fullName: 'P2', teilstammNames: ['G1'] }],
             staff: [{ personId: 3, fullName: 'P3', teilstammNames: ['G1'] }],
+            notCounted: [],
         });
     });
 });

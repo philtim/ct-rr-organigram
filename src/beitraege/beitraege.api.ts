@@ -159,7 +159,7 @@ export async function fetchTeamMembers(
  */
 export async function fetchStaffFromGroups(
     groupIds: number[],
-    leaderRoleIds: LeaderRoleIds,
+    isStaff: (roleId: number) => boolean,
 ): Promise<Set<number>> {
     const ids = new Set<number>();
     const pages = await mapWithConcurrency(groupIds, 4, (groupId) =>
@@ -167,7 +167,7 @@ export async function fetchStaffFromGroups(
     );
     for (const members of pages) {
         for (const member of members) {
-            if (!leaderRoleIds.has(member.groupTypeRoleId)) continue;
+            if (!isStaff(member.groupTypeRoleId)) continue;
             const personId = personIdOf(member);
             if (personId !== null) ids.add(personId);
         }

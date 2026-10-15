@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, useId } from 'vue';
 import type { OrgNode } from './types';
 import TeamChip from './TeamChip.vue';
 import { COPY } from '@/shared/copy';
@@ -21,6 +21,16 @@ const props = defineProps<{
 }>();
 
 const isError = computed(() => Boolean(props.node.error));
+
+/**
+ * Teams shown before "Alle N Teams zeigen". A layout constant, not a fact
+ * about any Stamm: it keeps one long Teilstamm from stretching its row while
+ * the others end early. Printing shows them all.
+ */
+const VISIBLE_TEAMS = 6;
+const expanded = ref(false);
+const teamsId = useId();
+const collapsible = computed(() => props.node.children.length > VISIBLE_TEAMS + 1);
 // One row per leadership role, in the group type's own order. Stammleiter and
 // Stammwart stay visible when vacant (Settings.alwaysShownRoleIds) so an
 // open position is readable as such; an unfilled Stammhelfer is simply absent.
@@ -134,12 +144,27 @@ const stats = computed(() => [
             <p class="ts-card__subtitle">{{ COPY.levelTeams }}</p>
             <p v-if="node.childrenFailed" class="ts-card__empty">{{ COPY.teamsUnavailable }}</p>
             <template v-else>
-                <TeamChip
-                    v-for="team in node.children"
-                    :key="team.groupId"
-                    :node="team"
-                    :member-field-name="props.memberFieldName"
-                />
+                <div :id="teamsId" class="ts-card__team-list">
+                    <TeamChip
+                        v-for="(team, i) in node.children"
+                        :key="team.groupId"
+                        :class="{
+                            'ts-card__team--extra': collapsible && !expanded && i >= VISIBLE_TEAMS,
+                        }"
+                        :node="team"
+                        :member-field-name="props.memberFieldName"
+                    />
+                </div>
+                <button
+                    v-if="collapsible"
+                    type="button"
+                    class="ts-card__more"
+                    :aria-expanded="expanded"
+                    :aria-controls="teamsId"
+                    @click="expanded = !expanded"
+                >
+                    {{ expanded ? COPY.showFewerTeams : COPY.showAllTeams(node.children.length) }}
+                </button>
                 <p v-if="!node.children.length" class="ts-card__empty">{{ COPY.noTeams }}</p>
             </template>
         </section>
@@ -263,6 +288,42 @@ const stats = computed(() => [
     gap: 6px;
     padding: 8px 8px 0;
     border-top: 0.5px solid var(--rr-border-tertiary);
+}
+.ts-card__team-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+/* Two classes, so it outranks TeamChip's own `display: block`. */
+.ts-card__team-list .ts-card__team--extra {
+    display: none;
+}
+.ts-card__more {
+    align-self: flex-start;
+    padding: 4px 8px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--rr-text-secondary);
+    background: transparent;
+    border: 0.5px solid var(--rr-border-secondary);
+    border-radius: var(--rr-radius-md);
+    cursor: pointer;
+}
+.ts-card__more:hover {
+    color: var(--rr-text-primary);
+    background: var(--rr-bg-hover-on-white);
+}
+.ts-card__more:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 1px;
+}
+@media print {
+    .ts-card__team-list .ts-card__team--extra {
+        display: block;
+    }
+    .ts-card__more {
+        display: none;
+    }
 }
 
 /* Compact row visible only on mobile */

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import CollectionCard from './CollectionCard.vue';
 import DuplicatesPanel from './DuplicatesPanel.vue';
 import HauptstammCard from './HauptstammCard.vue';
 import SkeletonHero from './SkeletonHero.vue';
 import SkeletonTeilstamm from './SkeletonTeilstamm.vue';
 import TeilstammCard from './TeilstammCard.vue';
 import { fieldSeenInTree } from './counts';
+import { useBalancedColumns } from './useBalancedColumns';
 import { useDashboard } from './useDashboard';
 import ViewShell from '@/shared/ViewShell.vue';
 import { formatTimestamp } from '@/shared/format';
@@ -13,7 +15,11 @@ import type { LoadFailure } from './rollup';
 import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 
-const props = defineProps<{ settings: Settings }>();
+const props = defineProps<{
+    settings: Settings;
+    /** The viewer may open the configuration — shows the link to it. */
+    canConfigure?: boolean;
+}>();
 
 const { state, load } = useDashboard();
 
@@ -31,6 +37,16 @@ const teamsOnly = computed(
     () => teilstammIds.value.length === 1 && teilstammIds.value[0] === props.settings.gateGroupId,
 );
 const loaded = computed(() => (state.value.phase === 'ready' ? state.value : null));
+const collections = computed(() => loaded.value?.root.collections ?? []);
+
+// Even rows of Teilstamm cards: six where five fit become 3 + 3.
+const grid = ref<HTMLElement | null>(null);
+const { columns } = useBalancedColumns(grid, () => teilstammIds.value.length);
+const gridStyle = computed(() =>
+    columns.value === null || teamsOnly.value
+        ? undefined
+        : { gridTemplateColumns: `repeat(${columns.value}, minmax(0, 1fr))` },
+);
 
 /**
  * The configured member field exists in no group that loaded — renamed or
@@ -62,6 +78,8 @@ function describe(failure: LoadFailure): string {
             return COPY.failedTeilstammTeams(failure.name);
         case 'team':
             return COPY.failedTeam(failure.name, failure.teilstamm);
+        case 'sammelgruppe':
+            return COPY.failedSammelgruppe(failure.name);
     }
 }
 
@@ -107,7 +125,12 @@ const appCommit = __APP_COMMIT__;
               One grid for the placeholders and the cards, sized by the
               configured Teilstämme, so nothing moves when data arrives.
             -->
-            <div class="rr-dash__grid" :class="{ 'rr-dash__grid--single': teamsOnly }">
+            <div
+                ref="grid"
+                class="rr-dash__grid"
+                :class="{ 'rr-dash__grid--single': teamsOnly }"
+                :style="gridStyle"
+            >
                 <template v-if="loaded">
                     <TeilstammCard
                         v-for="ts in loaded.root.children"
@@ -122,11 +145,23 @@ const appCommit = __APP_COMMIT__;
                     <SkeletonTeilstamm v-for="id in teilstammIds" :key="id" />
                 </template>
             </div>
+            <!-- Sammelgruppen: not a level of the organigram, so their own section. -->
+            <section v-if="collections.length" class="rr-dash__collections">
+                <h2 class="rr-dash__section-title">{{ COPY.collectionsTitle }}</h2>
+                <div class="rr-dash__collection-grid">
+                    <CollectionCard v-for="c in collections" :key="c.groupId" :node="c" />
+                </div>
+            </section>
             <DuplicatesPanel v-if="loaded" :root="loaded.root" />
         </template>
 
-        <footer class="rr-dash__footer" :title="COPY.buildInfo(appVersion, appCommit)">
-            v{{ appVersion }} · {{ appCommit }}
+        <footer class="rr-dash__footer">
+            <a v-if="canConfigure" class="rr-dash__configure" href="?admin=1">
+                {{ COPY.openConfiguration }}
+            </a>
+            <span :title="COPY.buildInfo(appVersion, appCommit)">
+                v{{ appVersion }} · {{ appCommit }}
+            </span>
         </footer>
     </ViewShell>
 </template>
@@ -144,9 +179,10 @@ const appCommit = __APP_COMMIT__;
 
 .rr-dash__grid {
     display: grid;
-    /* As many columns as fit — five on a full desktop, fewer cards simply
-       get wider. No fixed count: that would describe one particular Stamm. */
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    /* As many columns as fit. useBalancedColumns refines this into even rows;
+       without it, auto-fit still lays the cards out. No fixed count: that
+       would describe one particular Stamm. */
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 12px;
     align-items: start;
 }
@@ -190,20 +226,49 @@ const appCommit = __APP_COMMIT__;
     padding: 0.75rem 1rem;
 }
 
-.rr-dash__footer {
-    margin-top: 32px;
-    text-align: center;
-    font-size: 11px;
+.rr-dash__collections {
+    margin-top: 24px;
+}
+.rr-dash__section-title {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--rr-text-secondary);
-    opacity: 0.7;
-    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+.rr-dash__collection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    align-items: start;
 }
 
-/* Intermediate viewports — accept 2 cards per row with full team detail. */
-@media (max-width: 1023px) {
-    .rr-dash__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+.rr-dash__footer {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 16px;
+    margin-top: 32px;
+    font-size: 11px;
+    color: var(--rr-text-secondary);
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+.rr-dash__footer > span {
+    opacity: 0.7;
+}
+.rr-dash__configure {
+    font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    color: var(--rr-text-secondary);
+}
+.rr-dash__configure:hover {
+    color: var(--rr-text-primary);
+}
+.rr-dash__configure:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 2px;
 }
 
 /* Mobile: single-column stack, no inter-level divider. */

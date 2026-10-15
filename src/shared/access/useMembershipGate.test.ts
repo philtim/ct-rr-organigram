@@ -22,8 +22,11 @@ async function gateFor(groupId: number | null) {
 }
 
 describe('useMembershipGate', () => {
-    it('allows a member of the configured group', async () => {
-        await expect(gateFor(42)).resolves.toEqual({ phase: 'allowed' });
+    it('allows a member of the configured group, and reports their role there', async () => {
+        client.get.mockImplementation(async (url: string) =>
+            url === '/whoami' ? { id: 5 } : { groupTypeRoleId: 67 },
+        );
+        await expect(gateFor(42)).resolves.toEqual({ phase: 'allowed', roleId: 67 });
         expect(client.get).toHaveBeenCalledWith('/groups/42/members/5');
     });
 

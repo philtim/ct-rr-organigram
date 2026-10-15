@@ -25,6 +25,8 @@ export function splitMembers(
     group: Group,
     members: GroupMember[],
     rule: LeaderRule,
+    /** A Sammelgruppe: every member leads, whatever role they hold. */
+    everyoneLeads = false,
 ): { leaders: Leader[]; participants: Participant[] } {
     const infoByRoleId = new Map<number, RoleInfo>();
     for (const r of group.roles ?? []) {
@@ -42,7 +44,9 @@ export function splitMembers(
     for (const m of members) {
         const personId = personIdOf(m);
         if (personId === null) continue;
-        const info = infoByRoleId.get(m.groupTypeRoleId);
+        const info =
+            infoByRoleId.get(m.groupTypeRoleId) ??
+            (everyoneLeads ? { name: '', sortKey: 0, isPillRole: false } : undefined);
         const fullName = m.person?.title ?? '';
         if (!info) {
             participants.push({ personId, fullName });
@@ -57,6 +61,7 @@ export function splitMembers(
             roleName: info.name,
             roleSortKey: info.sortKey,
             isPillRole: info.isPillRole,
+            frontendUrl: m.person?.frontendUrl ?? null,
         });
     }
     return { leaders, participants };

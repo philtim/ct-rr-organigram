@@ -35,6 +35,21 @@ export type Settings = {
     stammGroupTypeIds: number[];
     /** Which child groups of a Teilstamm count as teams. */
     teamGroupTypeIds: number[];
+    /**
+     * Sammelgruppen: groups for leaders who belong to the Stamm without a
+     * team — former leaders, for instance. Every member counts as a
+     * Mitarbeiter, whatever their role; that is what the group is for.
+     * Optional — not every Stamm keeps one.
+     */
+    collectionGroupIds: number[];
+
+    // --- Zugriff ---
+    /**
+     * Roles in the Hauptstamm group that may open and save the configuration.
+     * Empty only in a configuration saved before this setting existed: then
+     * every member may, as before, until somebody chooses.
+     */
+    adminRoleIds: number[];
 
     // --- Zählregeln ---
     /**
@@ -65,6 +80,8 @@ export const EMPTY_SETTINGS: Settings = {
     teilstammIds: [],
     stammGroupTypeIds: [],
     teamGroupTypeIds: [],
+    collectionGroupIds: [],
+    adminRoleIds: [],
     extraLeaderRoleIds: [],
     excludedLeaderRoleIds: [],
     alwaysShownRoleIds: [],
@@ -122,6 +139,8 @@ export function parseSettings(stored: unknown): Settings {
         teilstammIds: intList(stored.teilstammIds),
         stammGroupTypeIds: intList(stored.stammGroupTypeIds),
         teamGroupTypeIds: intList(stored.teamGroupTypeIds),
+        collectionGroupIds: intList(stored.collectionGroupIds),
+        adminRoleIds: intList(stored.adminRoleIds),
         extraLeaderRoleIds: intList(stored.extraLeaderRoleIds),
         excludedLeaderRoleIds: intList(stored.excludedLeaderRoleIds),
         alwaysShownRoleIds: intList(stored.alwaysShownRoleIds),
@@ -167,6 +186,17 @@ export function areFeesConfigured(settings: Settings): boolean {
     return settings.fees.childCents.length > 0;
 }
 
+/**
+ * Whether the viewer may configure: a member of the Hauptstamm group holding
+ * one of the configured roles. With no role configured yet — a configuration
+ * from before this setting — every member may, so nobody is locked out by an
+ * upgrade.
+ */
+export function mayConfigure(settings: Settings, viewerRoleId: number | null): boolean {
+    if (settings.adminRoleIds.length === 0) return true;
+    return viewerRoleId !== null && settings.adminRoleIds.includes(viewerRoleId);
+}
+
 /** What the shell knows when it decides which screen to render. */
 export type ShellState = {
     /** The configuration could not be read — not the same as "is absent". */
@@ -177,6 +207,8 @@ export type ShellState = {
     configured: boolean;
     /** The viewer passed the membership gate. */
     gateAllowed: boolean;
+    /** The viewer holds a role that may configure (`mayConfigure`). */
+    mayConfigure: boolean;
     /** The viewer asked for the form with `?admin=1`. */
     isAdminRoute: boolean;
 };
@@ -201,6 +233,6 @@ export type ShellState = {
 export function shouldShowAdmin(state: ShellState): boolean {
     if (state.loadFailed) return false;
     if (!state.hasGateGroup) return true;
-    if (!state.gateAllowed) return false;
+    if (!state.gateAllowed || !state.mayConfigure) return false;
     return state.isAdminRoute || !state.configured;
 }

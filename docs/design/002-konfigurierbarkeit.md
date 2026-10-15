@@ -78,6 +78,15 @@ export type Settings = {
     stammGroupTypeIds: number[];
     /** Welche Kindgruppen eines Teilstamms Teams sind. */
     teamGroupTypeIds: number[];
+    /**
+     * Sammelgruppen für Leiter ohne Team, z. B. ehemalige Leiter. Jedes
+     * Mitglied zählt als Mitarbeiter, gleich welche Rolle. Optional.
+     */
+    collectionGroupIds: number[];
+
+    // Zugriff
+    /** Rollen in der Hauptstamm-Gruppe, die die Konfiguration öffnen dürfen. */
+    adminRoleIds: number[];
 
     // Zählregeln
     /**
@@ -105,6 +114,19 @@ export type Settings = {
 Variante `membership`, und `roleRule` verschwindet aus
 `shared/access/rules.ts`.
 
+### Wer konfigurieren darf
+
+`adminRoleIds` entscheidet, wer den Link „Konfiguration“ sieht und `?admin=1`
+öffnen kann: Mitglieder der Hauptstamm-Gruppe mit einer dieser Rollen. Die
+Prüfung läuft in der Extension, nicht auf dem Server — schreiben in den
+KV-Store darf weiterhin, wem ChurchTools das Recht am Modul gibt. Es ist eine
+Bedienungsschranke, kein Zugriffsschutz.
+
+Sind alle gewählten Rollen unbesetzt, kommt niemand mehr ins Setup. Zwei Wege
+zurück: in ChurchTools eine der Rollen wieder vergeben, oder den Eintrag
+`settings` im KV-Store der Extension löschen — dann startet das Setup wie beim
+ersten Mal.
+
 ### Pflicht, optional, und was Leere bedeutet
 
 | Feld | fehlt → |
@@ -113,6 +135,8 @@ Variante `membership`, und `roleRule` verschwindet aus
 | `fees.childCents` leer | Beitragsabrechnung zeigt den Hinweis; die anderen Tabs laufen |
 | `extraLeaderRoleIds` leer | nur `type: 'leader'` zählt als Leiter — eine gültige Regel, kein Platzhalter |
 | `excludedLeaderRoleIds` leer | jede `type: 'leader'`-Rolle zählt als Mitarbeiter |
+| `collectionGroupIds` leer | kein Abschnitt „Leiter ohne Team“ |
+| `adminRoleIds` leer | nur in Konfigurationen von vor diesem Feld: jedes Mitglied der Hauptstamm-Gruppe darf konfigurieren, bis Rollen gewählt sind. Speichern verlangt mindestens eine Rolle, die die speichernde Person selbst hat |
 | `alwaysShownRoleIds` leer | keine unbesetzten Positionen auf den Karten |
 | `horizontFieldName` leer | Kachel entfällt; ein gesetzter Name, den keine Gruppe hat, wird im Dashboard als Hinweis gemeldet |
 | `fees.staffCents`, `juniorLeaderCents` | 0 — die neutrale Null, keine Annahme über den Stamm |

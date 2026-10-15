@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     EMPTY_SETTINGS,
     hasAnySetting,
+    mayConfigure,
     shouldShowAdmin,
     areFeesConfigured,
     isDashboardConfigured,
@@ -23,6 +24,8 @@ describe('parseSettings', () => {
             teilstammIds: [1012, 80],
             stammGroupTypeIds: [10],
             teamGroupTypeIds: [1],
+            collectionGroupIds: [2774],
+            adminRoleIds: [67, 70],
             extraLeaderRoleIds: [15, 19],
             excludedLeaderRoleIds: [17],
             alwaysShownRoleIds: [41],
@@ -161,6 +164,7 @@ describe('shouldShowAdmin', () => {
         hasGateGroup: true,
         configured: true,
         gateAllowed: true,
+        mayConfigure: true,
         isAdminRoute: false,
     };
 
@@ -197,6 +201,11 @@ describe('shouldShowAdmin', () => {
         expect(shouldShowAdmin({ ...base, isAdminRoute: true, gateAllowed: true })).toBe(true);
     });
 
+    it('keeps members without a configuring role out of the form, ?admin=1 included', () => {
+        expect(shouldShowAdmin({ ...base, isAdminRoute: true, mayConfigure: false })).toBe(false);
+        expect(shouldShowAdmin({ ...base, configured: false, mayConfigure: false })).toBe(false);
+    });
+
     it('stays out of the way once everything is configured', () => {
         expect(shouldShowAdmin(base)).toBe(false);
     });
@@ -208,5 +217,20 @@ describe('hasAnySetting', () => {
         expect(hasAnySetting(parseSettings(undefined))).toBe(false);
         expect(hasAnySetting(parseSettings(LEGACY))).toBe(true);
         expect(hasAnySetting(parseSettings({ horizontFieldName: 'Horizont' }))).toBe(true);
+    });
+});
+
+describe('mayConfigure', () => {
+    const settings = { ...EMPTY_SETTINGS, gateGroupId: 950, adminRoleIds: [67, 70] };
+
+    it('lets a member with a configured role configure, and nobody else', () => {
+        expect(mayConfigure(settings, 67)).toBe(true);
+        expect(mayConfigure(settings, 82)).toBe(false);
+        expect(mayConfigure(settings, null)).toBe(false);
+    });
+
+    it('lets every member configure while no role is chosen, so an upgrade locks nobody out', () => {
+        expect(mayConfigure({ ...settings, adminRoleIds: [] }, 82)).toBe(true);
+        expect(mayConfigure({ ...settings, adminRoleIds: [] }, null)).toBe(true);
     });
 });

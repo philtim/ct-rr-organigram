@@ -5,7 +5,8 @@ import { COPY } from '@/shared/copy';
 export type GateStatus =
     | { phase: 'idle' }
     | { phase: 'loading' }
-    | { phase: 'allowed' }
+    /** `roleId`: the viewer's role in the group, which decides who may configure. */
+    | { phase: 'allowed'; roleId: number | null }
     | { phase: 'denied' }
     | { phase: 'error'; message: string };
 
@@ -33,8 +34,14 @@ export function useMembershipGate() {
         status.value = { phase: 'loading' };
         try {
             const me = await ct.get<{ id: number }>('/whoami');
-            await ct.get(`/groups/${groupId}/members/${me.id}`);
-            status.value = { phase: 'allowed' };
+            const membership = await ct.get<{ groupTypeRoleId?: number }>(
+                `/groups/${groupId}/members/${me.id}`,
+            );
+            const roleId = membership?.groupTypeRoleId;
+            status.value = {
+                phase: 'allowed',
+                roleId: typeof roleId === 'number' ? roleId : null,
+            };
         } catch (e) {
             const httpStatus = statusOf(e);
             status.value =

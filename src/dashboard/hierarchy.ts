@@ -58,6 +58,7 @@ async function safeLoadGroupNode(
     groupId: number,
     settings: Settings,
     fallbackName?: string,
+    everyoneLeads = false,
 ): Promise<OrgNode> {
     try {
         const [group, members] = await Promise.all([
@@ -65,7 +66,8 @@ async function safeLoadGroupNode(
             withTimeout(getGroupMembers(groupId)),
         ]);
         const rule = leaderRuleOf(settings);
-        const { leaders, participants } = splitMembers(group, members, rule);
+        // A Sammelgruppe exists for leaders: every member of it counts as one.
+        const { leaders, participants } = splitMembers(group, members, rule, everyoneLeads);
         return {
             groupId: group.id,
             name: group.name,
@@ -126,6 +128,11 @@ export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
     // a colliding key.
     const teilstammIds = [...new Set(settings.teilstammIds)];
 
+    const collectionIds = [...new Set(settings.collectionGroupIds)];
+    const collectionsLoad = mapWithConcurrency(collectionIds, CONCURRENCY, (id) =>
+        safeLoadGroupNode(id, settings, undefined, true),
+    );
+
     const [root, ...teilstaemme] = await Promise.all([
         safeLoadGroupNode(rootGroupId, settings),
         ...teilstammIds.map(async (tsId) => {
@@ -148,5 +155,5 @@ export async function loadOrganigram(settings: Settings): Promise<OrgNode> {
         }),
     ]);
 
-    return rollUpHauptstamm(root, teilstaemme);
+    return rollUpHauptstamm(root, teilstaemme, await collectionsLoad);
 }

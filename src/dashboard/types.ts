@@ -32,6 +32,8 @@ export type Leader = {
      * stat tile but stay out of the name lists.
      */
     isPillRole: boolean;
+    /** ChurchTools' own link to the person (ADR-013), when the API sent one. */
+    frontendUrl?: string | null;
 };
 
 /** Slim shape for non-leader members; carries name so the duplicates panel can display it. */
@@ -79,6 +81,12 @@ export type OrgNode = {
     /** This group's members carry the configured field at all — see `hasMemberField`. */
     horizontFieldSeen?: boolean;
     children: OrgNode[];
+    /**
+     * On the Hauptstamm only: the configured Sammelgruppen, every member a
+     * leader (`Settings.collectionGroupIds`). Not a level of the organigram,
+     * so not among `children`.
+     */
+    collections?: OrgNode[];
     /**
      * Set when this group itself could not be read — its leaders are unknown
      * and the card shows "?" in their place (US-5).

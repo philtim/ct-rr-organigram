@@ -36,6 +36,13 @@ export const COPY = {
         'Nicht alle Gruppen konnten geladen werden. Die rot markierten Summen sind deshalb ' +
         'nicht berechenbar — „Aktualisieren" versucht es erneut.',
     failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
+    failedSammelgruppe: (name: string) => `Sammelgruppe „${name}“`,
+    collectionsTitle: 'Leiter ohne Team',
+    collectionCount: (n: number) => `${n} Leiter`,
+    collectionEmpty: 'Niemand in dieser Gruppe.',
+    collectionUnavailable: 'Die Gruppe konnte nicht gelesen werden.',
+    collectionListLabel: (name: string) => `Mitglieder von ${name}`,
+    openConfiguration: 'Konfiguration',
     memberFieldMissing: (name: string) =>
         `Das Mitgliederfeld „${name}“ gibt es in keiner der Gruppen. Die Zahlen dazu ` +
         `stehen deshalb auf 0 — bitte in der Konfiguration ein vorhandenes Feld wählen.`,
@@ -48,6 +55,8 @@ export const COPY = {
     levelTeams: 'TEAMS',
     noLeaders: 'Keine Leiter eingetragen.',
     noTeams: 'Keine Teams.',
+    showAllTeams: (n: number) => `Alle ${n} Teams zeigen`,
+    showFewerTeams: 'Weniger zeigen',
     teamsUnavailable: 'Teams konnten nicht geladen werden.',
     unknown: 'unbekannt',
     openGroup: (name: string) => `Zur ChurchTools-Gruppe von ${name} wechseln`,
@@ -76,6 +85,11 @@ export const COPY = {
     hintsMixedParticipant: (teams: string[]) => `Teilnehmer: ${teams.join(', ')}`,
     hintsStaffWithoutTeam: 'Mitarbeiter ohne Team',
     hintsLeadershipWithoutTeam: 'Stammleitung ohne Team',
+    hintsNotCounted: 'Nicht mitgezählt',
+    hintsNotCountedNote:
+        'In keinem Team und mit einer Rolle, die nicht als Mitarbeiter gewählt ist. Gehören ' +
+        'sie dazu, die Rolle in der Konfiguration unter „Wer ist Mitarbeiter?" anhaken oder ' +
+        'sie einer Sammelgruppe zuordnen.',
     /** Read out in place of a "?" that stands for a sum missing a part. */
     notComputable: 'nicht berechenbar',
     loading: 'Lädt …',
@@ -367,6 +381,26 @@ export const COPY = {
     adminStaffFee: 'Mitarbeiter',
     adminJuniorLeaderFee: 'Juniorleiter',
     adminJuniorLeaderNote: 'Leiter unter 18',
+    adminSectionAccess: 'Zugriff',
+    adminAccessLabel: 'Wer darf konfigurieren?',
+    adminAccessHelp:
+        'Nur wer in der Hauptstamm-Gruppe eine dieser Rollen hat, sieht den Link zur ' +
+        'Konfiguration und kann sie öffnen. Ist keine davon mehr besetzt, kommt niemand mehr ' +
+        'hinein – dann die Rolle in ChurchTools neu vergeben.',
+    adminAccessNoneChosen: 'Bitte mindestens eine Rolle wählen, die konfigurieren darf.',
+    adminAccessChecking: 'Deine Rolle in der Hauptstamm-Gruppe wird geprüft …',
+    adminAccessUnverifiable:
+        'Deine Rolle in der Hauptstamm-Gruppe konnte nicht geprüft werden. Bitte neu laden.',
+    adminAccessWouldLockOut:
+        'Du hast keine der gewählten Rollen in der Hauptstamm-Gruppe. Nach dem Speichern ' +
+        'könntest du die Konfiguration nicht mehr öffnen – bitte deine eigene Rolle mit wählen.',
+    adminCollectionsLabel: 'Sammelgruppen für Leiter ohne Team',
+    adminCollectionsHelp:
+        'Optional. Eine Gruppe für Leiter, die zum Stamm gehören, aber in keinem Team sind – ' +
+        'z. B. ehemalige Leiter. Alle Mitglieder zählen als Mitarbeiter und erscheinen im ' +
+        'Organigramm unter „Leiter ohne Team". Eine Gruppe ist entweder Teilstamm oder ' +
+        'Sammelgruppe.',
+    adminNoCollectionCandidates: 'Der Hauptstamm hat keine Untergruppen.',
     adminTakenOver:
         'Hier sind bereits Einstellungen aus einer früheren Einrichtung gespeichert. Bitte ' +
         'prüfe sie und ergänze, was fehlt.',
