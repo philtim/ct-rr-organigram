@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/philtim/ct-rr-organigram/compare/v1.14.0...v1.15.0) (2026-10-15)
+
+
+### Features
+
+* Sammelgruppen, setup access by role, and a dashboard that uses the width ([baf7cd5](https://github.com/philtim/ct-rr-organigram/commit/baf7cd5e4509c359e87d1f2d61b1a9f9ffe803b7))
+
+
+### Bug Fixes
+
+* **tabs:** keep the tab bar inside a phone's width ([25780a5](https://github.com/philtim/ct-rr-organigram/commit/25780a5c33477a44fd9512224382278bcae6b298))
+
 ## [1.14.0](https://github.com/philtim/ct-rr-organigram/compare/v1.13.1...v1.14.0) (2026-10-15)
 
 
