@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/philtim/ct-rr-organigram/compare/v1.15.1...v1.16.0) (2026-10-15)
+
+
+### Features
+
+* list who pays nothing and why, and link every name in the hints ([cdf1a52](https://github.com/philtim/ct-rr-organigram/commit/cdf1a52226a76bb5557d02427b6c314ba043049a))
+
 ## [1.15.1](https://github.com/philtim/ct-rr-organigram/compare/v1.15.0...v1.15.1) (2026-10-15)
 
 
