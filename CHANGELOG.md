@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.2](https://github.com/philtim/ct-rr-organigram/compare/v1.17.1...v1.17.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **changelog:** record the entry count in the header so a missing row reads as unreadable ([eab2110](https://github.com/philtim/ct-rr-organigram/commit/eab2110c94bf7d41db69e3e07384b120adcd40f2))
+
 ## [1.17.1](https://github.com/philtim/ct-rr-organigram/compare/v1.17.0...v1.17.1) (2026-10-16)
 
 
