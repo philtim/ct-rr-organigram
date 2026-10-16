@@ -14,7 +14,8 @@ See `docs/PRD.md` for the original specification, `docs/design/` for the design 
 2. In ChurchTools, go to **Admin → Extensions**, upload the ZIP, and enable the extension.
 3. Decide who may open it: the extension registers its own ChurchTools permission (`rr-dashboard → view`), assigned like any other module's.
 4. Open the extension and work through the configuration screen (also reachable at `?admin=1`).
-5. The extension appears in the main menu for everyone who may view it and is a member of the configured Stamm group.
+5. The dashboard's "Änderungen der letzten 30 Tage" box is filled from the configuration screen's **Änderungen jetzt abrufen** button, which reads the ChurchTools log and therefore needs the permission _Logfile ansehen_ (Churchcore). Everyone else sees the stored result.
+6. The extension appears in the main menu for everyone who may view it and is a member of the configured Stamm group.
 
 ### Configuration
 
