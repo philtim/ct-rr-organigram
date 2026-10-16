@@ -185,6 +185,9 @@ export async function readStoredChangeLog(): Promise<StoredChangeLog> {
     if (!stored) return { phase: 'never' };
     const log = parseChangeLog(stored.data);
     if (!log) return { phase: 'unreadable' };
+    // Written since v1.17.2: how many entries the rows must add up to. A row
+    // that went missing would otherwise shorten the list without a trace.
+    const expected = isRecord(stored.data) ? int(stored.data.entryCount) : undefined;
     const entries = [...log.entries];
     for (const row of await listValues(module.id, stored.category.id)) {
         const chunk = chunkOf(row.value);
@@ -196,6 +199,7 @@ export async function readStoredChangeLog(): Promise<StoredChangeLog> {
         }
         if (chunk.syncedAt === log.syncedAt) entries.push(...chunk.entries);
     }
+    if (expected !== undefined && entries.length !== expected) return { phase: 'unreadable' };
     return { phase: 'ready', log: { ...log, entries: entries.sort(byNewest) } };
 }
 
@@ -229,6 +233,9 @@ export async function writeStoredChangeLog(log: ChangeLog): Promise<void> {
     }
     const stale = await listValues(module.id, category.id);
     for (const chunk of packChunks(log)) await createValue(module.id, category.id, chunk);
-    await header(JSON.stringify({ ...log, entries: undefined }), category);
+    await header(
+        JSON.stringify({ ...log, entries: undefined, entryCount: log.entries.length }),
+        category,
+    );
     for (const row of stale) await deleteValue(module.id, category.id, row.id);
 }

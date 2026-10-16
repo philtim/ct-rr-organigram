@@ -175,6 +175,15 @@ describe('readStoredChangeLog', () => {
         await expect(readStoredChangeLog()).resolves.toEqual({ phase: 'unreadable' });
     });
 
+    it('is "unreadable" when a chunk of the current sync is missing', async () => {
+        kv.readCategory.mockResolvedValueOnce({
+            category: { id: 9 },
+            data: { ...header, entryCount: 2 },
+        });
+        kv.listValues.mockResolvedValueOnce([chunk(LOG.syncedAt, [LOG.entries[0]])]);
+        await expect(readStoredChangeLog()).resolves.toEqual({ phase: 'unreadable' });
+    });
+
     it('lets a failed read throw', async () => {
         kv.findModule.mockRejectedValueOnce(new Error('403'));
         await expect(readStoredChangeLog()).rejects.toThrow('403');
@@ -209,7 +218,7 @@ describe('writeStoredChangeLog', () => {
             3,
             {
                 customModuleId: 3,
-                data: JSON.stringify({ ...LOG, entries: undefined }),
+                data: JSON.stringify({ ...LOG, entries: undefined, entryCount: 2 }),
                 description: 'D',
                 name: 'N',
                 shorty: 'changelog',
