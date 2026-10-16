@@ -340,6 +340,8 @@ export function useAdminForm() {
     }
 
     return {
+        /** The saved configuration — what the dashboard, and the Änderungsprotokoll, go by. */
+        settings,
         draft,
         groups,
         hauptstamm,

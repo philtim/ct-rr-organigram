@@ -4,6 +4,14 @@
  * others; the rule they share now lives in one place instead.
  */
 import { ct, fetchAllPages, statusOf, withRetryOn429 } from './api';
+import type { Group } from './types';
+
+/** Full group with role definitions and ChurchTools-computed member statistics. */
+export async function getGroup(groupId: number): Promise<Group> {
+    return await withRetryOn429(() =>
+        ct.get<Group>(`/groups/${groupId}?include[]=memberStatistics&include[]=roles`),
+    );
+}
 
 /** A direct child of a group, as `/groups/{id}/children` describes it. */
 export type ChildGroup = {

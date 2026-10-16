@@ -38,6 +38,34 @@ export const COPY = {
     failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
     failedSammelgruppe: (name: string) => `Sammelgruppe „${name}“`,
     collectionsTitle: 'Leiter ohne Team',
+
+    // --- Änderungsprotokoll (Dashboard) ---
+    changelogTitle: 'Änderungen der letzten 30 Tage',
+    changelogStand: (time: string) => `Stand: ${time}`,
+    changelogStandNote: '· wird nur über die Konfiguration aktualisiert',
+    changelogNever:
+        'Das Änderungsprotokoll wurde noch nie abgerufen. Nur der Admin kann es unter ' +
+        'Konfiguration → Änderungsprotokoll aktualisieren.',
+    changelogEmpty: 'Keine Änderungen in den 30 Tagen vor diesem Stand.',
+    changelogUnreadable: 'Das Änderungsprotokoll konnte nicht gelesen werden.',
+    changelogKind: {
+        added: 'hinzugefügt',
+        removed: 'entfernt',
+        role: 'Rolle geändert',
+        status: 'Status geändert',
+    } as const,
+    /** ChurchTools' status values, in words; unknown ones verbatim. */
+    changelogStatusLabel: (status: string) =>
+        ({
+            active: 'aktiv',
+            to_delete: 'wird entfernt',
+            requested: 'angefragt',
+            waiting: 'Warteliste',
+        })[status] ?? status,
+    changelogRoleChange: (from: string, to: string) => `${from} → ${to}`,
+    changelogStatusChange: (from: string, to: string) =>
+        `Status ${COPY.changelogStatusLabel(from)} → ${COPY.changelogStatusLabel(to)}`,
+    changelogBy: (name: string) => `durch ${name}`,
     collectionEmpty: 'Niemand in dieser Gruppe.',
     collectionUnavailable: 'Die Gruppe konnte nicht gelesen werden.',
     collectionListLabel: (name: string) => `Mitglieder von ${name}`,
@@ -441,4 +469,24 @@ export const COPY = {
     adminSaveError: 'Unbekannter Fehler beim Speichern.',
     adminSaveIncomplete:
         'Hauptstamm, mindestens ein Teilstamm und mindestens ein Team-Gruppentyp sind nötig.',
+
+    // --- Änderungsprotokoll (Admin) ---
+    adminSectionChangelog: 'Änderungsprotokoll',
+    adminChangelogHelp:
+        'Das Dashboard zeigt Mitgliedschafts-Änderungen der letzten 30 Tage aus dem ' +
+        'ChurchTools-Log. Nur hier wird es aktualisiert; das Dashboard liest den ' +
+        'gespeicherten Stand.',
+    adminChangelogRun: 'Änderungen jetzt abrufen',
+    adminChangelogRunning: 'Wird abgerufen …',
+    adminChangelogNever: 'Noch nicht abgerufen.',
+    adminChangelogUnreadable:
+        'Der gespeicherte Stand ist nicht lesbar — ein neuer Abruf ersetzt ihn.',
+    adminChangelogStand: (time: string, entries: number, lines: number) =>
+        `Stand: ${time} · ${entries} ${entries === 1 ? 'Eintrag' : 'Einträge'} aus ${lines} Zeilen`,
+    adminChangelogUnparsed: (n: number) => `${n} ${n === 1 ? 'Zeile' : 'Zeilen'} nicht lesbar`,
+    adminChangelogForbidden:
+        'Das Log konnte nicht gelesen werden. Dafür braucht es in ChurchTools das Recht ' +
+        '„Logfile ansehen“ (Churchcore).',
+    adminChangelogNoModule: 'Die Konfiguration muss zuerst gespeichert werden.',
+    adminChangelogError: 'Unbekannter Fehler beim Abrufen.',
 } as const;
