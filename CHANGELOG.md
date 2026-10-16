@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.18.0](https://github.com/philtim/ct-rr-organigram/compare/v1.17.2...v1.18.0) (2026-10-16)
+
+
+### Features
+
+* **changelog:** show the newest 10 changes and a toggle for the rest ([ab76297](https://github.com/philtim/ct-rr-organigram/commit/ab762976ef4c2596f85861470c23024a1c99d557))
+
+
+### Bug Fixes
+
+* **changelog:** hide the show-all toggle in print ([637469b](https://github.com/philtim/ct-rr-organigram/commit/637469bf598742cd2c17036716d78f73bf9551cb))
+
 ## [1.17.2](https://github.com/philtim/ct-rr-organigram/compare/v1.17.1...v1.17.2) (2026-10-16)
 
 
