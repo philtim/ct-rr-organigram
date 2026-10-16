@@ -1,18 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ syncChangeLog: vi.fn() }));
-const shared = vi.hoisted(() => ({ readStoredChangeLog: vi.fn() }));
-const kv = vi.hoisted(() => ({
-    findModule: vi.fn(),
-    findCategory: vi.fn(),
-    writeCategory: vi.fn(),
-}));
+const shared = vi.hoisted(() => ({ readStoredChangeLog: vi.fn(), writeStoredChangeLog: vi.fn() }));
 vi.mock('./changelog.api', () => api);
 vi.mock('@/shared/changelog', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/shared/changelog')>()),
     ...shared,
 }));
-vi.mock('@/shared/kv-store', () => kv);
 
 import { useChangelogSync } from './useChangelogSync';
 import type { ChangeLog } from '@/shared/changelog';
@@ -29,7 +23,7 @@ const OLD: ChangeLog = {
 const NEW: ChangeLog = { ...OLD, syncedAt: '2026-10-16T00:00:00.000Z', linesRead: 9 };
 
 beforeEach(() => {
-    for (const fn of [...Object.values(api), ...Object.values(shared), ...Object.values(kv)]) {
+    for (const fn of [...Object.values(api), ...Object.values(shared)]) {
         fn.mockReset();
     }
 });
@@ -58,24 +52,12 @@ describe('load', () => {
 });
 
 describe('run', () => {
-    it('writes the new log into the changelog category and keeps it', async () => {
+    it('stores the new log and keeps it', async () => {
         api.syncChangeLog.mockResolvedValueOnce(NEW);
-        kv.findModule.mockResolvedValueOnce({ id: 3 });
-        kv.findCategory.mockResolvedValueOnce({ id: 9, name: 'Mein Protokoll', description: 'd' });
-        kv.writeCategory.mockResolvedValueOnce(undefined);
+        shared.writeStoredChangeLog.mockResolvedValueOnce(undefined);
         const { state, run } = useChangelogSync();
         await run(EMPTY_SETTINGS);
-        expect(kv.writeCategory).toHaveBeenCalledWith(
-            3,
-            {
-                customModuleId: 3,
-                data: JSON.stringify(NEW),
-                description: 'd',
-                name: 'Mein Protokoll',
-                shorty: 'changelog',
-            },
-            9,
-        );
+        expect(shared.writeStoredChangeLog).toHaveBeenCalledWith(NEW);
         expect(state.value).toEqual({ phase: 'stored', log: NEW });
     });
 
@@ -90,31 +72,16 @@ describe('run', () => {
             message: COPY.adminChangelogForbidden,
             log: OLD,
         });
-        expect(kv.writeCategory).not.toHaveBeenCalled();
+        expect(shared.writeStoredChangeLog).not.toHaveBeenCalled();
     });
 
     it('reports a failed write and keeps the old log', async () => {
         shared.readStoredChangeLog.mockResolvedValueOnce({ phase: 'ready', log: OLD });
         api.syncChangeLog.mockResolvedValueOnce(NEW);
-        kv.findModule.mockResolvedValueOnce({ id: 3 });
-        kv.findCategory.mockResolvedValueOnce(undefined);
-        kv.writeCategory.mockRejectedValueOnce(new Error('500'));
+        shared.writeStoredChangeLog.mockRejectedValueOnce(new Error('500'));
         const { state, load, run } = useChangelogSync();
         await load();
         await run(EMPTY_SETTINGS);
         expect(state.value).toEqual({ phase: 'error', message: '500', log: OLD });
-    });
-
-    it('refuses without a module, since the configuration was never saved', async () => {
-        api.syncChangeLog.mockResolvedValueOnce(NEW);
-        kv.findModule.mockResolvedValueOnce(undefined);
-        const { state, run } = useChangelogSync();
-        await run(EMPTY_SETTINGS);
-        expect(state.value).toEqual({
-            phase: 'error',
-            message: COPY.adminChangelogNoModule,
-            log: null,
-        });
-        expect(kv.writeCategory).not.toHaveBeenCalled();
     });
 });

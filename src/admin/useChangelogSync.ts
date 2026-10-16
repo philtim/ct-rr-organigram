@@ -1,16 +1,10 @@
 import { ref } from 'vue';
 import { syncChangeLog } from './changelog.api';
 import { statusOf } from '@/shared/api';
-import { CHANGELOG_SHORTY, readStoredChangeLog } from '@/shared/changelog';
+import { readStoredChangeLog, writeStoredChangeLog } from '@/shared/changelog';
 import type { ChangeLog } from '@/shared/changelog';
-import { EXTENSION_KEY } from '@/shared/constants';
 import { COPY } from '@/shared/copy';
-import { findCategory, findModule, writeCategory } from '@/shared/kv-store';
 import type { Settings } from '@/shared/settings';
-
-const CATEGORY_NAME = 'Änderungsprotokoll';
-const CATEGORY_DESCRIPTION =
-    'Mitgliedschafts-Änderungen der letzten 30 Tage, vom Admin aus dem Log abgerufen.';
 
 export type SyncState =
     | { phase: 'loading' }
@@ -42,20 +36,7 @@ export function useChangelogSync() {
         state.value = { phase: 'running', log: previous };
         try {
             const log = await syncChangeLog(settings, new Date());
-            const module = await findModule(EXTENSION_KEY);
-            if (!module) throw new Error(COPY.adminChangelogNoModule);
-            const existing = await findCategory(module.id, CHANGELOG_SHORTY);
-            await writeCategory(
-                module.id,
-                {
-                    customModuleId: module.id,
-                    data: JSON.stringify(log),
-                    description: existing?.description ?? CATEGORY_DESCRIPTION,
-                    name: existing?.name ?? CATEGORY_NAME,
-                    shorty: CHANGELOG_SHORTY,
-                },
-                existing?.id,
-            );
+            await writeStoredChangeLog(log);
             state.value = { phase: 'stored', log };
         } catch (e) {
             const message =

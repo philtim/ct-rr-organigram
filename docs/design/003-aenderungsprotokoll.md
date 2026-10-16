@@ -164,7 +164,17 @@ fehl, wird nicht geschrieben.
 ## Datenmodell
 
 Eine zweite Kategorie im bestehenden Custom Module, Shorty `changelog`,
-Name „Änderungsprotokoll“. `data` ist JSON:
+Name „Änderungsprotokoll“. **Das `data`-Feld einer Kategorie fasst höchstens
+2 000 Zeichen** (Validierungsfehler der Live-Instanz beim ersten Abruf,
+2026-10-16). Deshalb trägt `data` nur den Kopf — `ChangeLog` ohne `entries` —
+und die Einträge liegen in den **Werte-Zeilen** der Kategorie
+(`…/customdatacategories/{id}/customdatavalues`, je Zeile bis 10 000 Zeichen,
+auf rr-demo gemessen). Jede Zeile ist ein JSON-Chunk `{ syncedAt, entries }`
+mit dem Stempel des Abrufs, zu dem sie gehört. Der Leser nimmt nur Zeilen
+mit dem Stempel des Kopfes; Reihenfolge beim Schreiben: Chunks → Kopf →
+alte Zeilen löschen. Bricht ein Abruf vorher ab, bleibt der alte Stand
+vollständig lesbar, und die neuen Zeilen werden beim nächsten Erfolg
+weggeräumt. Das Modell in JSON:
 
 ```ts
 type ChangeLog = {
@@ -209,8 +219,10 @@ weggelassen, nichts wird erfunden. Eine Kategorie ohne lesbares `data` ist
 der Zustand „Protokoll unlesbar“, nicht „keine Änderungen“.
 
 Größe: ~360 RR-Zeilen in 30 Tagen auf der Live-Instanz, nach dem Filter
-deutlich weniger, ~150 Byte je Eintrag. Weit unter dem, was ein
-`data`-Feld trägt.
+deutlich weniger, ~200 Zeichen je Eintrag — also ~50 Einträge je
+Werte-Zeile und eine Handvoll Zeilen je Abruf. Die erste Fassung dieses
+Dokuments hielt das `data`-Feld für groß genug; das war nicht gemessen und
+war falsch.
 
 ## Admin-Oberfläche
 
@@ -372,3 +384,5 @@ Keine neue Abhängigkeit. Keine neue Einstellung in `Settings`.
 - 2026-10-16: Erstfassung nach Brainstorming.
 - 2026-10-16: Builder-Check — Entscheidungen 10–12 (Personen-ID für
   `geändert`, automatische Gruppen verbatim, zwei Einträge je Zeile).
+- 2026-10-16: Speicherung in Werte-Zeilen statt im `data`-Feld, nach dem
+  2 000-Zeichen-Fehler auf der Live-Instanz (v1.17.1).

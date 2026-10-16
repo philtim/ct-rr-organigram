@@ -99,3 +99,40 @@ export async function writeCategory(
     if (existingId === undefined) await churchtoolsClient.post(base, payload);
     else await churchtoolsClient.put(`${base}/${existingId}`, payload);
 }
+
+/**
+ * A value row under a category. `data` on the category itself is capped at
+ * 2 000 characters; a value holds up to 10 000 (both measured on rr-demo,
+ * 2026-10-16). Anything bigger than a configuration is stored here, in rows.
+ */
+export type CustomDataValue = { id: number; dataCategoryId: number; value: string };
+
+const valuesUrl = (moduleId: number, categoryId: number) =>
+    `/custommodules/${moduleId}/customdatacategories/${categoryId}/customdatavalues`;
+
+export async function listValues(moduleId: number, categoryId: number): Promise<CustomDataValue[]> {
+    return (
+        (await withRetryOn429(() =>
+            churchtoolsClient.get<CustomDataValue[]>(valuesUrl(moduleId, categoryId)),
+        )) ?? []
+    );
+}
+
+export async function createValue(
+    moduleId: number,
+    categoryId: number,
+    value: string,
+): Promise<void> {
+    await churchtoolsClient.post(valuesUrl(moduleId, categoryId), {
+        dataCategoryId: categoryId,
+        value,
+    });
+}
+
+export async function deleteValue(
+    moduleId: number,
+    categoryId: number,
+    valueId: number,
+): Promise<void> {
+    await churchtoolsClient.deleteApi(`${valuesUrl(moduleId, categoryId)}/${valueId}`);
+}
