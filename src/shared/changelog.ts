@@ -97,12 +97,15 @@ export function parseChangeLog(raw: unknown): ChangeLog | null {
     const syncedAt = str(raw.syncedAt);
     const since = str(raw.since);
     if (!syncedAt || !since || !Array.isArray(raw.entries)) return null;
+    const entries = raw.entries.map(parseEntry).filter((e): e is ChangeEntry => e !== null);
+    // Every entry unreadable is a document we cannot read, not an empty one.
+    if (raw.entries.length && !entries.length) return null;
     return {
         syncedAt,
         since,
         linesRead: int(raw.linesRead) ?? 0,
         linesUnparsed: int(raw.linesUnparsed) ?? 0,
-        entries: raw.entries.map(parseEntry).filter((e): e is ChangeEntry => e !== null),
+        entries,
     };
 }
 

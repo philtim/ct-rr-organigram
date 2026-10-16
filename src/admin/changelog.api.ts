@@ -46,7 +46,7 @@ export type ParsedLine = {
 const LINE =
     /^Gruppenmitgliedschaft\[(\d+)\] "(.*)\|(.*)" (erstellt|gelöscht|geändert|unverändert)(?: — (.*))?$/;
 const ROLE_CHANGE = /Rolle: (.+?) → (.+?)(?:, |$)/;
-const STATUS_CHANGE = /Status: (\S+) → (\S+)/;
+const STATUS_CHANGE = /Status: ([^,\s]+) → ([^,\s]+)/;
 
 const field = (text: string, name: string): string | null =>
     text.match(new RegExp(`${name}: ([^,]+)`))?.[1]?.trim() ?? null;

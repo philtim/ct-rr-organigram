@@ -59,6 +59,10 @@ describe('parseChangeLog', () => {
         };
         expect(parseChangeLog(raw)?.entries).toEqual([LOG.entries[0]]);
     });
+
+    it('is unreadable when every entry is broken — never "no changes"', () => {
+        expect(parseChangeLog({ ...LOG, entries: [{ logId: 1, kind: 'moved' }] })).toBeNull();
+    });
 });
 
 describe('windowStart', () => {

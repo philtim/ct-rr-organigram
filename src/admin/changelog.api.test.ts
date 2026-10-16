@@ -83,6 +83,16 @@ describe('parseLogLine', () => {
         });
     });
 
+    it('stops the status at the comma before the timestamps', () => {
+        expect(
+            parseLogLine(
+                line(
+                    'Gruppenmitgliedschaft[7] "RR Teilnehmer|Max Test" geändert — Status: active → to_delete, statusChangedDate: 2022-10-05 00:00:00 → 2026-09-23 08:29:56',
+                ),
+            ),
+        ).toMatchObject({ statusChange: ['active', 'to_delete'] });
+    });
+
     it('reads only the role out of a role change with timestamps', () => {
         expect(parseLogLine(line(ROLE))).toMatchObject({
             roleChange: ['Teilnehmer', 'Leiter'],
