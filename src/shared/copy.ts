@@ -41,7 +41,8 @@ export const COPY = {
 
     // --- Änderungsprotokoll (Dashboard) ---
     changelogTitle: 'Änderungen der letzten 30 Tage',
-    changelogStand: (time: string) => `Stand: ${time} · Aktualisierung nur durch den Admin`,
+    changelogStand: (time: string) => `Stand: ${time}`,
+    changelogStandNote: '· wird nur über die Konfiguration aktualisiert',
     changelogNever:
         'Das Änderungsprotokoll wurde noch nie abgerufen. Nur der Admin kann es unter ' +
         'Konfiguration → Änderungsprotokoll aktualisieren.',
@@ -479,7 +480,7 @@ export const COPY = {
     adminChangelogRunning: 'Wird abgerufen …',
     adminChangelogNever: 'Noch nicht abgerufen.',
     adminChangelogUnreadable:
-        'Der gespeicherte Stand ist nicht lesbar – ein neuer Abruf ersetzt ihn.',
+        'Der gespeicherte Stand ist nicht lesbar — ein neuer Abruf ersetzt ihn.',
     adminChangelogStand: (time: string, entries: number, lines: number) =>
         `Stand: ${time} · ${entries} ${entries === 1 ? 'Eintrag' : 'Einträge'} aus ${lines} Zeilen`,
     adminChangelogUnparsed: (n: number) => `${n} ${n === 1 ? 'Zeile' : 'Zeilen'} nicht lesbar`,

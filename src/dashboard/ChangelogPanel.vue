@@ -56,18 +56,16 @@ function detail(e: ChangeEntry): string {
         <template v-else-if="log">
             <p class="chg__stand">
                 {{ COPY.changelogStand(formatDateTime(new Date(log.syncedAt))) }}
+                <span class="chg__stand-note">{{ COPY.changelogStandNote }}</span>
             </p>
             <p v-if="!log.entries.length" class="chg__note">{{ COPY.changelogEmpty }}</p>
             <ul v-else class="chg__list">
                 <li v-for="e in log.entries" :key="`${e.logId}-${e.kind}`" class="chg__row">
                     <span class="chg__date">{{ formatDayMonth(new Date(e.at)) }}</span>
-                    <span
-                        class="chg__sign"
-                        :class="`chg__sign--${e.kind}`"
-                        :aria-label="COPY.changelogKind[e.kind]"
-                    >
+                    <span class="chg__sign" :class="`chg__sign--${e.kind}`" aria-hidden="true">
                         {{ SIGN[e.kind] }}
                     </span>
+                    <span class="chg__sr">{{ COPY.changelogKind[e.kind] }}</span>
                     <span class="chg__name">
                         <PersonLink
                             v-if="e.personId !== null && links.get(e.personId)"
@@ -103,8 +101,20 @@ function detail(e: ChangeEntry): string {
 /* Always above the list, never folded away: the age of the list is the point. */
 .chg__stand {
     margin: 0 0 12px;
-    font-size: 12px;
+    font-size: 13px;
+}
+.chg__stand-note {
     color: var(--rr-text-secondary);
+}
+
+.chg__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }
 
 .chg__note {
@@ -123,20 +133,19 @@ function detail(e: ChangeEntry): string {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
 }
 
+/* One card per entry, like the Hinweise items above. */
 .chg__row {
     display: grid;
-    grid-template-columns: 3.25em 1.25em minmax(0, 1.4fr) minmax(0, 1.6fr) minmax(0, 1.4fr) auto;
+    grid-template-columns: 3.25em 1.25em minmax(0, 1fr) minmax(0, 1.4fr) auto auto;
     gap: 0 10px;
     align-items: baseline;
-    padding: 5px 8px;
+    padding: 6px 10px;
+    background: var(--rr-bg-secondary);
     border-radius: var(--rr-radius-md);
     font-size: 13px;
-}
-.chg__row:nth-child(odd) {
-    background: var(--rr-bg-secondary);
 }
 
 .chg__date {
@@ -157,9 +166,7 @@ function detail(e: ChangeEntry): string {
 
 .chg__name {
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
 }
 
 .chg__group,
@@ -176,6 +183,7 @@ function detail(e: ChangeEntry): string {
 .chg__actor {
     font-size: 12px;
     white-space: nowrap;
+    text-align: right;
 }
 
 /* Mobile: date, sign and name on the first line; the rest below. */
@@ -184,15 +192,25 @@ function detail(e: ChangeEntry): string {
         margin-top: 16px;
         padding: 14px;
     }
+    .chg__list {
+        gap: 6px;
+    }
     .chg__row {
-        grid-template-columns: 3.25em 1.25em minmax(0, 1fr);
+        grid-template-columns: 3.25em 1.25em auto minmax(0, 1fr);
         grid-template-areas:
-            'date sign name'
-            '.    .    group'
-            '.    .    detail'
-            '.    .    actor';
+            'date sign name name'
+            '.    .    group detail'
+            '.    .    actor actor';
         gap: 1px 10px;
         padding: 8px;
+    }
+    .chg__group,
+    .chg__detail {
+        white-space: normal;
+        overflow: visible;
+    }
+    .chg__actor {
+        text-align: left;
     }
     .chg__date {
         grid-area: date;
