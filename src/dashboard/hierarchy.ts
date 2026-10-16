@@ -5,31 +5,9 @@ import { rollUpHauptstamm, rollUpTeilstamm } from './rollup';
 import { mapWithConcurrency } from '@/shared/api';
 import { getChildGroups, teamsAmong } from '@/shared/groups.api';
 import type { ChildGroup } from '@/shared/groups.api';
-import { API_TIMEOUT_MS } from '@/shared/constants';
 import { COPY } from '@/shared/copy';
 import type { Settings } from '@/shared/settings';
 import type { OrgNode } from './types';
-
-/**
- * Wrap any promise in a 30-second hard deadline (US-5 NFR). The PRD says
- * the dashboard waits at most 30s per call before treating the call as
- * failed and rendering "?".
- */
-function withTimeout<T>(p: Promise<T>, ms: number = API_TIMEOUT_MS): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
-        p.then(
-            (value) => {
-                clearTimeout(timer);
-                resolve(value);
-            },
-            (err) => {
-                clearTimeout(timer);
-                reject(err);
-            },
-        );
-    });
-}
 
 /** Make an empty error node so the renderer can show "?" in place of real data. */
 function errorNode(groupId: number, fallbackName: string | undefined): OrgNode {
@@ -61,10 +39,7 @@ async function safeLoadGroupNode(
     everyoneLeads = false,
 ): Promise<OrgNode> {
     try {
-        const [group, members] = await Promise.all([
-            withTimeout(getGroup(groupId)),
-            withTimeout(getGroupMembers(groupId)),
-        ]);
+        const [group, members] = await Promise.all([getGroup(groupId), getGroupMembers(groupId)]);
         const rule = leaderRuleOf(settings);
         // A Sammelgruppe exists for leaders: every member of it counts as one.
         const { leaders, participants } = splitMembers(group, members, rule, everyoneLeads);
@@ -92,7 +67,7 @@ async function safeLoadGroupNode(
 /** Soft children fetch — returns null on failure so caller can short-circuit. */
 async function safeGetChildren(groupId: number): Promise<ChildGroup[] | null> {
     try {
-        return await withTimeout(getChildGroups(groupId));
+        return await getChildGroups(groupId);
     } catch (e) {
         console.error(`[rr-dashboard] failed to load children of group ${groupId}:`, e);
         return null;

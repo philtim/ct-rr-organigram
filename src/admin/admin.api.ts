@@ -17,7 +17,9 @@ export type GroupTypeRef = { id: number; name: string };
 
 /** The installation's group types, so the pickers can name them. */
 export async function listGroupTypes(): Promise<GroupTypeRef[]> {
-    const types = await ct.get<Array<{ id?: number; name?: string }>>('/group/grouptypes');
+    const types = await withRetryOn429(() =>
+        ct.get<Array<{ id?: number; name?: string }>>('/group/grouptypes'),
+    );
     return (types ?? [])
         .filter((t): t is { id: number; name?: string } => typeof t.id === 'number')
         .map((t) => ({ id: t.id, name: (t.name ?? '').trim() || `Typ ${t.id}` }));
@@ -41,15 +43,17 @@ export type PickableRole = {
  * of them without caring which group type each belongs to.
  */
 export async function listRoles(): Promise<PickableRole[]> {
-    const roles = await ct.get<
-        Array<{
-            id?: number;
-            name?: string;
-            groupTypeId?: number;
-            type?: string;
-            isLeader?: boolean;
-        }>
-    >('/group/roles');
+    const roles = await withRetryOn429(() =>
+        ct.get<
+            Array<{
+                id?: number;
+                name?: string;
+                groupTypeId?: number;
+                type?: string;
+                isLeader?: boolean;
+            }>
+        >('/group/roles'),
+    );
     return (roles ?? [])
         .filter((r): r is { id: number } & typeof r => typeof r.id === 'number')
         .map((r) => ({
