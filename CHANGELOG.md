@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/philtim/ct-rr-organigram/compare/v1.17.0...v1.17.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **changelog:** store the entries in KV value rows, the category data field caps at 2000 chars ([06fc9af](https://github.com/philtim/ct-rr-organigram/commit/06fc9af9c66317713fc924c1fac549526018cc1d))
+
 ## [1.17.0](https://github.com/philtim/ct-rr-organigram/compare/v1.16.4...v1.17.0) (2026-10-16)
 
 
