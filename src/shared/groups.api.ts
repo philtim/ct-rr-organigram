@@ -3,7 +3,7 @@
  * own copy of these with a comment promising to stay in step with the
  * others; the rule they share now lives in one place instead.
  */
-import { ct, fetchAllPages, withRetryOn429 } from './api';
+import { ct, fetchAllPages, statusOf, withRetryOn429 } from './api';
 
 /** A direct child of a group, as `/groups/{id}/children` describes it. */
 export type ChildGroup = {
@@ -87,4 +87,26 @@ export function personFieldsOf(member: { personFields?: unknown }): Record<strin
     if (Array.isArray(raw)) return Object.assign({}, ...raw) as Record<string, unknown>;
     if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
     return {};
+}
+
+/**
+ * The signed-in person's membership in a group — with their role there, null
+ * when the row carries none — or null when they are not a member.
+ *
+ * Only a 404 means "not a member" (recon: 200 member, 404 not); anything else
+ * is an error the caller sees. The access gate and the configuration form
+ * both ask this, and must agree on who is a member.
+ */
+export async function myMembershipIn(groupId: number): Promise<{ roleId: number | null } | null> {
+    const me = await withRetryOn429(() => ct.get<{ id: number }>('/whoami'));
+    try {
+        const membership = await withRetryOn429(() =>
+            ct.get<{ groupTypeRoleId?: number }>(`/groups/${groupId}/members/${me.id}`),
+        );
+        const roleId = membership?.groupTypeRoleId;
+        return { roleId: typeof roleId === 'number' ? roleId : null };
+    } catch (e) {
+        if (statusOf(e) === 404) return null;
+        throw e;
+    }
 }

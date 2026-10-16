@@ -1,5 +1,6 @@
 import { ref } from 'vue';
-import { ct, statusOf } from '@/shared/api';
+import { statusOf } from '@/shared/api';
+import { myMembershipIn } from '@/shared/groups.api';
 import { COPY } from '@/shared/copy';
 
 export type GateStatus =
@@ -33,21 +34,13 @@ export function useMembershipGate() {
         }
         status.value = { phase: 'loading' };
         try {
-            const me = await ct.get<{ id: number }>('/whoami');
-            const membership = await ct.get<{ groupTypeRoleId?: number }>(
-                `/groups/${groupId}/members/${me.id}`,
-            );
-            const roleId = membership?.groupTypeRoleId;
-            status.value = {
-                phase: 'allowed',
-                roleId: typeof roleId === 'number' ? roleId : null,
-            };
-        } catch (e) {
-            const httpStatus = statusOf(e);
+            const membership = await myMembershipIn(groupId);
             status.value =
-                httpStatus === 404
+                membership === null
                     ? { phase: 'denied' }
-                    : { phase: 'error', message: COPY.gateCheckFailed(httpStatus) };
+                    : { phase: 'allowed', roleId: membership.roleId };
+        } catch (e) {
+            status.value = { phase: 'error', message: COPY.gateCheckFailed(statusOf(e)) };
         }
     }
 

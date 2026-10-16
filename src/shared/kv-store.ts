@@ -3,6 +3,7 @@
  * module, holding one data category per stored document.
  */
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { withRetryOn429 } from './api';
 import type {
     CustomModule,
     CustomModuleCreate,
@@ -18,7 +19,9 @@ import type {
  * configured" would hand the configuration form to whoever is looking.
  */
 export async function findModule(extensionKey: string): Promise<CustomModule | undefined> {
-    const modules = await churchtoolsClient.get<CustomModule[]>('/custommodules');
+    const modules = await withRetryOn429(() =>
+        churchtoolsClient.get<CustomModule[]>('/custommodules'),
+    );
     return modules.find((m) => m.shorty === extensionKey);
 }
 
@@ -55,8 +58,10 @@ export async function findCategory(
     moduleId: number,
     shorty: string,
 ): Promise<CustomModuleDataCategory | undefined> {
-    const categories = await churchtoolsClient.get<CustomModuleDataCategory[]>(
-        `/custommodules/${moduleId}/customdatacategories`,
+    const categories = await withRetryOn429(() =>
+        churchtoolsClient.get<CustomModuleDataCategory[]>(
+            `/custommodules/${moduleId}/customdatacategories`,
+        ),
     );
     return categories.find((c) => c.shorty === shorty);
 }

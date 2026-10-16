@@ -4,6 +4,7 @@ const client = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('@churchtools/churchtools-client', () => ({ churchtoolsClient: client }));
 
 import { fetchAllPages, mapWithConcurrency, statusOf, withRetryOn429 } from './api';
+import { API_TIMEOUT_MS } from './constants';
 
 const httpError = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status });
 
@@ -97,6 +98,23 @@ describe('withRetryOn429', () => {
         await vi.runAllTimersAsync();
         await settled;
         expect(call).toHaveBeenCalledTimes(3);
+    });
+
+    it('fails a request that never answers, instead of waiting forever', async () => {
+        vi.useFakeTimers();
+        const call = vi.fn(() => new Promise<never>(() => {}));
+        const result = withRetryOn429(call);
+        const settled = expect(result).rejects.toThrow('30 Sekunden');
+        await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+        await settled;
+        // A timeout is not a rate limit: no second attempt.
+        expect(call).toHaveBeenCalledOnce();
+    });
+
+    it('leaves no deadline running after an answer', async () => {
+        vi.useFakeTimers();
+        await expect(withRetryOn429(async () => 'ok')).resolves.toBe('ok');
+        expect(vi.getTimerCount()).toBe(0);
     });
 });
 

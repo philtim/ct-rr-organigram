@@ -1,12 +1,6 @@
 import { computed, ref, watch } from 'vue';
-import {
-    listChildren,
-    listGroupTypes,
-    listGroups,
-    listRoles,
-    myRoleIn,
-    scanScope,
-} from './admin.api';
+import { listChildren, listGroupTypes, listGroups, listRoles, scanScope } from './admin.api';
+import { myMembershipIn } from '@/shared/groups.api';
 import type { ChildGroup, GroupTypeRef, PickableRole, ScopeScan } from './admin.api';
 import {
     applyTickedRoles,
@@ -193,7 +187,7 @@ export function useAdminForm() {
         myRoleFailed.value = false;
         if (groupId === null) return;
         try {
-            const role = await myRoleIn(groupId);
+            const role = (await myMembershipIn(groupId))?.roleId ?? null;
             if (mine === myRoleSequence) myRoleId.value = role;
         } catch (e) {
             console.error('[rr-dashboard] own role unavailable:', e);

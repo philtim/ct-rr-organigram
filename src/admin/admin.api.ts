@@ -1,4 +1,4 @@
-import { ct, fetchAllPages, mapWithConcurrency, statusOf, withRetryOn429 } from '@/shared/api';
+import { ct, fetchAllPages, mapWithConcurrency, withRetryOn429 } from '@/shared/api';
 import { fetchActiveMembers, getChildGroups, personIdOf } from '@/shared/groups.api';
 import { isLeadershipRole } from '@/shared/roles';
 import type { Group } from '@/shared/types';
@@ -17,7 +17,9 @@ export type GroupTypeRef = { id: number; name: string };
 
 /** The installation's group types, so the pickers can name them. */
 export async function listGroupTypes(): Promise<GroupTypeRef[]> {
-    const types = await ct.get<Array<{ id?: number; name?: string }>>('/group/grouptypes');
+    const types = await withRetryOn429(() =>
+        ct.get<Array<{ id?: number; name?: string }>>('/group/grouptypes'),
+    );
     return (types ?? [])
         .filter((t): t is { id: number; name?: string } => typeof t.id === 'number')
         .map((t) => ({ id: t.id, name: (t.name ?? '').trim() || `Typ ${t.id}` }));
@@ -41,15 +43,17 @@ export type PickableRole = {
  * of them without caring which group type each belongs to.
  */
 export async function listRoles(): Promise<PickableRole[]> {
-    const roles = await ct.get<
-        Array<{
-            id?: number;
-            name?: string;
-            groupTypeId?: number;
-            type?: string;
-            isLeader?: boolean;
-        }>
-    >('/group/roles');
+    const roles = await withRetryOn429(() =>
+        ct.get<
+            Array<{
+                id?: number;
+                name?: string;
+                groupTypeId?: number;
+                type?: string;
+                isLeader?: boolean;
+            }>
+        >('/group/roles'),
+    );
     return (roles ?? [])
         .filter((r): r is { id: number } & typeof r => typeof r.id === 'number')
         .map((r) => ({
@@ -58,24 +62,6 @@ export async function listRoles(): Promise<PickableRole[]> {
             groupTypeId: typeof r.groupTypeId === 'number' ? r.groupTypeId : null,
             isLeadership: isLeadershipRole(r),
         }));
-}
-
-/**
- * The signed-in person's role in a group, or null when they are not a member.
- * Only a 404 means "not a member" — the gate's rule; anything else is an
- * error the caller sees, rather than a lockout warning that is not true.
- */
-export async function myRoleIn(groupId: number): Promise<number | null> {
-    const me = await ct.get<{ id: number }>('/whoami');
-    try {
-        const membership = await ct.get<{ groupTypeRoleId?: number }>(
-            `/groups/${groupId}/members/${me.id}`,
-        );
-        return typeof membership?.groupTypeRoleId === 'number' ? membership.groupTypeRoleId : null;
-    } catch (e) {
-        if (statusOf(e) === 404) return null;
-        throw e;
-    }
 }
 
 /** A candidate team: a child of some Teilstamm, with the type that decides it. */

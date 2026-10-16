@@ -107,6 +107,8 @@ export const COPY = {
         status
             ? `Der Gate-Check konnte nicht durchgeführt werden (HTTP ${status}).`
             : 'Der Gate-Check konnte nicht durchgeführt werden.',
+    requestTimedOut: (seconds: number) =>
+        `ChurchTools hat nicht innerhalb von ${seconds} Sekunden geantwortet. Bitte später erneut laden.`,
     listTruncated: (url: string, max: number) =>
         `${url} liefert mehr als ${max} Einträge — die Liste wäre unvollständig.`,
     close: 'Schließen',

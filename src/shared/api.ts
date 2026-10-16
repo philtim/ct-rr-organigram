@@ -3,6 +3,7 @@
  * Feature-level API calls live in each feature's `*.api.ts` and import from here.
  */
 import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { API_TIMEOUT_MS } from './constants';
 import { COPY } from './copy';
 
 export const ct = churchtoolsClient;
@@ -33,7 +34,30 @@ export function getGroupFrontendUrl(groupId: number): string {
 }
 
 /**
+ * Reject when a request has not answered within `ms`.
+ *
+ * The client sets no timeout of its own, so a request that never answers
+ * would leave a tab saying "loading" forever, with no error and no retry.
+ * The request itself keeps running — the client cannot cancel it — but the
+ * caller gets a failure it can show.
+ */
+export async function withTimeout<T>(p: Promise<T>, ms: number = API_TIMEOUT_MS): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(COPY.requestTimedOut(ms / 1000))), ms);
+    });
+    try {
+        return await Promise.race([p, deadline]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
  * Retry a request that came back HTTP 429, with increasing delays.
+ *
+ * Every attempt has the deadline of `withTimeout`, so every read that goes
+ * through here — which is nearly all of them — fails rather than hangs.
  *
  * A tab that asks about every team and every person individually makes some
  * hundreds of requests. The live instance answers them, but rate-limits a
@@ -47,7 +71,7 @@ export function getGroupFrontendUrl(groupId: number): string {
 export async function withRetryOn429<T>(call: () => Promise<T>, attempts = 3): Promise<T> {
     for (let attempt = 1; ; attempt++) {
         try {
-            return await call();
+            return await withTimeout(call());
         } catch (e) {
             if (attempt >= attempts || statusOf(e) !== 429) throw e;
             await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
