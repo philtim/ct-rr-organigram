@@ -17,9 +17,22 @@ import {
 } from './scope';
 import { useAdminSettings } from './useAdminSettings';
 import { COPY } from '@/shared/copy';
-import { EMPTY_SETTINGS, hasAnySetting, isDashboardConfigured } from '@/shared/settings';
-import type { Settings } from '@/shared/settings';
+import {
+    EMPTY_SETTINGS,
+    hasAnySetting,
+    isDashboardConfigured,
+    saveAccessProblem,
+} from '@/shared/settings';
+import type { SaveAccessProblem, Settings } from '@/shared/settings';
+
 import type { Group } from '@/shared/types';
+
+const ACCESS_PROBLEM_TEXT: Record<SaveAccessProblem, string> = {
+    noneChosen: COPY.adminAccessNoneChosen,
+    unverifiable: COPY.adminAccessUnverifiable,
+    checking: COPY.adminAccessChecking,
+    wouldLockOut: COPY.adminAccessWouldLockOut,
+};
 
 /**
  * Everything the configuration screen knows and does: the installation's
@@ -197,14 +210,8 @@ export function useAdminForm() {
 
     /** Why saving is not possible yet, or null. */
     const accessProblem = computed<string | null>(() => {
-        if (draft.value.gateGroupId === null) return null;
-        if (draft.value.adminRoleIds.length === 0) return COPY.adminAccessNoneChosen;
-        if (myRoleFailed.value) return COPY.adminAccessUnverifiable;
-        if (myRoleId.value === undefined) return COPY.adminAccessChecking;
-        if (myRoleId.value === null || !draft.value.adminRoleIds.includes(myRoleId.value)) {
-            return COPY.adminAccessWouldLockOut;
-        }
-        return null;
+        const problem = saveAccessProblem(draft.value, myRoleId.value, myRoleFailed.value);
+        return problem === null ? null : ACCESS_PROBLEM_TEXT[problem];
     });
 
     /** A started or older setup was found — the form says it took it over. */

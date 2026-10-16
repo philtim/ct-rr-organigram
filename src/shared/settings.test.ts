@@ -4,6 +4,7 @@ import {
     hasAnySetting,
     mayConfigure,
     shouldShowAdmin,
+    saveAccessProblem,
     areFeesConfigured,
     isDashboardConfigured,
     missingDashboardFields,
@@ -232,5 +233,39 @@ describe('mayConfigure', () => {
     it('lets every member configure while no role is chosen, so an upgrade locks nobody out', () => {
         expect(mayConfigure({ ...settings, adminRoleIds: [] }, 82)).toBe(true);
         expect(mayConfigure({ ...settings, adminRoleIds: [] }, null)).toBe(true);
+    });
+});
+
+describe('saveAccessProblem — a save must never lock the saver out', () => {
+    const draft = { gateGroupId: 950, adminRoleIds: [67, 70] };
+
+    it('allows the save when the saver holds one of the chosen roles', () => {
+        expect(saveAccessProblem(draft, 67, false)).toBeNull();
+    });
+
+    it("blocks a selection without the saver's own role", () => {
+        expect(saveAccessProblem(draft, 12, false)).toBe('wouldLockOut');
+    });
+
+    it('blocks when the saver is not a member of the Hauptstamm at all', () => {
+        expect(saveAccessProblem(draft, null, false)).toBe('wouldLockOut');
+    });
+
+    it("blocks while the saver's role is still being read", () => {
+        expect(saveAccessProblem(draft, undefined, false)).toBe('checking');
+    });
+
+    it("blocks when the saver's role could not be read, whatever it was before", () => {
+        expect(saveAccessProblem(draft, 67, true)).toBe('unverifiable');
+    });
+
+    it('blocks a selection of no role', () => {
+        expect(saveAccessProblem({ ...draft, adminRoleIds: [] }, 67, false)).toBe('noneChosen');
+    });
+
+    it('has nothing to check before a Hauptstamm is chosen', () => {
+        expect(
+            saveAccessProblem({ gateGroupId: null, adminRoleIds: [] }, undefined, false),
+        ).toBeNull();
     });
 });
