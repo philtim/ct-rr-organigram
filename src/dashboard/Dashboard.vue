@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import ChangelogPanel from './ChangelogPanel.vue';
 import CollectionCard from './CollectionCard.vue';
 import DuplicatesPanel from './DuplicatesPanel.vue';
 import HauptstammCard from './HauptstammCard.vue';
@@ -154,6 +155,8 @@ const appCommit = __APP_COMMIT__;
                 </div>
             </section>
             <DuplicatesPanel v-if="loaded" :root="loaded.root" />
+            <!-- Reads its own store; not held up by the organigram, nor holding it up. -->
+            <ChangelogPanel :root="loaded?.root ?? null" />
         </template>
 
         <footer class="rr-dash__footer">

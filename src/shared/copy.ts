@@ -38,6 +38,33 @@ export const COPY = {
     failedHauptstamm: (name: string) => `Hauptstamm „${name}“`,
     failedSammelgruppe: (name: string) => `Sammelgruppe „${name}“`,
     collectionsTitle: 'Leiter ohne Team',
+
+    // --- Änderungsprotokoll (Dashboard) ---
+    changelogTitle: 'Änderungen der letzten 30 Tage',
+    changelogStand: (time: string) => `Stand: ${time} · Aktualisierung nur durch den Admin`,
+    changelogNever:
+        'Das Änderungsprotokoll wurde noch nie abgerufen. Nur der Admin kann es unter ' +
+        'Konfiguration → Änderungsprotokoll aktualisieren.',
+    changelogEmpty: 'Keine Änderungen in den 30 Tagen vor diesem Stand.',
+    changelogUnreadable: 'Das Änderungsprotokoll konnte nicht gelesen werden.',
+    changelogKind: {
+        added: 'hinzugefügt',
+        removed: 'entfernt',
+        role: 'Rolle geändert',
+        status: 'Status geändert',
+    } as const,
+    /** ChurchTools' status values, in words; unknown ones verbatim. */
+    changelogStatusLabel: (status: string) =>
+        ({
+            active: 'aktiv',
+            to_delete: 'wird entfernt',
+            requested: 'angefragt',
+            waiting: 'Warteliste',
+        })[status] ?? status,
+    changelogRoleChange: (from: string, to: string) => `${from} → ${to}`,
+    changelogStatusChange: (from: string, to: string) =>
+        `Status ${COPY.changelogStatusLabel(from)} → ${COPY.changelogStatusLabel(to)}`,
+    changelogBy: (name: string) => `durch ${name}`,
     collectionEmpty: 'Niemand in dieser Gruppe.',
     collectionUnavailable: 'Die Gruppe konnte nicht gelesen werden.',
     collectionListLabel: (name: string) => `Mitglieder von ${name}`,
