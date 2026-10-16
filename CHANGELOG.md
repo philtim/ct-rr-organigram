@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.17.0](https://github.com/philtim/ct-rr-organigram/compare/v1.16.4...v1.17.0) (2026-10-16)
+
+
+### Features
+
+* **admin:** button to fetch the Änderungsprotokoll ([fc8c698](https://github.com/philtim/ct-rr-organigram/commit/fc8c698568c2e9bf6ac53ea1130474a44369f386))
+* **changelog:** admin sync composable ([9f3a914](https://github.com/philtim/ct-rr-organigram/commit/9f3a9140a9e5b8496916a5b331c24863998488e0))
+* **changelog:** parse membership log lines and build the change log ([2e696c9](https://github.com/philtim/ct-rr-organigram/commit/2e696c9e855a1dac7f64d6395ef156d9967bf492))
+* **changelog:** shared types, parse and read of the stored log ([a360cbe](https://github.com/philtim/ct-rr-organigram/commit/a360cbe45aab51830cd54be8b3a3a2fb0996016e))
+* **dashboard:** Änderungsprotokoll panel ([f438da3](https://github.com/philtim/ct-rr-organigram/commit/f438da33645d5df87639548a0aefde1e9bc76ecc))
+
+
+### Bug Fixes
+
+* **changelog:** stop the status at the comma, treat an all-broken log as unreadable ([c77c5f2](https://github.com/philtim/ct-rr-organigram/commit/c77c5f23376baf88cff7712f322535bd101002d9))
+
 ## [1.16.4](https://github.com/philtim/ct-rr-organigram/compare/v1.16.3...v1.16.4) (2026-10-16)
 
 
