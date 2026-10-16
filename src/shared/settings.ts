@@ -197,6 +197,35 @@ export function mayConfigure(settings: Settings, viewerRoleId: number | null): b
     return viewerRoleId !== null && settings.adminRoleIds.includes(viewerRoleId);
 }
 
+/** Why the configuration may not be saved as drafted — see `saveAccessProblem`. */
+export type SaveAccessProblem = 'noneChosen' | 'unverifiable' | 'checking' | 'wouldLockOut';
+
+/**
+ * Whether saving these admin roles would lock the person saving out.
+ *
+ * An access decision, so it lives here rather than in the form, beside
+ * `mayConfigure` which applies it on the next load. The expensive mistake is
+ * a quiet one: a selection without the saver's own role passes, the save
+ * succeeds, and nobody can open the configuration again short of editing
+ * the KV-Store by hand. So everything not known to be safe blocks — an
+ * unread role, a role still being read, a failed read.
+ *
+ * `myRoleId`: the saver's role in the drafted Hauptstamm — null when not a
+ * member, undefined while it is being read.
+ */
+export function saveAccessProblem(
+    draft: Pick<Settings, 'gateGroupId' | 'adminRoleIds'>,
+    myRoleId: number | null | undefined,
+    myRoleFailed: boolean,
+): SaveAccessProblem | null {
+    if (draft.gateGroupId === null) return null;
+    if (draft.adminRoleIds.length === 0) return 'noneChosen';
+    if (myRoleFailed) return 'unverifiable';
+    if (myRoleId === undefined) return 'checking';
+    if (myRoleId === null || !draft.adminRoleIds.includes(myRoleId)) return 'wouldLockOut';
+    return null;
+}
+
 /** What the shell knows when it decides which screen to render. */
 export type ShellState = {
     /** The configuration could not be read — not the same as "is absent". */
