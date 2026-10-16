@@ -4,6 +4,7 @@ import { parseIsoDate } from '@/shared/dates';
 import type { DataQuality } from './data-quality';
 import type { FeeTotals } from './fee-tiers';
 import type { FeeConfig } from '@/shared/settings';
+import type { CachedValue } from './cached-values';
 
 type FileContent = File | Blob | ArrayBuffer;
 export type ExportSheet = Sheet<FileContent>;
@@ -118,14 +119,77 @@ const COL = Object.fromEntries(
  */
 export function buildSheets(rows: ExportRow[], meta: ExportMeta): ExportSheet[] {
     const cells = rateCells(meta.config.childCents.length);
+    const values = formulaValues(rows, meta.config);
     return [
-        participantsSheet(rows, cells),
-        summarySheet(rows.length, meta, cells),
+        participantsSheet(rows, values, cells),
+        summarySheet(values, meta, cells),
         methodSheet(meta),
     ];
 }
 
-function participantsSheet(rows: ExportRow[], cells: RateCells): ExportSheet {
+/**
+ * What each participant row's formulas come out at, computed the way the
+ * formulas compute it: from the Familien-ID column, the own-rate column and
+ * the rates, in row order.
+ *
+ * Written into the file as each formula's cached result (`./cached-values`).
+ * Excel shows a formula's cached result until it recalculates, and Protected
+ * View — how a downloaded file opens — Quick Look, phone viewers and a Drive
+ * preview never do: without it, every fee and the grand total read 0.
+ */
+type RowValues = {
+    ownRate: 'MA' | 'JL' | 'nein';
+    familySize: number;
+    /** The running count of the family's ladder children; null on an own-rate row. */
+    childNo: number | null;
+    feeCents: number;
+    reason: string;
+};
+
+function formulaValues(rows: ExportRow[], config: FeeConfig): RowValues[] {
+    const familySize = new Map<string, number>();
+    for (const row of rows) familySize.set(row.familyKey, (familySize.get(row.familyKey) ?? 0) + 1);
+    const ladder = config.childCents;
+    const seen = new Map<string, number>();
+    return rows.map((row) => {
+        const ownRate = row.isStaff ? 'MA' : row.isJuniorLeader ? 'JL' : 'nein';
+        let childNo: number | null = null;
+        if (ownRate === 'nein') {
+            childNo = (seen.get(row.familyKey) ?? 0) + 1;
+            seen.set(row.familyKey, childNo);
+        }
+        const feeCents =
+            ownRate === 'MA'
+                ? config.staffCents
+                : ownRate === 'JL'
+                  ? config.juniorLeaderCents
+                  : ladder.length === 0
+                    ? 0
+                    : ladder[Math.min(childNo ?? 1, ladder.length) - 1];
+        const reason =
+            feeCents > 0
+                ? ''
+                : ownRate === 'MA'
+                  ? EXEMPT_STAFF
+                  : ownRate === 'JL'
+                    ? EXEMPT_JUNIOR
+                    : EXEMPT_LADDER;
+        return {
+            ownRate,
+            familySize: familySize.get(row.familyKey) ?? 1,
+            childNo,
+            feeCents,
+            reason,
+        };
+    });
+}
+
+/** A formula cell literal with its result, for `./cached-values`. */
+const withResult = <T extends object>(cell: T, cached: CachedValue) => ({ ...cell, cached });
+
+const liabilityOf = (v: RowValues) => (v.feeCents === 0 ? 'beitragsfrei' : 'beitragspflichtig');
+
+function participantsSheet(rows: ExportRow[], values: RowValues[], cells: RateCells): ExportSheet {
     const lastRow = rows.length + 1;
     const header = COLUMNS.map((column) => ({
         value: column.header,
@@ -137,7 +201,9 @@ function participantsSheet(rows: ExportRow[], cells: RateCells): ExportSheet {
     }));
 
     const data: ExportSheet['data'] = [header];
-    rows.forEach((row, index) => data.push(participantRow(row, index + 2, lastRow, cells)));
+    rows.forEach((row, index) =>
+        data.push(participantRow(row, values[index], index + 2, lastRow, cells)),
+    );
 
     return {
         sheet: SHEET_PARTICIPANTS,
@@ -149,6 +215,7 @@ function participantsSheet(rows: ExportRow[], cells: RateCells): ExportSheet {
 
 function participantRow(
     row: ExportRow,
+    v: RowValues,
     r: number,
     lastRow: number,
     cells: RateCells,
@@ -158,10 +225,11 @@ function participantRow(
     const tint = row.isStaff || row.isJuniorLeader ? STAFF_FILL : undefined;
     const { familyId: J, ownRate: L, fee: O } = COL;
     const text = (value: string) => ({ value, type: String, backgroundColor: tint });
-    const formula = (value: string) => ({
+    const formula = (value: string, cached: CachedValue) => ({
         value,
         type: 'Formula' as const,
         backgroundColor: tint,
+        cached,
     });
 
     return [
@@ -182,20 +250,24 @@ function participantRow(
         // The one column the office is meant to correct — hence the fill, and
         // hence every following column being a formula over it.
         { value: row.familyKey, type: String, backgroundColor: INPUT_FILL },
-        formula(`COUNTIF($${J}$2:$${J}$${lastRow},$${J}${r})`),
+        formula(`COUNTIF($${J}$2:$${J}$${lastRow},$${J}${r})`, v.familySize),
         // Three states, because the two own-rate cases carry different rates:
         // MA, JL, or an ordinary child who takes a rung of the ladder.
         text(row.isStaff ? 'MA' : row.isJuniorLeader ? 'JL' : 'nein'),
         formula(
             `IF($${L}${r}<>"nein","",COUNTIFS($${J}$2:$${J}${r},$${J}${r},$${L}$2:$${L}${r},"nein"))`,
+            v.childNo ?? '',
         ),
-        formula(`IF($${O}${r}=0,"beitragsfrei","beitragspflichtig")`),
-        {
-            value: feeFormula(r, cells),
-            type: 'Formula' as const,
-            format: EURO_FORMAT,
-            backgroundColor: tint,
-        },
+        formula(`IF($${O}${r}=0,"beitragsfrei","beitragspflichtig")`, liabilityOf(v)),
+        withResult(
+            {
+                value: feeFormula(r, cells),
+                type: 'Formula' as const,
+                format: EURO_FORMAT,
+                backgroundColor: tint,
+            },
+            v.feeCents / 100,
+        ),
         // Only a row that pays nothing carries a reason for paying nothing.
         // A Stamm with a non-zero Mitarbeiter or Juniorleiter rate would
         // otherwise see a paying row labelled "beitragsfrei" and counted
@@ -203,13 +275,14 @@ function participantRow(
         formula(
             `IF($${O}${r}>0,"",IF($${L}${r}="MA","${EXEMPT_STAFF}",` +
                 `IF($${L}${r}="JL","${EXEMPT_JUNIOR}","${EXEMPT_LADDER}")))`,
+            v.reason,
         ),
         { value: row.reviewNote, type: String, backgroundColor: tint, wrap: true },
     ];
 }
 
-function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): ExportSheet {
-    const last = rowCount + 1;
+function summarySheet(values: RowValues[], meta: ExportMeta, cells: RateCells): ExportSheet {
+    const last = values.length + 1;
     const T = (column: string) => `${SHEET_PARTICIPANTS}!$${column}$2:$${column}$${last}`;
 
     const title = (value: string) => [
@@ -217,12 +290,22 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     ];
     const section = (value: string) => [{ value, type: String, fontWeight: 'bold' as const }];
     const label = (value: string) => ({ value, type: String });
-    const count = (value: string) => ({ value, type: 'Formula' as const });
-    const euro = (value: string) => ({
+    // Each formula carries its result (see `formulaValues`); euro results are
+    // summed in cents and divided once, so no float drift reaches the file.
+    const count = (value: string, cached: number) => ({
+        value,
+        type: 'Formula' as const,
+        cached,
+    });
+    const euro = (value: string, cents: number) => ({
         value,
         type: 'Formula' as const,
         format: EURO_FORMAT,
+        cached: cents / 100,
     });
+    const countWhere = (test: (v: RowValues) => boolean) => values.filter(test).length;
+    const liable = (v: RowValues) => v.feeCents > 0;
+    const totalCents = values.reduce((sum, v) => sum + v.feeCents, 0);
     const rate = (cents: number) => ({
         value: cents / 100,
         type: Number,
@@ -264,19 +347,36 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     );
     push([]);
 
-    push([label('Aktive Teilnehmer (gelistet)'), count(`COUNTA(${T(COL.lastName)})`)]);
+    push([
+        label('Aktive Teilnehmer (gelistet)'),
+        count(`COUNTA(${T(COL.lastName)})`, values.length),
+    ]);
     push([
         label('davon beitragspflichtig'),
-        count(`COUNTIF(${T(COL.liability)},"beitragspflichtig")`),
+        count(`COUNTIF(${T(COL.liability)},"beitragspflichtig")`, countWhere(liable)),
     ]);
-    push([label('davon beitragsfrei'), count(`COUNTIF(${T(COL.liability)},"beitragsfrei")`)]);
+    push([
+        label('davon beitragsfrei'),
+        count(
+            `COUNTIF(${T(COL.liability)},"beitragsfrei")`,
+            countWhere((v) => !liable(v)),
+        ),
+    ]);
     push([]);
 
     // One line per rung: how many children sit on it, and what they add up to.
     const rungLineRows: number[] = [];
-    ladder.forEach((_cents, i) => {
+    let lineCents = 0;
+    ladder.forEach((cents, i) => {
         const position = i + 1;
         const isLast = i === ladder.length - 1;
+        const children = countWhere(
+            (v) =>
+                liable(v) &&
+                v.childNo !== null &&
+                (isLast ? v.childNo >= position : v.childNo === position),
+        );
+        lineCents += children * cents;
         const criterion = isLast
             ? `COUNTIFS(${T(COL.liability)},"beitragspflichtig",${T(COL.childNo)},">=${position}")`
             : `COUNTIFS(${T(COL.liability)},"beitragspflichtig",${T(COL.childNo)},${position})`;
@@ -284,8 +384,8 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
             label(
                 isLast ? `Kinder ab Satz ${position}. Kind` : `Kinder zum Satz ${position}. Kind`,
             ),
-            count(criterion),
-            euro(`B${data.length + 1}*$B$${cells.rungRows[i]}`),
+            count(criterion, children),
+            euro(`B${data.length + 1}*$B$${cells.rungRows[i]}`, children * cents),
         ]);
         rungLineRows.push(row);
     });
@@ -294,16 +394,29 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     // Juniorleiter rate, and the control below sums these lines against the
     // grand total. Leaving them out made the control report a difference on a
     // correct file.
+    const staffPaying = countWhere((v) => v.ownRate === 'MA' && liable(v));
+    const juniorPaying = countWhere((v) => v.ownRate === 'JL' && liable(v));
+    lineCents +=
+        staffPaying * meta.config.staffCents + juniorPaying * meta.config.juniorLeaderCents;
     const ownRateRows = [
         push([
             label('Mitarbeiter mit eigenem Satz'),
-            count(`COUNTIFS(${T(COL.ownRate)},"MA",${T(COL.liability)},"beitragspflichtig")`),
-            euro(`B${data.length + 1}*$B$${cells.staffRow}`),
+            count(
+                `COUNTIFS(${T(COL.ownRate)},"MA",${T(COL.liability)},"beitragspflichtig")`,
+                staffPaying,
+            ),
+            euro(`B${data.length + 1}*$B$${cells.staffRow}`, staffPaying * meta.config.staffCents),
         ]),
         push([
             label('Juniorleiter mit eigenem Satz'),
-            count(`COUNTIFS(${T(COL.ownRate)},"JL",${T(COL.liability)},"beitragspflichtig")`),
-            euro(`B${data.length + 1}*$B$${cells.juniorRow}`),
+            count(
+                `COUNTIFS(${T(COL.ownRate)},"JL",${T(COL.liability)},"beitragspflichtig")`,
+                juniorPaying,
+            ),
+            euro(
+                `B${data.length + 1}*$B$${cells.juniorRow}`,
+                juniorPaying * meta.config.juniorLeaderCents,
+            ),
         ]),
     ];
     push([]);
@@ -311,19 +424,32 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     const totalRow = push([
         { value: 'Gesamtbetrag (€)', type: String, fontWeight: 'bold' as const },
         undefined,
-        {
-            value: `SUM(${T(COL.fee)})`,
-            type: 'Formula' as const,
-            format: EURO_FORMAT,
-            fontWeight: 'bold' as const,
-        },
+        withResult(
+            {
+                value: `SUM(${T(COL.fee)})`,
+                type: 'Formula' as const,
+                format: EURO_FORMAT,
+                fontWeight: 'bold' as const,
+            },
+            totalCents / 100,
+        ),
     ]);
     push([]);
 
     push(section('Grund der Beitragsfreiheit'));
-    push([label('    Mitarbeiter'), count(`COUNTIF(${T(COL.reason)},"${EXEMPT_STAFF}")`)]);
-    push([label('    Juniorleiter'), count(`COUNTIF(${T(COL.reason)},"${EXEMPT_JUNIOR}")`)]);
-    push([label('    durch die Staffel'), count(`COUNTIF(${T(COL.reason)},"${EXEMPT_LADDER}")`)]);
+    const exempt = (reason: string) => countWhere((v) => v.reason === reason);
+    push([
+        label('    Mitarbeiter'),
+        count(`COUNTIF(${T(COL.reason)},"${EXEMPT_STAFF}")`, exempt(EXEMPT_STAFF)),
+    ]);
+    push([
+        label('    Juniorleiter'),
+        count(`COUNTIF(${T(COL.reason)},"${EXEMPT_JUNIOR}")`, exempt(EXEMPT_JUNIOR)),
+    ]);
+    push([
+        label('    durch die Staffel'),
+        count(`COUNTIF(${T(COL.reason)},"${EXEMPT_LADDER}")`, exempt(EXEMPT_LADDER)),
+    ]);
     push([]);
 
     push([label('Familien insgesamt'), { value: meta.families, type: Number }]);
@@ -339,8 +465,12 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
     push(section('Kontrolle'));
     const lineRows = [...rungLineRows, ...ownRateRows];
     const lineSum = lineRows.length ? lineRows.map((row) => `C${row}`).join('+') : '0';
-    push([label('Summe der Satz-Zeilen'), undefined, euro(lineSum)]);
-    push([label('Abweichung zum Gesamtbetrag'), undefined, euro(`C${totalRow}-C${data.length}`)]);
+    push([label('Summe der Satz-Zeilen'), undefined, euro(lineSum, lineCents)]);
+    push([
+        label('Abweichung zum Gesamtbetrag'),
+        undefined,
+        euro(`C${totalRow}-C${data.length}`, totalCents - lineCents),
+    ]);
     // The figure the web view showed, written as a plain number. If the
     // spreadsheet's own arithmetic disagrees with the extension's, this row is
     // where it becomes visible — to the reader, not just to us.
@@ -349,7 +479,11 @@ function summarySheet(rowCount: number, meta: ExportMeta, cells: RateCells): Exp
         undefined,
         { value: meta.totals.totalCents / 100, type: Number, format: EURO_FORMAT },
     ]);
-    push([label('Abweichung zur Web-Ansicht'), undefined, euro(`C${totalRow}-C${viewRow}`)]);
+    push([
+        label('Abweichung zur Web-Ansicht'),
+        undefined,
+        euro(`C${totalRow}-C${viewRow}`, totalCents - meta.totals.totalCents),
+    ]);
 
     return {
         sheet: SHEET_SUMMARY,
