@@ -25,13 +25,14 @@ import {
 } from '@/shared/settings';
 import type { SaveAccessProblem, Settings } from '@/shared/settings';
 
+import type { Group } from '@/shared/types';
+
 const ACCESS_PROBLEM_TEXT: Record<SaveAccessProblem, string> = {
     noneChosen: COPY.adminAccessNoneChosen,
     unverifiable: COPY.adminAccessUnverifiable,
     checking: COPY.adminAccessChecking,
     wouldLockOut: COPY.adminAccessWouldLockOut,
 };
-import type { Group } from '@/shared/types';
 
 /**
  * Everything the configuration screen knows and does: the installation's
