@@ -288,6 +288,15 @@ Stand: 14.10.2026 18:32 · Aktualisierung nur durch den Admin
 - Die „Stand“-Zeile steht **immer** über der Liste, auch wenn die Liste
   lang ist, und wird nie weggeklappt: Ein alter Stand, der vollständig
   aussieht, ist die teure Fehlanzeige dieses Features.
+- **Nur die neuesten 10 Zeilen sind offen**; darunter ein Umschalter
+  „Alle N Änderungen zeigen“ / „Weniger zeigen“ wie bei den Teilstamm-Karten
+  (`aria-expanded`, `aria-controls`, bleibt in beiden Zuständen im DOM).
+  Die Leserin will, was sich seit ihrem letzten Blick vor Tagen bewegt hat;
+  die ausgeblendeten Zeilen sind die ältesten, also die schon gesehenen. Ein
+  Tagesfenster statt einer Zahl schwankt zwischen 0 und 40 Zeilen; eine
+  Gruppierung nach Tag kostet bei 1–3 Zeilen je Tag mehr Zeilen, als sie
+  spart. Die Zahl N auf dem Knopf ist zugleich die Antwort auf „wie viel war
+  diesen Monat los“. Verworfen: Seiten, Filter nach Art oder Team, Suche.
 
 Zustände:
 

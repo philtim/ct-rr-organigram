@@ -66,6 +66,8 @@ export const COPY = {
     changelogStatusChange: (from: string, to: string) =>
         `Status ${COPY.changelogStatusLabel(from)} → ${COPY.changelogStatusLabel(to)}`,
     changelogBy: (name: string) => `durch ${name}`,
+    changelogShowAll: (n: number) => `Alle ${n} Änderungen zeigen`,
+    changelogShowFewer: 'Weniger zeigen',
     collectionEmpty: 'Niemand in dieser Gruppe.',
     collectionUnavailable: 'Die Gruppe konnte nicht gelesen werden.',
     collectionListLabel: (name: string) => `Mitglieder von ${name}`,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref, useId } from 'vue';
 import { profileLinks } from './duplicates';
 import type { OrgNode } from './types';
 import { useChangelog } from './useChangelog';
@@ -25,6 +25,19 @@ onMounted(load);
 
 const links = computed(() => (props.root ? profileLinks(props.root) : new Map<number, string>()));
 const log = computed(() => (state.value.phase === 'ready' ? state.value.log : null));
+
+/**
+ * Rows shown before "Alle N Änderungen zeigen". The reader wants what moved
+ * since their last look, days ago, not the whole month; the hidden rows are
+ * the oldest, the ones already seen. Same preview size as DatenqualitaetPanel.
+ */
+const VISIBLE_ROWS = 10;
+const expanded = ref(false);
+const listId = useId();
+const collapsible = computed(() => (log.value?.entries.length ?? 0) > VISIBLE_ROWS);
+const visible = computed(() =>
+    !log.value ? [] : expanded.value ? log.value.entries : log.value.entries.slice(0, VISIBLE_ROWS),
+);
 
 const SIGN = { added: '+', removed: '–', role: '~', status: '~' } as const;
 
@@ -59,8 +72,8 @@ function detail(e: ChangeEntry): string {
                 <span class="chg__stand-note">{{ COPY.changelogStandNote }}</span>
             </p>
             <p v-if="!log.entries.length" class="chg__note">{{ COPY.changelogEmpty }}</p>
-            <ul v-else class="chg__list">
-                <li v-for="e in log.entries" :key="`${e.logId}-${e.kind}`" class="chg__row">
+            <ul v-else :id="listId" class="chg__list">
+                <li v-for="e in visible" :key="`${e.logId}-${e.kind}`" class="chg__row">
                     <span class="chg__date">{{ formatDayMonth(new Date(e.at)) }}</span>
                     <span class="chg__sign" :class="`chg__sign--${e.kind}`" aria-hidden="true">
                         {{ SIGN[e.kind] }}
@@ -79,6 +92,16 @@ function detail(e: ChangeEntry): string {
                     <span v-if="e.actor" class="chg__actor">{{ COPY.changelogBy(e.actor) }}</span>
                 </li>
             </ul>
+            <button
+                v-if="collapsible"
+                type="button"
+                class="chg__more"
+                :aria-expanded="expanded"
+                :aria-controls="listId"
+                @click="expanded = !expanded"
+            >
+                {{ expanded ? COPY.changelogShowFewer : COPY.changelogShowAll(log.entries.length) }}
+            </button>
         </template>
     </section>
 </template>
@@ -188,6 +211,27 @@ function detail(e: ChangeEntry): string {
     text-align: right;
 }
 
+/* Same control as the Teilstamm cards' "Alle N Teams zeigen". */
+.chg__more {
+    margin-top: 10px;
+    padding: 4px 8px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--rr-text-secondary);
+    background: transparent;
+    border: 0.5px solid var(--rr-border-secondary);
+    border-radius: var(--rr-radius-md);
+    cursor: pointer;
+}
+.chg__more:hover {
+    color: var(--rr-text-primary);
+    background: var(--rr-bg-hover-on-white);
+}
+.chg__more:focus-visible {
+    outline: 2px solid var(--rr-text-secondary);
+    outline-offset: 1px;
+}
+
 /* Mobile: date, sign and name on the first line; the rest below. */
 @media (max-width: 767px) {
     .chg {
@@ -213,6 +257,9 @@ function detail(e: ChangeEntry): string {
     }
     .chg__actor {
         text-align: left;
+    }
+    .chg__more {
+        padding: 8px 12px;
     }
     .chg__date {
         grid-area: date;
