@@ -127,19 +127,21 @@ function detail(e: ChangeEntry): string {
     color: var(--rr-error-fg);
 }
 
+/* The list owns the tracks; each row is a subgrid, so columns line up across rows. */
 .chg__list {
     margin: 0;
     padding: 0;
     list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: 3.25em 1.25em minmax(0, 1fr) minmax(0, 1.4fr) auto auto;
+    gap: 4px 0;
 }
 
 /* One card per entry, like the Hinweise items above. */
 .chg__row {
     display: grid;
-    grid-template-columns: 3.25em 1.25em minmax(0, 1fr) minmax(0, 1.4fr) auto auto;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     gap: 0 10px;
     align-items: baseline;
     padding: 6px 10px;
@@ -193,7 +195,7 @@ function detail(e: ChangeEntry): string {
         padding: 14px;
     }
     .chg__list {
-        gap: 6px;
+        gap: 6px 0;
     }
     .chg__row {
         grid-template-columns: 3.25em 1.25em auto minmax(0, 1fr);
