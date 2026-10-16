@@ -5,7 +5,9 @@ import type { CheckItem, CheckSection } from './CheckList.vue';
 import FeeLadderEditor from './FeeLadderEditor.vue';
 import HauptstammPicker from './HauptstammPicker.vue';
 import { useAdminForm } from './useAdminForm';
+import { useChangelogSync } from './useChangelogSync';
 import { COPY } from '@/shared/copy';
+import { formatDateTime } from '@/shared/format';
 
 /**
  * The one screen where this extension learns what Stamm it is running at.
@@ -21,6 +23,7 @@ const props = defineProps<{ firstRun?: boolean }>();
 const emit = defineEmits<{ saved: [] }>();
 
 const {
+    settings,
     draft,
     scan,
     groups,
@@ -52,7 +55,29 @@ const {
     submit,
 } = useAdminForm();
 
-onMounted(boot);
+const changelog = useChangelogSync();
+
+onMounted(() => {
+    boot();
+    changelog.load();
+});
+
+/** The status line next to the button — the stored stand, or what went wrong. */
+const changelogStatus = computed(() => {
+    const s = changelog.state.value;
+    const log = 'log' in s ? s.log : null;
+    if (s.phase === 'loading') return COPY.loading;
+    if (s.phase === 'unreadable') return COPY.adminChangelogUnreadable;
+    if (!log) return COPY.adminChangelogNever;
+    const stand = COPY.adminChangelogStand(
+        formatDateTime(new Date(log.syncedAt)),
+        log.entries.length,
+        log.linesRead,
+    );
+    return log.linesUnparsed
+        ? `${stand} · ${COPY.adminChangelogUnparsed(log.linesUnparsed)}`
+        : stand;
+});
 
 async function onSave() {
     if (await submit()) emit('saved');
@@ -326,6 +351,43 @@ function item(id: number, label: string, meta?: string): CheckItem {
                 </span>
             </div>
         </form>
+
+        <!--
+          Outside the form: an action of its own, on the saved settings, not
+          on the draft. The dashboard shows what is stored here.
+        -->
+        <section
+            v-if="!booting && !loadError && settings.gateGroupId !== null"
+            class="rr-admin__form rr-admin__form--follow"
+            :aria-labelledby="'rr-admin-changelog'"
+        >
+            <h2 id="rr-admin-changelog" class="rr-admin__section">
+                {{ COPY.adminSectionChangelog }}
+            </h2>
+            <p class="rr-admin__help">{{ COPY.adminChangelogHelp }}</p>
+            <div class="rr-admin__actions">
+                <button
+                    type="button"
+                    class="rr-admin__button"
+                    :disabled="changelog.state.value.phase === 'running'"
+                    @click="changelog.run(settings)"
+                >
+                    {{
+                        changelog.state.value.phase === 'running'
+                            ? COPY.adminChangelogRunning
+                            : COPY.adminChangelogRun
+                    }}
+                </button>
+                <span
+                    v-if="changelog.state.value.phase === 'error'"
+                    class="rr-admin__error-inline"
+                    role="alert"
+                >
+                    {{ changelog.state.value.message }}
+                </span>
+                <span class="rr-admin__help" aria-live="polite">{{ changelogStatus }}</span>
+            </div>
+        </section>
     </main>
 </template>
 
@@ -380,6 +442,10 @@ function item(id: number, label: string, meta?: string): CheckItem {
     border-radius: var(--rr-radius-lg);
     padding: 1.25rem;
     background: var(--rr-bg-primary);
+}
+
+.rr-admin__form--follow {
+    margin-top: 1rem;
 }
 
 .rr-admin__section {
