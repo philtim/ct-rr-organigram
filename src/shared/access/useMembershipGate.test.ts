@@ -30,6 +30,10 @@ describe('useMembershipGate', () => {
         expect(client.get).toHaveBeenCalledWith('/groups/42/members/5');
     });
 
+    it('allows a member whose row carries no role, without a role', async () => {
+        await expect(gateFor(42)).resolves.toEqual({ phase: 'allowed', roleId: null });
+    });
+
     it('denies only on 404', async () => {
         client.get.mockImplementation(async (url: string) => {
             if (url === '/whoami') return { id: 5 };
