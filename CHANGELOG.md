@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.16.4](https://github.com/philtim/ct-rr-organigram/compare/v1.16.3...v1.16.4) (2026-10-16)
+
+
+### Bug Fixes
+
+* **api:** give every read a deadline, not only the organigram's ([3d8a28f](https://github.com/philtim/ct-rr-organigram/commit/3d8a28f0a6c7cd41f9a83e3c5f5b7df67d4c27bd))
+* **beitraege:** give every formula in the export its result ([afa7673](https://github.com/philtim/ct-rr-organigram/commit/afa76734b137e3da2057def7a400258101239444))
+
 ## [1.16.3](https://github.com/philtim/ct-rr-organigram/compare/v1.16.2...v1.16.3) (2026-10-15)
 
 
