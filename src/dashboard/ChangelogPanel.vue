@@ -231,6 +231,12 @@ function detail(e: ChangeEntry): string {
     outline: 2px solid var(--rr-text-secondary);
     outline-offset: 1px;
 }
+/* shortcut: print shows the open rows only, add a row class and print rule if a full printout is wanted */
+@media print {
+    .chg__more {
+        display: none;
+    }
+}
 
 /* Mobile: date, sign and name on the first line; the rest below. */
 @media (max-width: 767px) {
