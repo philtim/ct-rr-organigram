@@ -31,6 +31,8 @@ export type Group = {
 };
 
 export type GroupMember = {
+    /** The membership id — what the log's `Gruppenmitgliedschaft[<id>]` refers to. */
+    id?: number;
     groupTypeRoleId: number;
     person?: {
         title?: string;
